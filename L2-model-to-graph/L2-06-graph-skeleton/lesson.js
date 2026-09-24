@@ -547,10 +547,10 @@ const SCENES = [
   }
 },
 
-/* ------------------------------------------------------ 7 ★ <span class="hl-a">build_moe_ffn</span> 第一步：路由打分与门控 */
+/* ------------------------------------------------------ 7 <span class="hl-a">build_moe_ffn</span> 第一步：路由打分与门控 */
 {
   kicker: "L2-06 · 核心 · MoE",
-  title: "★ <span class=\"hl-a\">build_moe_ffn</span> 第一步：路由打分与门控",
+  title: "<span class=\"hl-a\">build_moe_ffn</span> 第一步：路由打分与门控",
   sub: "MoE 的第一件事不是算专家，而是\"每个 token 该去哪些专家\" —— 一次矩阵乘 + 一个门控函数。",
   caption: "n_expert 与 n_expert_used 都来自 hparams（见第 2 幕的 1471 / 1472 行）：n_expert 是路由宽度，n_expert_used 是每个 token 真正激活的专家数。",
   src: "src/llama-graph.cpp",
@@ -649,10 +649,10 @@ const SCENES = [
   }
 },
 
-/* ------------------------------------------------------ 8 ★ <span class="hl-c">build_moe_ffn</span> 第二步：top-k 与权重归一 */
+/* ------------------------------------------------------ 8 <span class="hl-c">build_moe_ffn</span> 第二步：top-k 与权重归一 */
 {
   kicker: "L2-06 · 核心 · MoE",
-  title: "★ <span class=\"hl-c\">build_moe_ffn</span> 第二步：top-k 与权重归一",
+  title: "<span class=\"hl-c\">build_moe_ffn</span> 第二步：top-k 与权重归一",
   sub: "选出 n_expert_used 个专家，取出它们的权重，再决定要不要重新归一化。",
   caption: "argsort_top_k 的返回值是索引（I32），所以后面要 reshape 成 [1, n_expert, n_tokens] 才能用 get_rows 去取权重。",
   src: "src/llama-graph.cpp",
@@ -763,7 +763,7 @@ const SCENES = [
   kicker: "L2-06 · 核心 · MoE",
   title: "★ <span class=\"hl-e\">build_moe_ffn</span> 展开成的 ggml 算子清单",
   sub: "这就是本课的验收点：一个 MoE 层 = 路由 1 次 + 门控 1 个 + top-k 1 个 + 三次 mul_mat_id + 聚合若干。",
-  caption: "ggml_mul_mat_id 由 build_lora_mm_id（1552 行）发出：一个算子同时对所有选中专家做矩阵乘，这才是\"专家并行\"在图上的样子。表里的算子名都取自 ggml/include/ggml.h。",
+  caption: "表里的\"行号\"是 build_moe_ffn 里的调用点；算子本体由原语发出：build_lora_mm 在 1518 行调 ggml_mul_mat，build_lora_mm_id 在 1552 行调 ggml_mul_mat_id。ggml_mul_mat_id 一个算子就同时对所有选中专家做矩阵乘 —— 这才是\"专家并行\"在图上的样子。表里的算子名都取自 ggml/include/ggml.h。",
   src: "src/llama-graph.cpp",
   mark: [0, 18, 35, 45, 53],
   lineNo: 2304,

@@ -31,8 +31,8 @@
 4. **build_ffn：三个矩阵乘 + 一个激活** — up / gate / down 三次矩阵乘都由 build_lora_mm 发出；激活由 type_op 分派，GLU 变体由 type_gate 决定。
 5. **build_attn：先写进 KV cache，再整段读回来** — Q/K/V 投影不在这一层（由 build_qkv 做）；这一层负责记账：把本轮的 K/V 写进缓存，再连历史一起读出来。
 6. **build_attn_mha：快路与慢路** — cparams.flash_attn 有值且没有 KQ bias 时，整个注意力塌缩成一个 ggml_flash_attn_ext 节点。
-7. **★ build_moe_ffn 第一步：路由打分与门控** — MoE 的第一件事不是算专家，而是"每个 token 该去哪些专家" —— 一次矩阵乘 + 一个门控函数。
-8. **★ build_moe_ffn 第二步：top-k 与权重归一** — 选出 n_expert_used 个专家，取出它们的权重，再决定要不要重新归一化。
+7. **build_moe_ffn 第一步：路由打分与门控** — MoE 的第一件事不是算专家，而是"每个 token 该去哪些专家" —— 一次矩阵乘 + 一个门控函数。
+8. **build_moe_ffn 第二步：top-k 与权重归一** — 选出 n_expert_used 个专家，取出它们的权重，再决定要不要重新归一化。
 9. **★ build_moe_ffn 展开成的 ggml 算子清单** — 这就是本课的验收点：一个 MoE 层 = 路由 1 次 + 门控 1 个 + top-k 1 个 + 三次 mul_mat_id + 聚合若干。
 10. **★ 模型架构的差异 = 原语选择 + 超参** — 同一个 build_* 原语，靠枚举值与 hparams 分支出几十种架构 —— 这就是 156 个模型文件长得像的原因。
 
@@ -52,12 +52,12 @@
 ### ★ build_moe_ffn 展开出的 ggml 算子（验收点）
 
 ```text
-路由      ggml_mul_mat                              (2025)
+路由      ggml_mul_mat          (2025 调用点 / build_lora_mm 内 1518)
 门控      ggml_soft_max (2043) | ggml_sigmoid (2047) | ggml_softplus (2055)
 选专家    ggml_argsort_top_k                        (2109)
 取权重    ggml_reshape_3d (2120) + ggml_get_rows    (2123)
 归一化    ggml_sum_rows (2137) + ggml_clamp (2141) + ggml_div (2144)
-专家并行  ggml_mul_mat_id x3   (up 2190 / gate 2203 / down 2304)
+专家并行  ggml_mul_mat_id x3   (up 2190 / gate 2203 / down 2304；在 build_lora_mm_id 内 1552)
 激活      ggml_swiglu_split                         (2246)
 加权      ggml_mul                                 (2321)
 聚合      ggml_view_2d (2337) + ggml_add (2346)   [k = 1 时再加 ggml_cont (2353)]

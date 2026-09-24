@@ -579,8 +579,10 @@ L.scene(
     kicker='L2-06 · 核心 · MoE',
     title='★ <span class="hl-e">build_moe_ffn</span> 展开成的 ggml 算子清单',
     sub='这就是本课的验收点：一个 MoE 层 = 路由 1 次 + 门控 1 个 + top-k 1 个 + 三次 mul_mat_id + 聚合若干。',
-    caption='ggml_mul_mat_id 由 build_lora_mm_id（1552 行）发出：一个算子同时对所有选中专家做矩阵乘，'
-            '这才是"专家并行"在图上的样子。表里的算子名都取自 ggml/include/ggml.h。',
+    caption='表里的"行号"是 build_moe_ffn 里的调用点；算子本体由原语发出：'
+            'build_lora_mm 在 1518 行调 ggml_mul_mat，build_lora_mm_id 在 1552 行调 ggml_mul_mat_id。'
+            'ggml_mul_mat_id 一个算子就同时对所有选中专家做矩阵乘 —— 这才是"专家并行"在图上的样子。'
+            '表里的算子名都取自 ggml/include/ggml.h。',
     src=SRC_CPP, parts=[(2304, 2356)], duration=28000,
     notes=N9, marks=HL9,
     visual='''
@@ -788,12 +790,12 @@ L.conclusion(
 L.conclusion(
     '★ build_moe_ffn 展开出的 ggml 算子（验收点）',
     '```text\n'
-    '路由      ggml_mul_mat                              (2025)\n'
+    '路由      ggml_mul_mat          (2025 调用点 / build_lora_mm 内 1518)\n'
     '门控      ggml_soft_max (2043) | ggml_sigmoid (2047) | ggml_softplus (2055)\n'
     '选专家    ggml_argsort_top_k                        (2109)\n'
     '取权重    ggml_reshape_3d (2120) + ggml_get_rows    (2123)\n'
     '归一化    ggml_sum_rows (2137) + ggml_clamp (2141) + ggml_div (2144)\n'
-    '专家并行  ggml_mul_mat_id x3   (up 2190 / gate 2203 / down 2304)\n'
+    '专家并行  ggml_mul_mat_id x3   (up 2190 / gate 2203 / down 2304；在 build_lora_mm_id 内 1552)\n'
     '激活      ggml_swiglu_split                         (2246)\n'
     '加权      ggml_mul                                 (2321)\n'
     '聚合      ggml_view_2d (2337) + ggml_add (2346)   [k = 1 时再加 ggml_cont (2353)]\n'
