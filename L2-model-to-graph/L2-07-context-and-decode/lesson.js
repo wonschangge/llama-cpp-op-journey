@@ -44,7 +44,7 @@ const SCENES = [
         <span class="chip b">decode</span><span class="arrow">-></span>
         <span class="chip c">process_ubatch</span><span class="arrow">-></span>
         <span class="chip d">graph_compute</span><span class="arrow">-></span>
-        <span class="chip f">sched_graph_compute_async</span>
+        <span class="chip f">ggml_backend_sched_graph_compute_async</span>
       </div>
       <div class="row" id="cards" style="gap:8px"></div>
       <div class="formula" id="msg"></div>`;
@@ -374,7 +374,7 @@ const SCENES = [
     const msg = wrap.querySelector('#msg');
     const texts = [
       '<span class="v">process_ubatch</span> 是整个 decode 里最值得记住的函数：它是<b>图的入口</b>。',
-      '先拿 <span class="k">res = get_gf_res_prev()</span>（1398），再算 <span class="k">gparams = graph_params(...)</span>（1403）—— ' +
+      '先拿 <span class="k">res = get_gf_res_prev()</span>（1398），再算 <span class="k">gparams = graph_params(res, ubatch, mctx, gtype)</span>（1403）—— ' +
       '参数里打包了 ubatch、mctx、gtype、sched。',
       '然后就是那个 <span class="k">if</span>（1405）：<span class="v">!graph_reuse_disable && gf_res_prev_active == res && res->can_reuse(gparams)</span>。<br>' +
       '三个条件缺一不可 —— 而判据本身写在 <span class="v">llm_graph_params::allow_reuse</span> 里（L2-06 讲过）。',
@@ -641,7 +641,7 @@ const SCENES = [
       '从 <span class="mono">process_ubatch</span> 收到一个 ubatch 开始，到调度器真正接手计算，' +
       '按顺序说出经过的每一步（函数名 + 大致行为）。',
       '1. <span class="mono">get_gf_res_prev()</span>（1398）取这个 arena 里上一次的图结果；<br>' +
-      '2. <span class="mono">graph_params(...)</span>（1403）打包 ubatch / mctx / gtype / sched；<br>' +
+      '2. <span class="mono">graph_params(res, ubatch, mctx, gtype)</span>（1403）打包 ubatch / mctx / gtype / sched；<br>' +
       '3. 判断 <span class="mono">res->can_reuse(gparams)</span>（1405）：<br>' +
       '&nbsp;&nbsp;&nbsp;命中 → 只做 <span class="mono">n_reused++</span>（1415），跳到第 8 步；<br>' +
       '&nbsp;&nbsp;&nbsp;未命中 → <span class="mono">res->reset()</span>（1418）+ <span class="mono">ggml_backend_sched_reset()</span>（1420）；<br>' +
