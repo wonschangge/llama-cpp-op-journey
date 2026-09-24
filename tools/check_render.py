@@ -52,13 +52,14 @@ OVERFLOW_JS = """() => {
   return out;
 }"""
 
+# 门户是【滚动页】，纵向溢出是设计如此，所以只查【横向】溢出。
+# 课件页是固定舞台，才需要四边界判据。这是两套不同的判据。
 PORTAL_OVERFLOW_JS = """() => {
-  const out = [], vw = innerWidth, vh = innerHeight;
-  document.querySelectorAll('body *').forEach(el => {
+  const out = [], vw = innerWidth;
+  document.querySelectorAll('.page *').forEach(el => {
     const b = el.getBoundingClientRect();
     if (b.width <= 0 || b.height <= 0) return;
-    if (b.left < -1 || b.right > vw + 1 || b.top < -1 || b.bottom > vh + 1) {
-      if (el.ownerDocument !== document) return;
+    if (b.left < -1 || b.right > vw + 1) {
       out.push({ cls: (el.className && String(el.className)) || el.tagName,
                  l: Math.round(b.left), r: Math.round(b.right) });
     }
@@ -173,32 +174,57 @@ def check_portal(browser, url, w, h):
         page.goto(url, wait_until='load')
         page.wait_for_timeout(500)
         info = page.evaluate("""() => {
-            const cards = document.querySelectorAll('a.card, .card a, a[data-lesson]');
-            const links = Array.from(document.querySelectorAll('a[href]'))
-                .map(a => a.getAttribute('href'))
-                .filter(h => h && !h.startsWith('http') && !h.startsWith('#') && !h.startsWith('data:'));
-            const broken = links.filter(h => {
-                try { return !window.__portalExists || !window.__portalExists(h); }
-                catch (e) { return false; }
-            });
-            return { cards: cards.length, links: links.length, broken: broken.length,
-                     hasSearch: !!document.querySelector('#q, input[type=search], [data-search]') };
+            const cards = Array.from(document.querySelectorAll('a.card, [data-lesson]'));
+            const links = cards.map(a => a.getAttribute('href'))
+                .filter(h => h && h.indexOf('javascript:') !== 0);
+            return { cards: cards.length, links: links,
+                     hasSearch: !!document.querySelector('#q, input[type=search]'),
+                     empty: (document.querySelector('#empty') || {}).style ?
+                            document.querySelector('#empty').style.display !== 'none' : false };
         }""")
         res['scenes'] = info.get('cards', 0)
         res['interact'].append(('cards>0', info.get('cards', 0) > 0))
+        # 链接有效性：逐个核对目标文件是否存在（离线 file:// 场景下必须真实存在）
+        bad = []
+        for h in info.get('links', []):
+            t = os.path.normpath(os.path.join(HERE, h.split('#')[0]))
+            if not os.path.exists(t):
+                bad.append(h)
+        res['interact'].append(('links-valid', not bad))
+        if bad:
+            res['errors'].append('失效链接: ' + ', '.join(bad[:5]))
         if not info.get('hasSearch'):
             res['interact'].append(('search-present', False))
         else:
             res['interact'].append(('search-present', True))
             try:
                 page.fill('#q', 'mul_mat')
+                page.wait_for_timeout(350)
+                after = page.evaluate("() => document.querySelectorAll('[data-lesson]').length")
+                res['interact'].append(('search-filters', after < info.get('cards', 0)))
+                page.fill('#q', 'zzzz-no-such-thing')
                 page.wait_for_timeout(300)
-                after = page.evaluate("() => document.querySelectorAll('a.card, a[data-lesson]').length")
-                res['interact'].append(('search-filters', after < info.get('cards', 0) or after > 0))
+                zero = page.evaluate("() => document.querySelectorAll('[data-lesson]').length")
+                res['interact'].append(('search-empties', zero == 0))
                 page.fill('#q', '')
-                page.wait_for_timeout(200)
-            except Exception:
-                pass
+                page.wait_for_timeout(250)
+                back = page.evaluate("() => document.querySelectorAll('[data-lesson]').length")
+                res['interact'].append(('search-restores', back == info.get('cards', 0)))
+            except Exception as e:
+                res['errors'].append('搜索自检异常: ' + str(e))
+        # 层过滤
+        try:
+            page.evaluate("() => { const b = document.querySelector('.fbtn[data-layer=\"L6\"]'); if (b) b.click(); }")
+            page.wait_for_timeout(300)
+            only6 = page.evaluate("""() => {
+                const ls = Array.from(document.querySelectorAll('[data-lesson]'));
+                return ls.length > 0 && ls.every(a => a.getAttribute('data-lesson').indexOf('L6-') === 0);
+            }""")
+            res['interact'].append(('layer-filter', bool(only6)))
+            page.evaluate("() => { const b = document.querySelector('.fbtn[data-layer=\"all\"]'); if (b) b.click(); }")
+            page.wait_for_timeout(250)
+        except Exception as e:
+            res['errors'].append('层过滤自检异常: ' + str(e))
         for t in (300, 800, 1500):
             page.wait_for_timeout(300)
             ov = page.evaluate(PORTAL_OVERFLOW_JS)
