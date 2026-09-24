@@ -118,15 +118,15 @@ const SCENES = [
   sub: "这就是\"算子的数据面\"的全部。后面所有后端都在读同样这几个字段。",
   caption: "注意：结构体里同时有 src[]（输入）和 op（运算）—— 节点与边都在这一个结构里。",
   src: "ggml/include/ggml.h",
-  mark: [1, 3, 5, 6, 12, 14, 17, 20, 23, 25, 27],
+  mark: [1, 4, 7, 8, 14, 17, 20, 23, 26, 30, 35],
   lineNo: 685,
   code: `    struct ggml_tensor {
         enum ggml_type type;
-
 //>> type 决定 nb[0] 与量化块大小，是后端选 kernel 的第一依据
-        struct ggml_backend_buffer * buffer;
 
+        struct ggml_backend_buffer * buffer;
 //>> buffer 指向数据实际所在的后端缓冲；NULL 表示还没分配
+
         int64_t ne[GGML_MAX_DIMS]; // number of elements
         size_t  nb[GGML_MAX_DIMS]; // stride in bytes:
                                    // nb[0] = ggml_type_size(type)
@@ -134,29 +134,29 @@ const SCENES = [
                                    // nb[i] = nb[i-1] * ne[i-1]
 
         // compute data
-//>> op_params：算子的标量参数。按 int32 对齐存放，共 16 个
         enum ggml_op op;
 
-//>> flags：见 GGML_TENSOR_FLAG_*（如 OUTPUT / PARAM / LOSS）
         // op params - allocated as int32_t for alignment
         int32_t op_params[GGML_MAX_OP_PARAMS / sizeof(int32_t)];
+//>> op_params：算子的标量参数。按 int32 对齐存放，共 16 个
 
         int32_t flags;
+//>> flags：见 GGML_TENSOR_FLAG_*（如 OUTPUT / PARAM / LOSS）
 
-//>> view_src + view_offs：视图算子（VIEW/RESHAPE/TRANSPOSE）不拥有数据
         struct ggml_tensor * src[GGML_MAX_SRC];
 
         // source tensor and offset for views
         struct ggml_tensor * view_src;
-//>> name：给调试和 graph 打印用，长度 GGML_MAX_NAME
+//>> view_src + view_offs：视图算子（VIEW/RESHAPE/TRANSPOSE）不拥有数据
         size_t               view_offs;
 
-//>> extra：后端私有数据，例如 ggml-cuda.cu 的额外信息
         void * data;
 
         char name[GGML_MAX_NAME];
+//>> name：给调试和 graph 打印用，长度 GGML_MAX_NAME
 
         void * extra; // extra things e.g. for ggml-cuda.cu
+//>> extra：后端私有数据，例如 ggml-cuda.cu 的额外信息
 
         char padding[8];
     };`,
@@ -285,9 +285,10 @@ const SCENES = [
   sub: "F32/F16/BF16 是浮点，Q*/IQ*/TQ* 是块量化，MXFP4/NVFP4 是新的 microscaling 格式。",
   caption: "GGML_TYPE_COUNT = 43，且中间有编号空洞——注释说明了原因：删掉的类型不能复用编号。",
   src: "ggml/include/ggml.h",
-  mark: [1, 13, 16, 41, 43],
+  mark: [2, 15, 18, 43, 45],
   lineNo: 388,
   code: `    // NOTE: always add types at the end of the enum to keep backward compatibility
+//>> 注释是硬约束：只能在末尾追加，否则旧 GGUF 文件会读错类型
     enum ggml_type {
         GGML_TYPE_F32     = 0,
 //>> 枚举从 0 开始，显式赋值 —— 这些数字会写进 GGUF 文件，不能随便变
@@ -332,7 +333,6 @@ const SCENES = [
         GGML_TYPE_MXFP4   = 39, // MXFP4 (1 block)
         GGML_TYPE_NVFP4   = 40, // NVFP4 (4 blocks, E4M3 scale)
         GGML_TYPE_Q1_0    = 41,
-//>> 注释是硬约束：只能在末尾追加，否则旧 GGUF 文件会读错类型
         GGML_TYPE_Q2_0    = 42,
         GGML_TYPE_COUNT   = 43,
     };`,
@@ -445,7 +445,7 @@ const SCENES = [
   sub: "RESHAPE、VIEW、TRANSPOSE、PERMUTE 这些\"算子\"不产生新数据，只是换一个读法。",
   caption: "L4-01 会看到：分配器正是靠 view_src 判断\"这个张量不需要新内存\"。",
   src: "ggml/include/ggml.h",
-  mark: [1, 2, 4],
+  mark: [2, 4, 6],
   lineNo: 706,
   code: `        // source tensor and offset for views
 //>> view_src 非 NULL 时，这个张量是"视图"——数据在别人那里

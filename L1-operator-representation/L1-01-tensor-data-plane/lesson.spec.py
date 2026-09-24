@@ -79,7 +79,7 @@ L.scene(
     sub='这些上限不是随手取的：它们直接决定 struct 的布局，也决定后端内核能假设什么。',
     caption='GGML_MAX_OP_PARAMS = 64 字节，即最多 16 个 int32 参数。',
     src=SRC, parts=[(222, 226)], duration=16000,
-    marks=[0, 2, 4],
+    mark_src=[222, 224, 226],
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div class="row wrap" id="cards" style="gap:8px"></div>
@@ -128,14 +128,14 @@ L.scene(
     sub='这就是"算子的数据面"的全部。后面所有后端都在读同样这几个字段。',
     caption='注意：结构体里同时有 src[]（输入）和 op（运算）—— 节点与边都在这一个结构里。',
     src=SRC, parts=[(685, 717)], duration=26000,
-    marks=[1, 3, 5, 6, 12, 14, 17, 20, 23, 25, 27],
-    notes={2: 'type 决定 nb[0] 与量化块大小，是后端选 kernel 的第一依据',
-           4: 'buffer 指向数据实际所在的后端缓冲；NULL 表示还没分配',
-           11: 'op_params：算子的标量参数。按 int32 对齐存放，共 16 个',
-           13: 'flags：见 GGML_TENSOR_FLAG_*（如 OUTPUT / PARAM / LOSS）',
-           18: 'view_src + view_offs：视图算子（VIEW/RESHAPE/TRANSPOSE）不拥有数据',
-           22: 'name：给调试和 graph 打印用，长度 GGML_MAX_NAME',
-           24: 'extra：后端私有数据，例如 ggml-cuda.cu 的额外信息'},
+    mark_src=[686, 688, 690, 691, 697, 700, 702, 704, 707, 710, 714],
+    notes_src={686: 'type 决定 nb[0] 与量化块大小，是后端选 kernel 的第一依据',
+               688: 'buffer 指向数据实际所在的后端缓冲；NULL 表示还没分配',
+               700: 'op_params：算子的标量参数。按 int32 对齐存放，共 16 个',
+               702: 'flags：见 GGML_TENSOR_FLAG_*（如 OUTPUT / PARAM / LOSS）',
+               707: 'view_src + view_offs：视图算子（VIEW/RESHAPE/TRANSPOSE）不拥有数据',
+               712: 'name：给调试和 graph 打印用，长度 GGML_MAX_NAME',
+               714: 'extra：后端私有数据，例如 ggml-cuda.cu 的额外信息'},
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:8px;width:100%' });
 wrap.innerHTML = `<div class="row wrap" id="cards" style="gap:7px"></div>
@@ -188,7 +188,7 @@ L.scene(
     sub='源码注释里已经把公式写死了。看懂这三行，就看懂了 ggml 的内存布局约定。',
     caption='padding 来自 GGML_MEM_ALIGN 对齐；量化类型下 ne[0] 必须是 blck_size 的整数倍。',
     src=SRC, parts=[(690, 694)], duration=20000,
-    marks=[1, 2, 3, 4],
+    mark_src=[691, 692, 693, 694],
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div class="row" style="gap:9px">
@@ -255,9 +255,9 @@ L.scene(
     sub='F32/F16/BF16 是浮点，Q*/IQ*/TQ* 是块量化，MXFP4/NVFP4 是新的 microscaling 格式。',
     caption='GGML_TYPE_COUNT = 43，且中间有编号空洞——注释说明了原因：删掉的类型不能复用编号。',
     src=SRC, parts=[(388, 434)], duration=22000,
-    marks=[1, 13, 16, 41, 43],
-    notes={2: '枚举从 0 开始，显式赋值 —— 这些数字会写进 GGUF 文件，不能随便变',
-           43: '注释是硬约束：只能在末尾追加，否则旧 GGUF 文件会读错类型'},
+    mark_src=[389, 401, 404, 429, 431],
+    notes_src={390: '枚举从 0 开始，显式赋值 —— 这些数字会写进 GGUF 文件，不能随便变',
+               388: '注释是硬约束：只能在末尾追加，否则旧 GGUF 文件会读错类型'},
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:8px;width:100%' });
 wrap.innerHTML = `<div class="row" style="gap:9px">
@@ -322,7 +322,7 @@ L.scene(
     sub='所有内核和分配器都靠这三个函数把"类型 + 形状"换算成字节数。',
     caption='ggml_type_sizef 已标记 GGML_DEPRECATED，注释要求改用 ggml_row_size()。',
     src=SRC, parts=[(759, 761)], duration=16000,
-    marks=[0, 1, 2],
+    mark_src=[759, 760, 761],
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div class="row wrap" id="cards" style="gap:8px"></div>
@@ -363,9 +363,9 @@ L.scene(
     sub='RESHAPE、VIEW、TRANSPOSE、PERMUTE 这些"算子"不产生新数据，只是换一个读法。',
     caption='L4-01 会看到：分配器正是靠 view_src 判断"这个张量不需要新内存"。',
     src=SRC, parts=[(706, 710)], duration=15000,
-    marks=[1, 2, 4],
-    notes={0: 'view_src 非 NULL 时，这个张量是"视图"——数据在别人那里',
-           1: 'view_offs 是相对 view_src->data 的字节偏移'},
+    mark_src=[707, 708, 710],
+    notes_src={706: 'view_src 非 NULL 时，这个张量是"视图"——数据在别人那里',
+               707: 'view_offs 是相对 view_src->data 的字节偏移'},
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div class="row center" id="dia" style="gap:12px"></div>
@@ -424,7 +424,7 @@ L.scene(
     sub='数据面 = 4 组字段。记住它们，后面 51 课都在读写这几组。',
     caption='下一课 L1-02 讲身份面：enum ggml_op 与参数个数表。',
     src=SRC, parts=[(685, 689)], duration=17000,
-    marks=[0, 1, 2, 3, 4],
+    mark_src=[685, 686, 687, 688, 689],
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div id="tbl"></div><div id="ex"></div><div class="formula" id="msg"></div>`;
