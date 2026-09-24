@@ -102,6 +102,8 @@
 ## 五、提交历史（最近 40）
 
 ```
+8ce5ed1 fix(pages): 加 .nojekyll —— GitHub Pages 的 Jekyll 构建连续失败
+d2776ce fix(tools): notes_src 支持多段 parts + lint 修 C 数组下标误报 + 交付定稿
 0588c81 fix(L5-04): 重建 README（上一次 verify 被中断，验收段被写空）
 fd08ee8 feat: 52/52 课全部交付 —— 覆盖域 1290/1290（100%）
 6132fef feat(L6/L7/L8): 纳入最后 9 课，全 8 层课件完成
@@ -140,6 +142,4 @@ fe66e38 feat(L2-09): 量化、导出与适配器
 2080631 feat(L2-05): 批、解码参数与模型装配
 2516d71 feat(L2-04): KV cache 与记忆家族
 d33ee27 feat(L2-03): 权重加载与内存映射
-6e4430e feat(L2-02): 架构表与超参
-d62bafc feat(L2-01): llama.h 公共 API 全景
 ```
