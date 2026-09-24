@@ -496,7 +496,7 @@ GGML_BACKEND_DL_SCORE_IMPL(ggml_backend_cpu_aarch64_score)
   sub: "score 为 0 的 .so 直接 return nullptr；不是崩溃，是安静地跳过。",
   caption: "另一处（source.md 引用 534-542 行）：扫描目录时对每个 .so 求分，留下最高的那个。",
   src: "ggml/src/ggml-backend-reg.cpp",
-  mark: [9, 11, 16],
+  mark: [9, 11, 16, 19],
   lineNo: 220,
   code: `    ggml_backend_reg_t load_backend(const fs::path & path, bool silent) {
         dl_handle_ptr handle { dl_load_library(path) };
@@ -515,7 +515,13 @@ GGML_BACKEND_DL_SCORE_IMPL(ggml_backend_cpu_aarch64_score)
                 GGML_LOG_INFO("%s: backend %s is not supported on this system\\n", __func__, path_str(path).c_str());
             }
             return nullptr;
-        }`,
+        }
+
+        auto backend_init_fn = (ggml_backend_init_t) dl_get_sym(handle.get(), "ggml_backend_init");
+        if (!backend_init_fn) {
+            if (!silent) {
+                GGML_LOG_ERROR("%s: failed to find ggml_backend_init in %s\\n", __func__, path_str(path).c_str());
+            }`,
   duration: 20000,
   build(root, tl) {
     const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
@@ -565,7 +571,7 @@ GGML_BACKEND_DL_SCORE_IMPL(ggml_backend_cpu_aarch64_score)
   sub: "ggml_backend_cpu_get_features() 返回一张以 { nullptr, nullptr } 结尾的特性表。",
   caption: "源码注释写明动机：取代 ggml_cpu_has_* 系列，并让别的后端也能用同一套 API 暴露自己的特性。",
   src: "ggml/src/ggml-cpu/ggml-cpu.cpp",
-  mark: [0, 1, 3, 4, 9, 10],
+  mark: [0, 1, 3, 4, 9, 10, 21, 22],
   lineNo: 536,
   code: `// This is intended to replace the the ggml_cpu_has_* functions when loading the CPU backend dynamically,
 // and additionally to allow other backends to expose their own list of features that applications can query using the same API
@@ -581,6 +587,15 @@ static ggml_backend_feature * ggml_backend_cpu_get_features(ggml_backend_reg_t r
         }
         if (ggml_cpu_has_ssse3()) {
             features.push_back({ "SSSE3", "1" });
+        }
+        if (ggml_cpu_has_avx()) {
+            features.push_back({ "AVX", "1" });
+        }
+        if (ggml_cpu_has_avx_vnni()) {
+            features.push_back({ "AVX_VNNI", "1" });
+        }
+        if (ggml_cpu_has_avx2()) {
+            features.push_back({ "AVX2", "1" });
         }`,
   duration: 22000,
   build(root, tl) {

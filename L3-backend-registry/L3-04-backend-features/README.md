@@ -28,6 +28,7 @@
 
 > **说明**：本课的主文件是 `ggml/src/ggml-feats.h`（166 行）。它只有两个使用点，但"一个特性开关从定义到被后端查询的路径"要跨 5 个文件才能走完，因此本课**额外声明覆盖**：`ggml/src/ggml-cpu/arch/arm/cpu-feats.cpp`（唯一把探测结果变成后端分数的文件）、`ggml/src/ggml-backend-impl.h`（`ggml_backend_score_t` 与导出宏）、`ggml/src/ggml-backend-reg.cpp`（加载器读 score）、`ggml/include/ggml-backend.h`（特性表契约）、`ggml/src/ggml-cpu/ggml-cpu.cpp`（特性表实现）、`src/llama.cpp`（特性表的消费者）、`ggml/src/ggml-cpu/ggml-cpu.c`（编译期查询的对照）、`ggml/src/ggml-cpu/kleidiai/kleidiai.cpp`（运行期特性 -> 内核）。追加引用不会让任何原文件失配：覆盖度门禁取的是并集。
 > **说明**：`ggml/src/ggml-cpu/CMakeLists.txt` 也出现在本课引用里，用于说明 `GGML_USE_*` 的来源。它不在本视角的覆盖域后缀内（存在，但不计入覆盖率），属于"诚实的不计入"。
+> **说明**：本课说 `ggml-feats.h` "166 行"，用的是 `wc -l` 的口径（末行有换行符）。README 顶部的覆盖表由 lessonkit 按 `split("\n")` 计数，会把末尾换行多算一行（显示 167）—— 两个数字指的是同一个文件，不是矛盾。
 > **说明**：本课没有引用 `ggml_backend_dev_get_features` 这个符号：它在本版本里不存在。真实的查询方式是 `ggml_backend_reg_get_proc_address(reg, "ggml_backend_get_features")`，返回类型是 `ggml_backend_feature *`。
 
 ## 场景（9 幕）
@@ -72,9 +73,9 @@ B 路径的取值方式是 `ggml_backend_reg_get_proc_address(reg, "ggml_backend
 
 ## 验收点
 
-- [x] 保真门禁：25 处引用 —— 25 个引用块 / 38 个连续段逐字命中
-- [x] 覆盖度门禁：本课声明 10 项，无空课、无幻影；全局覆盖 119/1290
-- [x] 参数门禁：真值集 381 长 / 76 短选项，扫描 57 文件 9 处引用，0 处非法
+- [x] 保真门禁：25 处引用 —— 25 个引用块 / 39 个连续段逐字命中
+- [x] 覆盖度门禁：本课声明 10 项，无空课、无幻影；全局覆盖 248/1290
+- [x] 参数门禁：真值集 381 长 / 76 短选项，扫描 72 文件 14 处引用，0 处非法
 - [x] 语法检查：0 错误 / 0 警告
 - [x] 渲染门禁：9 幕 —— 1 页面 x 2 分辨率，0 错误 / 0 溢出
 

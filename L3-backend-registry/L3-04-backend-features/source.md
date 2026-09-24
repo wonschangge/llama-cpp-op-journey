@@ -447,10 +447,16 @@ int ggml_cpu_has_dotprod(void) {
 
 ## 十六、运行期特性如何决定内核
 
-第二个使用点：KleidiAI 后端把运行期探测结果压成一个位掩码 `ctx.features`，内核实现按这个掩码选择。这是本课与 L5/L6（后端如何用特性决定 kernel）的接口。
+第二个使用点：KleidiAI 后端把运行期探测结果压成一个位掩码 `ctx.features`（只取 dotprod / i8mm / fp16 / sve_cnt 四项），内核实现按这个掩码选择；另一处 `detect_num_smcus()` 则只看 `has_sme`。两个使用点都没有读 `has_sme2`。这是本课与 L5/L6（后端如何用特性决定 kernel）的接口。
 
 <!-- src: ggml/src/ggml-cpu/kleidiai/kleidiai.cpp -->
 ```cpp
+static size_t detect_num_smcus() {
+    const auto runtime_feat = ggml_feats_get_arch64_runtime();
+    if (!runtime_feat.has_sme) {
+        return 0;
+    }
+//>> ---- ggml/src/ggml-cpu/kleidiai/kleidiai.cpp:313-320 ----
         const auto runtime_feat = ggml_feats_get_arch64_runtime();
 
         size_t detected_smcus = 0;
@@ -467,4 +473,5 @@ int ggml_cpu_has_dotprod(void) {
 
 - 本课的主文件是 `ggml/src/ggml-feats.h`（166 行）。它只有两个使用点，但"一个特性开关从定义到被后端查询的路径"要跨 5 个文件才能走完，因此本课**额外声明覆盖**：`ggml/src/ggml-cpu/arch/arm/cpu-feats.cpp`（唯一把探测结果变成后端分数的文件）、`ggml/src/ggml-backend-impl.h`（`ggml_backend_score_t` 与导出宏）、`ggml/src/ggml-backend-reg.cpp`（加载器读 score）、`ggml/include/ggml-backend.h`（特性表契约）、`ggml/src/ggml-cpu/ggml-cpu.cpp`（特性表实现）、`src/llama.cpp`（特性表的消费者）、`ggml/src/ggml-cpu/ggml-cpu.c`（编译期查询的对照）、`ggml/src/ggml-cpu/kleidiai/kleidiai.cpp`（运行期特性 -> 内核）。追加引用不会让任何原文件失配：覆盖度门禁取的是并集。
 - `ggml/src/ggml-cpu/CMakeLists.txt` 也出现在本课引用里，用于说明 `GGML_USE_*` 的来源。它不在本视角的覆盖域后缀内（存在，但不计入覆盖率），属于"诚实的不计入"。
+- 本课说 `ggml-feats.h` "166 行"，用的是 `wc -l` 的口径（末行有换行符）。README 顶部的覆盖表由 lessonkit 按 `split("\n")` 计数，会把末尾换行多算一行（显示 167）—— 两个数字指的是同一个文件，不是矛盾。
 - 本课没有引用 `ggml_backend_dev_get_features` 这个符号：它在本版本里不存在。真实的查询方式是 `ggml_backend_reg_get_proc_address(reg, "ggml_backend_get_features")`，返回类型是 `ggml_backend_feature *`。

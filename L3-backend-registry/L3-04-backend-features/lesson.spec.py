@@ -359,8 +359,8 @@ L.scene(
     title='路径的终点：<span class="hl-c">加载器</span>在后端被加载之前就问它',
     sub='score 为 0 的 .so 直接 return nullptr；不是崩溃，是安静地跳过。',
     caption='另一处（source.md 引用 534-542 行）：扫描目录时对每个 .so 求分，留下最高的那个。',
-    src=REG, parts=[(220, 235)], duration=20000,
-    mark_src=[229, 230, 234],
+    src=REG, parts=[(220, 241)], duration=20000,
+    mark_src=[229, 230, 234, 237],
     notes_src={229: '从刚 dlopen 进来的 .so 里取 ggml_backend_score 符号',
                230: 'score 为 0 -> 这个后端在这台机器上不可用，直接放弃'},
     visual='''
@@ -411,8 +411,8 @@ L.scene(
     title='★ 第二条路径：把能力<span class="hl-b">报</span>出去，而不是用来打分',
     sub='ggml_backend_cpu_get_features() 返回一张以 { nullptr, nullptr } 结尾的特性表。',
     caption='源码注释写明动机：取代 ggml_cpu_has_* 系列，并让别的后端也能用同一套 API 暴露自己的特性。',
-    src=CPP, parts=[(536, 548)], duration=22000,
-    mark_src=[536, 537, 538, 539, 543, 544],
+    src=CPP, parts=[(536, 557)], duration=22000,
+    mark_src=[536, 537, 538, 539, 543, 544, 555, 556],
     notes_src={537: '一句话说清了两件事：取代 ggml_cpu_has_*，以及"其它后端也能用同一套 API"',
                539: '整张表只算一次（static + lambda），之后每次查询都是同一个数组'},
     visual='''
@@ -623,9 +623,10 @@ L.section(
 
 L.section(
     '十六、运行期特性如何决定内核',
-    '第二个使用点：KleidiAI 后端把运行期探测结果压成一个位掩码 `ctx.features`，'
-    '内核实现按这个掩码选择。这是本课与 L5/L6（后端如何用特性决定 kernel）的接口。',
-    src=KLEI, parts=[(313, 320)], lang='cpp')
+    '第二个使用点：KleidiAI 后端把运行期探测结果压成一个位掩码 `ctx.features`（只取 dotprod / i8mm / fp16 / sve_cnt 四项），'
+    '内核实现按这个掩码选择；另一处 `detect_num_smcus()` 则只看 `has_sme`。'
+    '两个使用点都没有读 `has_sme2`。这是本课与 L5/L6（后端如何用特性决定 kernel）的接口。',
+    src=KLEI, parts=[(186, 190), (313, 320)], lang='cpp')
 
 L.footnote_add(
     '本课的主文件是 `ggml/src/ggml-feats.h`（166 行）。它只有两个使用点，'
@@ -642,6 +643,10 @@ L.footnote_add(
 L.footnote_add(
     '`ggml/src/ggml-cpu/CMakeLists.txt` 也出现在本课引用里，用于说明 `GGML_USE_*` 的来源。'
     '它不在本视角的覆盖域后缀内（存在，但不计入覆盖率），属于"诚实的不计入"。')
+L.footnote_add(
+    '本课说 `ggml-feats.h` "166 行"，用的是 `wc -l` 的口径（末行有换行符）。'
+    'README 顶部的覆盖表由 lessonkit 按 `split("\\n")` 计数，会把末尾换行多算一行（显示 167）—— '
+    '两个数字指的是同一个文件，不是矛盾。')
 L.footnote_add(
     '本课没有引用 `ggml_backend_dev_get_features` 这个符号：它在本版本里不存在。'
     '真实的查询方式是 `ggml_backend_reg_get_proc_address(reg, "ggml_backend_get_features")`，'
