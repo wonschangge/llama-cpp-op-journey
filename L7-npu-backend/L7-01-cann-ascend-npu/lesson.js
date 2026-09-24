@@ -13,7 +13,7 @@ const SCENES = [
 {
   kicker: "L7 · NPU 与加速器后端",
   title: "CANN 后端：<span class=\"hl-a\">7 个文件</span>、10058 行、两个公共入口",
-  sub: "华为昇腾（Ascend）NPU 的 ggml 后端。七个文件分工明确：一个交契约、一个做分派、一个翻译算子。",
+  sub: "华为昇腾（Ascend）NPU 的 ggml 后端，行数为 wc -l。七个文件分工明确：一个交契约、一个做分派、一个翻译算子。",
   caption: "回顾 L3-01：每个后端都要交三张函数指针表。本课看 CANN 交了什么、又是怎么把一个 op 变成库调用的。",
   src: "ggml/include/ggml-cann.h",
   mark: [0, 3, 16],

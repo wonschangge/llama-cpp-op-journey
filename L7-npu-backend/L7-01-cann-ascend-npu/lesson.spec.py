@@ -45,7 +45,7 @@ L.note('这份"翻译"有代价：厂商库里没有的算子，后端只能**�
 L.scene(
     kicker='L7 · NPU 与加速器后端',
     title='CANN 后端：<span class="hl-a">7 个文件</span>、10058 行、两个公共入口',
-    sub='华为昇腾（Ascend）NPU 的 ggml 后端。七个文件分工明确：一个交契约、一个做分派、一个翻译算子。',
+    sub='华为昇腾（Ascend）NPU 的 ggml 后端，行数为 wc -l。七个文件分工明确：一个交契约、一个做分派、一个翻译算子。',
     caption='回顾 L3-01：每个后端都要交三张函数指针表。本课看 CANN 交了什么、又是怎么把一个 op 变成库调用的。',
     src=SRC_API, parts=[(35, 49)], duration=16000,
     mark_src=[35, 37, 49],
@@ -717,7 +717,7 @@ L.goal(
     '说出 CANN 后端把一个 ggml op 映射到 ACL 算子的**完整链路**（分派 -> 转张量 -> 填参数 -> '
     '问 workspace -> 下发到 stream）（对应验收点）；',
     '解释 `GGML_CANN_CALL_ACLNN_OP` 宏为什么是"两段式"，以及 workspace 从哪来；',
-    '说明 `ggml_cann_create_tensor` 抹平了 ggml 与 CANN 之间的哪三处约定差异；',
+    '说明 `ggml_cann_create_tensor` 抹平了 ggml 与 CANN 之间的哪两处约定差异，并说出它为什么要重算存储长度；',
     '判断一个 op 会不会被卸载到 NPU，并说出 `supports_op` 返回 false 的后果（呼应 L4-02）。')
 
 L.conclusion(

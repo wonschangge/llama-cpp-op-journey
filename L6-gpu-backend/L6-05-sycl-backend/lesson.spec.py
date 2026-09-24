@@ -53,8 +53,10 @@ L.note('★ 本课的核心洞察：**SYCL 与 CUDA 的结构同构，差异集�
        'USM 指针 + oneDNN/oneMKL。算子层（`GGML_OP_*` 的 switch、量化类型的 switch、'
        '虚表的字段顺序）几乎可以逐行对着看 —— 这正是 SYCL 后端能跟上 CUDA 侧算子覆盖的原因。')
 L.note('本课覆盖计划指派给 L6-05 的**全部 174 个文件**：`ggml/include/ggml-sycl.h` 与 '
-       '`ggml/src/ggml-sycl/` 下的 173 个文件（含 46 个模板实例）。其中 7 个核心文件逐字引用，'
-       '其余按族在 `source.md` 里用表格分类说明。')
+       '`ggml/src/ggml-sycl/` 下的 173 个文件（含 46 个模板实例）。'
+       '逐字引用的是其中 8 个 SYCL 侧源文件（`ggml-sycl.h`、一个模板实例文件、`ggml-sycl.cpp`、'
+       '`common.hpp`、`common.cpp`、`mmq.cpp`、`mmvq.hpp`、`fattn.cpp`）'
+       '加 4 个 CUDA 侧对照文件；其余按族在 `source.md` 里用表格分类说明。')
 
 # ------------------------------------------------------------------ 第 1 幕
 # 首幕给全局：这个后端在整条链上的位置、它有多少东西、它跟谁对照。
@@ -102,8 +104,8 @@ const texts = [
     + '切给某个后端，最后由后端自己的 kernel 落地。本课看 SYCL 这一格。',
   '<span class="k">公共面很薄</span>：SYCL 后端对外只暴露一个头文件里的十几个 C 函数。'
     + '后端要交出的三张接口（L3-01）实现都在 <span class="v">ggml-sycl.cpp</span> 里。',
-  '<span class="k">实现面很厚</span>：173 个文件，按算子族切开，平均一个算子一个 <span class="v">.cpp + .hpp</span> 对。'
-    + '这个"一算子一对文件"的切法与 CUDA 侧完全一致。',
+  '<span class="k">实现面很厚</span>：173 个文件，按算子族切开，多数是一个算子一个 <span class="v">.cpp + .hpp</span> 对。'
+    + '这个切法与 CUDA 侧基本一致（少数公共头如 quants.hpp / vecdotq.hpp 被多个算子共用）。',
   '为什么值得单独一课：<span class="k">它证明 ggml 的后端契约是可移植的</span> —— '
     + '换一套并行运行时（SYCL 替换 CUDA），算子层几乎不用重新设计。'
 ];
