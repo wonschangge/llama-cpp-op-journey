@@ -97,7 +97,7 @@ L.scene(
     caption='magic 是字符串常量 "GGUF"（4 字节）；version 是 uint32；n_tensors / n_kv 是 int64。'
             '头里没有"段长度"之类的冗余信息 —— 布局完全靠这个固定顺序。',
     src=C, parts=[(465, 484), (502, 539)], duration=23000,
-    marks=[1, 2, 3, 5, 8, 9, 10, 11, 13, 14],
+    mark_src=[466, 467, 468, 470, 473, 474, 475, 476, 478, 479],
     notes={18: 'version 依次否掉四种情况：0、字节序不符（低 16 位为 0）、已废弃的 v1、比本软件支持的还新',
            44: 'n_tensors / n_kv 都要做范围检查 —— 它们会被拿去做 reserve 与循环上界，不能直接信文件'},
     visual='''
@@ -156,7 +156,7 @@ L.scene(
     caption='编码规则（gguf.h 注释第 26-28 行）：字符串 = uint64 长度 + 去掉结尾 \\0 的字节；'
             '枚举一律 int32；bool 一律 int8。所以同一个文件里既有超参，也能有整段 chat template。',
     src=H, parts=[(26, 30), (41, 42), (44, 46), (53, 68)], duration=21000,
-    marks=[0, 1, 3, 4, 6, 13, 15, 18, 20, 28],
+    mark_src=[26, 27, 29, 30, 41, 53, 55, 58, 60, 68],
     notes={2: 'general.alignment 是"元数据"，但它决定数据区的字节布局',
            4: 'u8=0 起，u64/i64/f64 在末尾补齐到 13 个类型',
            29: 'GGUF_TYPE_COUNT 是哨兵，标记枚举结束'},
@@ -237,7 +237,7 @@ L.scene(
     caption='注释第 7 条的关键词是 "optional, aligned"：数据区可以没有（只写元数据），'
             '但只要有张量，它就必须对齐。',
     src=H, parts=[(2, 24)], duration=24000,
-    marks=[2, 3, 4, 5, 6, 16, 23],
+    mark_src=[4, 5, 6, 7, 8, 18],
     notes={0: '这段注释就是验收点要你复述的那张图 —— 它与 gguf.cpp 的读写顺序一一对应'},
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
@@ -292,7 +292,7 @@ L.scene(
     caption='offset 是从"数据区起点"算起的字节偏移，不是从文件开头。'
             '结构体注释写它 must be a multiple of ALIGNMENT。',
     src=C, parts=[(213, 216), (652, 672)], duration=19000,
-    marks=[1, 3, 6, 9, 10, 19],
+    mark_src=[214, 216, 653, 656, 657, 666],
     notes={0: 'struct ggml_tensor 在这里只是"装信息"：形状、类型文件里都有，不必分配数据',
            1: 'offset 的单位是字节，基准是数据区起点（ctx->offset），不是文件开头'},
     visual='''
@@ -342,7 +342,7 @@ L.scene(
     caption='GGML_PAD(x, n) = ((x) + (n) - 1) & ~((n) - 1)（定义在 ggml/include/ggml.h），要求 n 是 2 的幂 —— '
             '所以读的时候会检查 alignment 是 2 的幂。',
     src=C, parts=[(773, 796)], duration=24000,
-    marks=[0, 1, 5, 7, 8, 9, 12],
+    mark_src=[773, 774, 778, 780, 781, 782, 785],
     notes={1: 'gr.tell() 是当前位置，gr.start() 是本次读的起点（GGUF 可以不从文件第 0 字节开始）—— '
               '所以对齐的是"相对起点"的偏移',
            8: '每个张量的期望 offset 必须严格等于累计值：既不能有洞，也不能重叠'},
@@ -424,7 +424,7 @@ L.scene(
     caption='注意：张量数据并不"存在 gguf_context 里" —— context 只保存指针，'
             '真正落盘发生在 gguf_write_to_file 的写数据阶段。',
     src=C, parts=[(1392, 1406), (1432, 1439), (1634, 1654), (1660, 1665)], duration=22000,
-    marks=[2, 3, 4, 5, 6, 12, 13, 14, 17, 18, 24],
+    mark_src=[1394, 1395, 1396, 1397, 1398, 1404, 1405, 1406, 1433, 1434],
     notes={3: 'offset 是推导出来的：前一个张量的 offset + 它补齐后的字节数。第一个张量是 0',
            12: 'set_tensor_data 只写指针，不拷贝数据 —— 调用方必须保证这块内存在写文件时还有效',
            21: '写入顺序与读流程一一对应：magic 四个字节 -> version -> n_tensors -> n_kv -> KV -> 张量信息',
@@ -506,7 +506,7 @@ L.scene(
     sub='从文件第 0 字节到张量数据第一字节，逐段过一遍；表里的每一项都能在源码里找到出处。',
     caption='下一课 L2-01：llama.h 的公共 API —— 看 llama.cpp 怎么用 gguf_* 这套 API 把模型装起来。',
     src=C, parts=[(218, 229), (1205, 1207)], duration=21000,
-    marks=[3, 6, 8, 10],
+    mark_src=[221, 224, 226, 228],
     notes={3: 'version 是 context 的默认值，读进来后被文件里的值覆盖',
            8: 'alignment 的默认值来自 GGUF_DEFAULT_ALIGNMENT（32），除非文件里写了 general.alignment',
            10: 'data 指向数据区起点；no_alloc 的调用方靠它直接映射文件'},

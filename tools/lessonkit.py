@@ -104,15 +104,13 @@ class Lesson:
         if notes and notes_src:
             raise SystemExit(f'{self.id}: notes 与 notes_src 不能同时给')
         if notes_src:
-            base = parts[0][0]
             span = set()
             for (a, b) in parts:
                 span |= set(range(a, b + 1))
             missing = set(notes_src) - span
             if missing:
                 raise SystemExit(f'{self.id}: notes_src 行号不在引用区间内: {sorted(missing)}')
-            notes = {ln - base: txt for ln, txt in notes_src.items()}
-        code, srcmap = self._render_code(src, parts, notes or {}, linebase)
+        code, srcmap = self._render_code(src, parts, notes or {}, linebase, notes_src)
         if mark_src:
             want = set(mark_src)
             idx = [i for i, ln in enumerate(srcmap) if ln in want]
@@ -159,7 +157,7 @@ class Lesson:
 
     # ------------------------------------------------------------ 渲染代码
 
-    def _render_code(self, src, parts, notes, linebase=None):
+    def _render_code(self, src, parts, notes, linebase=None, notes_src=None):
         """返回 (code_text, srcmap)。srcmap[i] = 第 i 个渲染行对应的上游行号，
         注解行与多段分隔行为 None（因此它们不会占用行号槽）。"""
         out, srcmap = [], []
@@ -173,6 +171,11 @@ class Lesson:
                 srcmap.append(a + k)
                 if k in notes:
                     out.append(f'{NOTE_PREFIX} {notes[k]}')
+                    srcmap.append(None)
+                # ★ notes_src 按【上游行号】定位，因此多段 parts 也正确 ——
+                #   旧实现只用第一段首行换算块内下标，多段时会静默丢注解。
+                if notes_src and (a + k) in notes_src:
+                    out.append(f'{NOTE_PREFIX} {notes_src[a + k]}')
                     srcmap.append(None)
         # 行号槽：单段时显示【上游真实行号】（避免误导）；多段时禁用（0 = 不显示），
         # 因为拼接后的行号无法用单一数字表达，改由 //>> ---- 分隔行标注真实区间。

@@ -96,7 +96,10 @@ def lint_one(d):
             #   由 L2-11 子代理实测踩到（dump DOM 才发现）。
             with open(ljs, encoding='utf-8') as fh:
                 body = fh.read()
-            for m in re.finditer(r'\[\s*\(', body):
+            # 排除 C 数组下标：qs[(QK_0<K>() * N * K) / 8] 这类写法里的 `[(`
+            # 前面一定紧邻标识符或 ] / )，而真正写错的 Python 元组前面是 = , [ ( 或空白。
+            # 由 L5-04 子代理实测报出（它在 repack.h:28 / repack.cpp:1834 被误伤）。
+            for m in re.finditer(r'(?<![\w\]\)])[\[\{]\s*\(', body):
                 ln = body[:m.start()].count('\n') + 1
                 errs.append(f'第 {ln} 行疑似 Python 元组写进 JS（["(" 开头]）：'
                             f'在 JS 里会变成逗号表达式，每行只剩最后一个值。'

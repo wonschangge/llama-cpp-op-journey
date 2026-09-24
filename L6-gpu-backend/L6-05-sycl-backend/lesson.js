@@ -67,8 +67,8 @@ GGML_BACKEND_API ggml_backend_buffer_type_t ggml_backend_sycl_split_buffer_type(
         + '切给某个后端，最后由后端自己的 kernel 落地。本课看 SYCL 这一格。',
       '<span class="k">公共面很薄</span>：SYCL 后端对外只暴露一个头文件里的十几个 C 函数。'
         + '后端要交出的三张接口（L3-01）实现都在 <span class="v">ggml-sycl.cpp</span> 里。',
-      '<span class="k">实现面很厚</span>：173 个文件，按算子族切开，平均一个算子一个 <span class="v">.cpp + .hpp</span> 对。'
-        + '这个"一算子一对文件"的切法与 CUDA 侧完全一致。',
+      '<span class="k">实现面很厚</span>：173 个文件，按算子族切开，多数是一个算子一个 <span class="v">.cpp + .hpp</span> 对。'
+        + '这个切法与 CUDA 侧基本一致（少数公共头如 quants.hpp / vecdotq.hpp 被多个算子共用）。',
       '为什么值得单独一课：<span class="k">它证明 ggml 的后端契约是可移植的</span> —— '
         + '换一套并行运行时（SYCL 替换 CUDA），算子层几乎不用重新设计。'
     ];
@@ -116,7 +116,7 @@ target_sources(ggml-sycl PRIVATE \${GGML_HEADERS_SYCL} \${GGML_SOURCES_SYCL})`,
     const groups = [
       { l: '常规算子内核', n: 73, c: 'a', d: 'element_wise / norm / softmax / cpy / rope / conv2d / im2col / getrows …（多数是一个算子一对 .cpp+.hpp）' },
       { l: '模板实例化', n: 46, c: 'b', d: 'template-instances/：fattn-tile-* 10 个 + fattn-vec-* 36 个' },
-      { l: '循环与融合', n: 18, c: 'c', d: 'ssm_scan / ssm_conv / wkv / gated_delta_net / gla / fusion / topk-* 之外的序列类算子' },
+      { l: '循环与融合', n: 18, c: 'c', d: 'ssm_scan / ssm_conv / wkv / gated_delta_net / gla / dsv4-hc / lightning-indexer / fusion' },
       { l: '主机框架', n: 14, c: 'd', d: 'ggml-sycl.cpp（全后端最大单文件）/ common / mem / memtrace / sycl_hw / presets / backend.hpp' },
       { l: '量化矩阵乘', n: 11, c: 'e', d: 'mmq / mmvq / dmmv / vecdotq / dequantize / quants / gemm / esimd' },
       { l: 'FlashAttn', n: 11, c: 'f', d: 'fattn / fattn-tile / fattn-vec / fattn-buffers / fattn-onednn / fattn-mkl' },
@@ -400,7 +400,7 @@ DECL_FATTN_VEC_CASE(512, GGML_TYPE_F16, GGML_TYPE_Q4_0);`,
   sub: "registry、device、buffer type（外加 buffer）四张接口，字段顺序由 ggml-backend-impl.h 钉死。",
   caption: "回顾 L3-01：算子能不能落到某个后端，取决于 supports_op / supports_buft 这两张表怎么说。",
   src: "ggml/src/ggml-sycl/ggml-sycl.cpp",
-  mark: [5, 7, 8, 10],
+  mark: [3, 10, 11, 13],
   lineNo: 6903,
   code: `static const ggml_backend_device_i ggml_backend_sycl_device_interface = {
     /* .get_name                = */ ggml_backend_sycl_device_get_name,
@@ -426,13 +426,13 @@ DECL_FATTN_VEC_CASE(512, GGML_TYPE_F16, GGML_TYPE_Q4_0);`,
     root.appendChild(wrap);
 
     const defs = [
-      { c: 'a', t: 'buffer_i', b: 'free_buffer / get_base / init_tensor /<br>memset_tensor / set_tensor / get_tensor /<br>cpy_tensor / clear / reset',
+      { c: 'a', t: 'buffer_i · 11 项', b: 'free_buffer / get_base / init_tensor /<br>memset_tensor / set_tensor / get_tensor /<br>set_tensor_2d / get_tensor_2d / cpy_tensor / clear / reset',
         m: 'ggml-sycl.cpp:917' },
-      { c: 'b', t: 'buffer_type_i', b: 'get_name / alloc_buffer /<br>get_alignment（返回 128）/<br>get_max_size / get_alloc_size',
+      { c: 'b', t: 'buffer_type_i · 6 项', b: 'get_name / alloc_buffer /<br>get_alignment（返回 128）/<br>get_max_size / get_alloc_size / is_host',
         m: 'ggml-sycl.cpp:1055' },
-      { c: 'c', t: 'device_i', b: 'get_memory / get_props / init_backend /<br>get_buffer_type / supports_op /<br>supports_buft / offload_op / event_*',
+      { c: 'c', t: 'device_i · 15 项', b: 'get_name / get_description / get_memory /<br>get_type / get_props / init_backend /<br>get_buffer_type / get_host_buffer_type /<br>buffer_from_host_ptr / supports_op /<br>supports_buft / offload_op / event_*',
         m: 'ggml-sycl.cpp:6903' },
-      { c: 'd', t: 'reg_i', b: 'get_name / get_device_count / get_device /<br>get_proc_address（暴露 split buffer 与 comm_*）',
+      { c: 'd', t: 'reg_i · 4 项', b: 'get_name / get_device_count /<br>get_device /<br>get_proc_address（暴露 split buffer 与 comm_*）',
         m: 'ggml-sycl.cpp:7212' }
     ];
     const host = wrap.querySelector('#cards');
@@ -522,12 +522,13 @@ DECL_FATTN_VEC_CASE(512, GGML_TYPE_F16, GGML_TYPE_Q4_0);`,
         + '激活统一量化成 q8_1</span>。这个"量化 × q8_1"的组合与 CUDA 侧 mmq 完全一致。',
       'CUDA 侧同样是一张 per-type 表：<span class="v">ggml_cuda_mul_mat_q_switch_type</span>'
         + '（mmq.cu:8）里 <span class="v">mul_mat_q_case&lt;GGML_TYPE_Q4_0&gt;</span>。',
-      '三个入口的形参表也一样：<span class="v">src0_dd_i / src1_ddq_i / dst_dd_i / row_low / '
+      '三个 SYCL 入口的形参表是同一个形状：<span class="v">src0_dd_i / src1_ddq_i / dst_dd_i / row_low / '
         + 'row_high / src1_ncols / src1_padded_row_size / stream</span> —— '
         + 'CUDA 侧的 <span class="v">ggml_cuda_op_mul_mat_vec_q</span>（mmvq.cuh:14）逐项对应，'
-        + '只有 stream 类型不同。',
+        + '只有 stream 类型不同；CUDA 侧 mmq 的顶层入口是另一种形状'
+        + '（<span class="v">ggml_cuda_mul_mat_q(ctx, src0, src1, ids, dst)</span>，mmq.cu:85）。',
       '差异在哪：CUDA 侧 v0.5.0 已经没有独立的 dmmv 文件，而 SYCL 侧把它留成 '
-        + '<span class="v">dmmv.cpp</span>（2227 行）+ 一个 reorder 变体。'
+        + '<span class="v">dmmv.cpp</span> + 一组 <span class="v">*_reorder</span> 变体。'
     ];
     defs.forEach((_, i) => tl.at(700 + i * 3000, () => {
       els.forEach((e, k) => { e.style.opacity = k === i ? '1' : '.30'; });
@@ -620,7 +621,7 @@ DECL_FATTN_VEC_CASE(512, GGML_TYPE_F16, GGML_TYPE_Q4_0);`,
   sub: "同一个算子，两边各在哪；记住这张表，L6-06 起的其它 GPU 后端都是同一套问法。",
   caption: "下一课 L6-06：Vulkan 后端的主机端；它的 kernel 在 L6-07 里用 GLSL 计算着色器写。",
   src: "ggml/src/ggml-sycl/fattn.cpp",
-  mark: [2, 4, 5],
+  mark: [2, 3, 4, 5],
   lineNo: 97,
   code: `enum best_fattn_kernel {
     BEST_FATTN_KERNEL_NONE     =   0,

@@ -273,7 +273,7 @@ PRH = [(31, 46)]
 L.scene(
     kicker='L5-04 · 核心',
     title='★ <span class="hl-a">repack</span>：交错布局从类型号里搬进后端',
-    sub='block<K,N>：一个块里放 N 行的 scale 和 N 行的 quants —— 字节总数不变，只是换了顺序。',
+    sub='模板 block<K,N>：一个块里放 N 行的 scale 和 N 行的 quants —— 字节总数不变，只换了顺序。',
     caption='回顾 L1-01：旧式的 GGML_TYPE_Q4_0_4_4 把 4x4 交错编进了类型号（ggml.h:421 注明 support has been removed）；'
             '现在同一件事改由后端的 repack 缓冲做。模板本身在 repack.h:13-29（QK_0<K>() + block<K,N>），'
             '这里的 7 条 static_assert 与 7 个别名说明"N 行合成一块、字节数不变"。',
@@ -451,7 +451,7 @@ function gRow(label, isHead) {
   r.appendChild(U.el('div', { class: 'cm', style: 'width:22px;flex:0 0 auto;margin:0;text-align:right', text: label }));
   const rowCells = [];
   for (let j = 0; j < 4; j++) {
-    const e = U.el('div', { style: 'width:40px;height:20px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:8.5px;border:1px solid var(--border);border-radius:3px;background:#10151b;color:var(--dim)' });
+    const e = U.el('div', { style: 'width:44px;height:20px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:8.5px;border:1px solid var(--border);border-radius:3px;background:#10151b;color:var(--dim)' });
     e.textContent = isHead ? ('j' + j) : '';
     r.appendChild(e); rowCells.push(e);
   }
@@ -467,6 +467,7 @@ side.innerHTML =
   '<div class="formula" style="font-size:9.5px">权重：<span class="m">b_ptr[l].qs[k * 4 * 4 + j * 4 + i]</span></div>' +
   '<div class="formula" style="font-size:9.5px">激活：<span class="m">a_ptr[l].qs[k * 4 * 4 + m * 4 + i]</span></div>' +
   '<div class="formula" style="font-size:9.5px">内层：<span class="m">((v0 * a[i]) + (v1 * a[i + 16])) &gt;&gt; 4</span></div>' +
+  '<div class="cm" style="margin:0">格子 = sumf[m][j]：第 m 个 token 对第 j 行权重</div>' +
   '<div class="card" style="border-left-color:var(--b)"><div class="ct" style="color:var(--b)">' +
   '交错把"行"变成向量载入的一个维度</div><div class="cb">同一批列在 4 行上是<b>连续</b>的：' +
   'j 每加 1，地址只走 4 字节（G = 4）。所以一条 16 字节载入拿到的是"4 行 x 4 字节"，' +
@@ -497,7 +498,7 @@ tl.at(6200, () => { msg.innerHTML = texts[2]; U.markLines(document, A[1]); });
 }));
 tl.at(17600, () => {
   for (let m = 0; m < 4; m++) for (let j = 0; j < 4; j++) {
-    cells[m][j].textContent = 'sumf[' + m + '][' + j + ']';
+    cells[m][j].textContent = m + ',' + j;
     cells[m][j].style.background = 'rgba(63,185,80,.20)';
     cells[m][j].style.borderColor = 'var(--b)';
     cells[m][j].style.color = 'var(--b)';

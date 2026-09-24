@@ -197,7 +197,7 @@
 | `ggml/src/ggml-cuda/ggml-cuda.cu` | 5857 |
 
 > **说明**：覆盖声明 **179** 项 = 计划指派给 L6-05 的 **174** 个文件（`ggml/include/ggml-sycl.h` + `ggml/src/ggml-sycl/` 下 173 个）+ 本课逐字引用的 **4** 个 CUDA 侧对照文件（`common.cuh`、`fattn-vec.cuh`、`template-instances/fattn-vec-instance-f16-q4_0.cu`、`ggml-cuda.cu`）+ 1 个非覆盖域文件（下面的 `CMakeLists.txt`）。CUDA 这 4 个在计划里归属 L6-01 / L6-03 / L6-04，这里计入是因为「声明 = 本课逐字引用过的文件」：不虚报，也不漏报。
-> **说明**：`ggml/src/ggml-sycl/CMakeLists.txt` 被逐字引用，但它不在覆盖域的源文件后缀集合内，按 `check_coverage.py` 的 B3 规则记为「真实存在但不计入覆盖率」，未写进覆盖声明。
+> **说明**：`ggml/src/ggml-sycl/CMakeLists.txt` 被逐字引用，但它不在覆盖域的源文件后缀集合内，按 `check_coverage.py` 的 B3 规则记为「真实存在但不计入覆盖率」—— 它出现在声明块里，但不会被算进覆盖分子。
 
 ## 场景（9 幕）
 
@@ -238,7 +238,7 @@ SYCL 后端不是另起炉灶，而是 CUDA 后端的平行实现。实测的对
 | 维度 | CUDA | SYCL |
 |---|---|---|
 | 执行流 | `cudaStream_t` | `sycl::queue *`（`queue_ptr`） |
-| 设备内存 | `cudaMalloc` / `cudaFree` | USM：`sycl::malloc_device` / `free` |
+| 设备内存 | `cudaMalloc` / `cudaFree` | USM：`sycl::malloc_device` / `sycl::free`（common.cpp:127 / 146）|
 | 事件 | `cudaEvent_t` | `dpct::event_ptr` |
 | 数学库 | cuBLAS | oneDNN（`dnnl::matmul`）/ oneMKL |
 | 编译链 | nvcc | oneAPI DPC++（`icpx -fsycl`） |
@@ -250,7 +250,7 @@ SYCL 后端不是另起炉灶，而是 CUDA 后端的平行实现。实测的对
 不是完全复制，SYCL 侧多出三条 CUDA 侧没有的路：
 
 1. **厂商库 FlashAttention**：`BEST_FATTN_KERNEL_ONEDNN = 150` 与 `BEST_FATTN_KERNEL_MKL = 300`（fattn.cpp:97-103），对应 `fattn-onednn.cpp` 与 `fattn-mkl.cpp`；
-2. **独立的 dmmv 路径**：`dmmv.cpp`（2227 行）+ reorder 变体，CUDA 侧 v0.5.0 已无同名文件；
+2. **独立的 dmmv 路径**：`dmmv.cpp` + 一组 `*_reorder` 变体，CUDA 侧 v0.5.0 已无同名文件；
 3. **SYCL command graph**：需要 `ext_oneapi_limited_graph` / `ext_oneapi_graph` 两个设备特性，不像 CUDA 那样有 warmup 步骤。
 
 反向的差异也有一处：`EXTERN_DECL_FATTN_VEC_CASES` 里 CUDA 侧有 `GGML_TYPE_BF16`，SYCL 侧没有（fattn-vec.cuh:585 vs fattn-vec.hpp:648-654）。

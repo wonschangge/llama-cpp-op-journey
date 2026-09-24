@@ -142,7 +142,7 @@ root.appendChild(wrap);
 const groups = [
   { l: '常规算子内核', n: 73, c: 'a', d: 'element_wise / norm / softmax / cpy / rope / conv2d / im2col / getrows …（多数是一个算子一对 .cpp+.hpp）' },
   { l: '模板实例化', n: 46, c: 'b', d: 'template-instances/：fattn-tile-* 10 个 + fattn-vec-* 36 个' },
-  { l: '循环与融合', n: 18, c: 'c', d: 'ssm_scan / ssm_conv / wkv / gated_delta_net / gla / fusion / topk-* 之外的序列类算子' },
+  { l: '循环与融合', n: 18, c: 'c', d: 'ssm_scan / ssm_conv / wkv / gated_delta_net / gla / dsv4-hc / lightning-indexer / fusion' },
   { l: '主机框架', n: 14, c: 'd', d: 'ggml-sycl.cpp（全后端最大单文件）/ common / mem / memtrace / sycl_hw / presets / backend.hpp' },
   { l: '量化矩阵乘', n: 11, c: 'e', d: 'mmq / mmvq / dmmv / vecdotq / dequantize / quants / gemm / esimd' },
   { l: 'FlashAttn', n: 11, c: 'f', d: 'fattn / fattn-tile / fattn-vec / fattn-buffers / fattn-onednn / fattn-mkl' },
@@ -387,7 +387,7 @@ L.scene(
     sub='registry、device、buffer type（外加 buffer）四张接口，字段顺序由 ggml-backend-impl.h 钉死。',
     caption='回顾 L3-01：算子能不能落到某个后端，取决于 supports_op / supports_buft 这两张表怎么说。',
     src=SRC, parts=[(6903, 6918)], duration=20000,
-    mark_src=[6908, 6910, 6911, 6913],
+    mark_src=[6906, 6913, 6914, 6916],
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div class="row wrap" id="cards" style="gap:8px"></div>
@@ -395,13 +395,13 @@ wrap.innerHTML = `<div class="row wrap" id="cards" style="gap:8px"></div>
 root.appendChild(wrap);
 
 const defs = [
-  { c: 'a', t: 'buffer_i', b: 'free_buffer / get_base / init_tensor /<br>memset_tensor / set_tensor / get_tensor /<br>cpy_tensor / clear / reset',
+  { c: 'a', t: 'buffer_i · 11 项', b: 'free_buffer / get_base / init_tensor /<br>memset_tensor / set_tensor / get_tensor /<br>set_tensor_2d / get_tensor_2d / cpy_tensor / clear / reset',
     m: 'ggml-sycl.cpp:917' },
-  { c: 'b', t: 'buffer_type_i', b: 'get_name / alloc_buffer /<br>get_alignment（返回 128）/<br>get_max_size / get_alloc_size',
+  { c: 'b', t: 'buffer_type_i · 6 项', b: 'get_name / alloc_buffer /<br>get_alignment（返回 128）/<br>get_max_size / get_alloc_size / is_host',
     m: 'ggml-sycl.cpp:1055' },
-  { c: 'c', t: 'device_i', b: 'get_memory / get_props / init_backend /<br>get_buffer_type / supports_op /<br>supports_buft / offload_op / event_*',
+  { c: 'c', t: 'device_i · 15 项', b: 'get_name / get_description / get_memory /<br>get_type / get_props / init_backend /<br>get_buffer_type / get_host_buffer_type /<br>buffer_from_host_ptr / supports_op /<br>supports_buft / offload_op / event_*',
     m: 'ggml-sycl.cpp:6903' },
-  { c: 'd', t: 'reg_i', b: 'get_name / get_device_count / get_device /<br>get_proc_address（暴露 split buffer 与 comm_*）',
+  { c: 'd', t: 'reg_i · 4 项', b: 'get_name / get_device_count /<br>get_device /<br>get_proc_address（暴露 split buffer 与 comm_*）',
     m: 'ggml-sycl.cpp:7212' }
 ];
 const host = wrap.querySelector('#cards');
@@ -477,12 +477,13 @@ const texts = [
     + '激活统一量化成 q8_1</span>。这个"量化 × q8_1"的组合与 CUDA 侧 mmq 完全一致。',
   'CUDA 侧同样是一张 per-type 表：<span class="v">ggml_cuda_mul_mat_q_switch_type</span>'
     + '（mmq.cu:8）里 <span class="v">mul_mat_q_case&lt;GGML_TYPE_Q4_0&gt;</span>。',
-  '三个入口的形参表也一样：<span class="v">src0_dd_i / src1_ddq_i / dst_dd_i / row_low / '
+  '三个 SYCL 入口的形参表是同一个形状：<span class="v">src0_dd_i / src1_ddq_i / dst_dd_i / row_low / '
     + 'row_high / src1_ncols / src1_padded_row_size / stream</span> —— '
     + 'CUDA 侧的 <span class="v">ggml_cuda_op_mul_mat_vec_q</span>（mmvq.cuh:14）逐项对应，'
-    + '只有 stream 类型不同。',
+    + '只有 stream 类型不同；CUDA 侧 mmq 的顶层入口是另一种形状'
+    + '（<span class="v">ggml_cuda_mul_mat_q(ctx, src0, src1, ids, dst)</span>，mmq.cu:85）。',
   '差异在哪：CUDA 侧 v0.5.0 已经没有独立的 dmmv 文件，而 SYCL 侧把它留成 '
-    + '<span class="v">dmmv.cpp</span>（2227 行）+ 一个 reorder 变体。'
+    + '<span class="v">dmmv.cpp</span> + 一组 <span class="v">*_reorder</span> 变体。'
 ];
 defs.forEach((_, i) => tl.at(700 + i * 3000, () => {
   els.forEach((e, k) => { e.style.opacity = k === i ? '1' : '.30'; });
@@ -556,7 +557,7 @@ L.scene(
     sub='同一个算子，两边各在哪；记住这张表，L6-06 起的其它 GPU 后端都是同一套问法。',
     caption='下一课 L6-06：Vulkan 后端的主机端；它的 kernel 在 L6-07 里用 GLSL 计算着色器写。',
     src='ggml/src/ggml-sycl/fattn.cpp', parts=[(97, 103)], duration=21000,
-    mark_src=[99, 101, 102],
+    mark_src=[99, 100, 101, 102],
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div id="tbl"></div><div id="ex"></div><div class="formula" id="msg"></div>`;
@@ -648,7 +649,7 @@ L.section(
     '再把 `template-instances/fattn-tile*.cpp` 与 `fattn-vec*.cpp` 追加进源列表 ——'
     '下半段的逐字引用就是这几行。\n\n'
     '> 说明：`CMakeLists.txt` 不在本视角的源文件后缀集合（`.c/.cc/.cpp/.h/.hpp/.cu/.cuh/.m/.mm/.metal/.comp`）内，'
-    '因此它是「被引用但不计入覆盖率」的文件，不写进覆盖声明。',
+    '因此它虽出现在覆盖声明里，但按门禁规则记为「真实存在但**不计入**覆盖率」。',
     src='ggml/src/ggml-sycl/CMakeLists.txt', parts=[(22, 33)], lang='cmake')
 
 L.section(
@@ -701,7 +702,7 @@ L.section(
 
 L.section(
     '八、设备内存：USM 分配器',
-    '"USM 取代 cudaMalloc"这句话要落到具体函数上。SYCL 侧的设备分配只有一条路：'
+    '"USM 取代 cudaMalloc"这句话要落到具体函数上。SYCL 侧的设备分配统一走 '
     '`ggml_sycl_malloc_device(size, q, type)`（common.cpp:97）。它先试 Level Zero 的 '
     '`zeMemAllocDevice`（源码注释说明这是为了绕开 xe 驱动在多卡推理时的 DMA-buf 暂存），'
     '失败或未编译该扩展时回落到 `sycl::malloc_device(size, q)`。\n\n'
@@ -758,7 +759,8 @@ L.footnote_add(
     '「声明 = 本课逐字引用过的文件」：不虚报，也不漏报。')
 L.footnote_add(
     '`ggml/src/ggml-sycl/CMakeLists.txt` 被逐字引用，但它不在覆盖域的源文件后缀集合内，'
-    '按 `check_coverage.py` 的 B3 规则记为「真实存在但不计入覆盖率」，未写进覆盖声明。')
+    '按 `check_coverage.py` 的 B3 规则记为「真实存在但不计入覆盖率」—— '
+    '它出现在声明块里，但不会被算进覆盖分子。')
 
 L.prereqs('`L6-04`（CUDA 其余算子）')
 
@@ -803,7 +805,8 @@ L.conclusion(
     '算子层可以照搬，数据面必须重写：\n\n'
     '| 维度 | CUDA | SYCL |\n|---|---|---|\n'
     '| 执行流 | `cudaStream_t` | `sycl::queue *`（`queue_ptr`） |\n'
-    '| 设备内存 | `cudaMalloc` / `cudaFree` | USM：`sycl::malloc_device` / `free` |\n'
+    '| 设备内存 | `cudaMalloc` / `cudaFree` | USM：`sycl::malloc_device` / `sycl::free`'
+    '（common.cpp:127 / 146）|\n'
     '| 事件 | `cudaEvent_t` | `dpct::event_ptr` |\n'
     '| 数学库 | cuBLAS | oneDNN（`dnnl::matmul`）/ oneMKL |\n'
     '| 编译链 | nvcc | oneAPI DPC++（`icpx -fsycl`） |\n\n'
@@ -816,7 +819,7 @@ L.conclusion(
     '不是完全复制，SYCL 侧多出三条 CUDA 侧没有的路：\n\n'
     '1. **厂商库 FlashAttention**：`BEST_FATTN_KERNEL_ONEDNN = 150` 与 '
     '`BEST_FATTN_KERNEL_MKL = 300`（fattn.cpp:97-103），对应 `fattn-onednn.cpp` 与 `fattn-mkl.cpp`；\n'
-    '2. **独立的 dmmv 路径**：`dmmv.cpp`（2227 行）+ reorder 变体，CUDA 侧 v0.5.0 已无同名文件；\n'
+    '2. **独立的 dmmv 路径**：`dmmv.cpp` + 一组 `*_reorder` 变体，CUDA 侧 v0.5.0 已无同名文件；\n'
     '3. **SYCL command graph**：需要 `ext_oneapi_limited_graph` / `ext_oneapi_graph` 两个设备特性，'
     '不像 CUDA 那样有 warmup 步骤。\n\n'
     '反向的差异也有一处：`EXTERN_DECL_FATTN_VEC_CASES` 里 CUDA 侧有 `GGML_TYPE_BF16`，'

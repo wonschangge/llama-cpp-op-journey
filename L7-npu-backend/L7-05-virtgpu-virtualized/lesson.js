@@ -424,11 +424,11 @@ enum ApirCommandType {
         int64_t base_sleep_us = 15;
 
         os_time_sleep(base_sleep_us);
+//>> 不是 CPU 自旋：睡 15 微秒再看一次，把等待让给别的线程
 
         if (max_wait_ms) {
             clock_gettime(CLOCK_MONOTONIC, &ts_end);
             long long end_time    = (long long) ts_end.tv_sec * 1000000000LL + ts_end.tv_nsec;
-//>> fence_fd = 0：不注册 fence，也不要求内核回一个 fd
             float     duration_ms = (end_time - start_time) / 1000000;
 
             if (duration_ms > max_wait_ms) {

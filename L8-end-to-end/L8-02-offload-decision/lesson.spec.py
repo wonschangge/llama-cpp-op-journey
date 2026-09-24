@@ -593,7 +593,8 @@ const rows = t.body.querySelectorAll('tr');
 wrap.querySelector('#ex9').appendChild(W.exercise(
   '某模型 <span class="mono">n_layer_all = 27</span>，只挂 1 张 GPU，用 <span class="mono">--n-gpu-layers 4</span> 启动。' +
   '请说出：(1) <span class="mono">i_gpu_start</span> 是多少？(2) 哪些槽位在 GPU 上？' +
-  '(3) 哪些重复层留在 CPU？(4) 改成 <span class="mono">--n-gpu-layers 27</span> 是不是所有层都上 GPU 了？',
+  '(3) 哪些重复层留在 CPU？(4) 改成 <span class="mono">--n-gpu-layers 27</span> 是不是所有层都上 GPU 了？' +
+  '(5) 这张图会被切成几段？边界切在哪里？',
   '(1) <span class="mono">i_gpu_start = max(27 + 1 - 4, 0) = 24</span>（llama-model.cpp:1521）。<br>' +
   '(2) 槽位 <span class="mono">24, 25, 26</span>（重复层）与槽位 <span class="mono">27</span>（输出层）—— 共 4 个，' +
   '因为槽位号 <span class="mono">&gt;= i_gpu_start</span> 才走 GPU（1525 行的 CPU 分支取反）。<br>' +
@@ -601,7 +602,13 @@ wrap.querySelector('#ex9').appendChild(W.exercise(
   '<b>永远在 CPU</b>（1536-1537 行硬编码），与 n_gpu_layers 无关。<br>' +
   '(4) <b>不是</b>。<span class="mono">--n-gpu-layers 27</span> 时 <span class="mono">i_gpu_start = 28 - 27 = 1</span>，' +
   '第 0 层仍留在 CPU。要 27 个重复层全上 GPU，需要 <span class="mono">n_gpu_layers = 28 = n_layer_all + 1</span>；' +
-  '这也正是参数取 <span class="mono">-1</span>（默认）时 <span class="mono">n_gpu_layers()</span> 的返回值（1926 行）。'));
+  '这也正是参数取 <span class="mono">-1</span>（默认）时 <span class="mono">n_gpu_layers()</span> 的返回值（1926 行）。<br>' +
+  '(5) <b>单卡时通常是 2 段</b>：节点 0..某处一段 CPU、其后一段 GPU。' +
+  '但边界是<b>节点下标</b>而不是层号（1359 行 <span class="mono">split-&gt;i_start = i</span>）：' +
+  '权重在 CPU 的节点是"墙"，扩张（1141 行）在它那里中断，' +
+  '所以 CPU 段的末尾由<b>最后一个 CPU 权重节点</b>决定，' +
+  '两者之间的无权重节点（add / rms_norm 之类）归谁要看扩张与 2610 行的补丁。' +
+  '把层数直接当段数是错的 —— 段数请用 <span class="mono">ggml_backend_sched_get_n_splits()</span> 读。'));
 
 const msg = wrap.querySelector('#m9');
 const texts = [

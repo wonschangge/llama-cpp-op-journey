@@ -486,7 +486,7 @@ GGML_BACKEND_API void ggml_backend_cuda_get_device_memory(int device, size_t * f
   sub: "ggml_cuda_compute_forward() 的全部内容：switch (dst->op)，每个 case 调一个 ggml_cuda_* 实现。",
   caption: "对照 L5-01：CPU 侧同形状的 switch 在 ggml/src/ggml-cpu/ggml-cpu.c:1744，签名是 void ggml_compute_forward(ggml_compute_params *, ggml_tensor *)。",
   src: "ggml/src/ggml-cuda/ggml-cuda.cu",
-  mark: [1, 3, 4, 15, 16, 21, 27],
+  mark: [1, 3, 4, 15, 17, 21, 28],
   lineNo: 0,
   code: `static bool ggml_cuda_compute_forward(ggml_backend_cuda_context & ctx, struct ggml_tensor * dst) {
     switch (dst->op) {
@@ -504,12 +504,13 @@ GGML_BACKEND_API void ggml_backend_cuda_get_device_memory(int device, size_t * f
         case GGML_OP_REPEAT_BACK:
 //>> ---- ggml/src/ggml-cuda/ggml-cuda.cu:2415-2425 ----
         default:
+//>> 不认识的 op 落到这里
             return false;
-//>> 分派的全部依据：dst->op 一个字段（L1-02 的身份面）
+//>> 返回 false —— 这个 bool 就是第 6 幕 4359 断言的依据
     }
 
-//>> 每个 case 一行调用：真正的实现在各 ggml-cuda/*.cu 里（L6-02 / L6-03）
     cudaError_t err = cudaGetLastError();
+//>> 除了 op 分发，还统一检查 CUDA 运行时错误
     if (err != cudaSuccess) {
         GGML_LOG_ERROR("%s: %s failed\\n", __func__, ggml_op_desc(dst));
         CUDA_CHECK(err);

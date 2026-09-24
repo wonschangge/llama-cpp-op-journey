@@ -185,7 +185,7 @@ const SCENES = [
   sub: "键是\"长度 + 字节\"，类型是 int32 枚举，\"元素个数\"只在数组时出现。任何元数据都能塞进来。",
   caption: "编码规则（gguf.h 注释第 26-28 行）：字符串 = uint64 长度 + 去掉结尾 \\0 的字节；枚举一律 int32；bool 一律 int8。所以同一个文件里既有超参，也能有整段 chat template。",
   src: "ggml/include/gguf.h",
-  mark: [0, 1, 3, 4, 6, 13, 15, 18, 20, 28],
+  mark: [0, 1, 4, 5, 8, 16, 18, 23, 25, 33],
   lineNo: 0,
   code: `// Strings are serialized as the string length (uint64_t) followed by the C string without the null terminator.
 // All enums are stored as int32_t.
@@ -297,7 +297,7 @@ const SCENES = [
   sub: "上游把整个布局按 1..7 条写成了注释。本课其余各幕，就是把这张图逐格讲完。",
   caption: "注释第 7 条的关键词是 \"optional, aligned\"：数据区可以没有（只写元数据），但只要有张量，它就必须对齐。",
   src: "ggml/include/gguf.h",
-  mark: [2, 3, 4, 5, 6, 16, 23],
+  mark: [3, 4, 5, 6, 7, 17],
   lineNo: 2,
   code: `// GGUF files have the following structure:
 //>> 这段注释就是验收点要你复述的那张图 —— 它与 gguf.cpp 的读写顺序一一对应
@@ -375,7 +375,7 @@ const SCENES = [
   sub: "读进来的是一个 gguf_tensor_info：里面已经有一个 ggml_tensor（装信息），外加一个数据区偏移。",
   caption: "offset 是从\"数据区起点\"算起的字节偏移，不是从文件开头。结构体注释写它 must be a multiple of ALIGNMENT。",
   src: "ggml/src/gguf.cpp",
-  mark: [1, 3, 6, 9, 10, 19],
+  mark: [2, 5, 9, 13, 14, 23],
   lineNo: 0,
   code: `struct gguf_tensor_info {
 //>> struct ggml_tensor 在这里只是"装信息"：形状、类型文件里都有，不必分配数据
@@ -453,7 +453,7 @@ const SCENES = [
   sub: "读的时候靠 seek 把文件指针推到对齐位置；写的时候靠 pad 补 0 —— 两边算出同一个数。",
   caption: "GGML_PAD(x, n) = ((x) + (n) - 1) & ~((n) - 1)（定义在 ggml/include/ggml.h），要求 n 是 2 的幂 —— 所以读的时候会检查 alignment 是 2 的幂。",
   src: "ggml/src/gguf.cpp",
-  mark: [0, 1, 5, 7, 8, 9, 12],
+  mark: [0, 1, 6, 8, 9, 11, 14],
   lineNo: 773,
   code: `    if (n_tensors > 0 && !gr.seek(gr.start() + GGML_PAD(gr.tell() - gr.start(), ctx->alignment))) {
         GGML_LOG_ERROR("%s: failed to seek to beginning of data section\\n", __func__);
@@ -558,7 +558,7 @@ const SCENES = [
   sub: "写入顺序与读取顺序严格对称：头 -> KV -> 张量信息 -> pad -> 数据。",
   caption: "注意：张量数据并不\"存在 gguf_context 里\" —— context 只保存指针，真正落盘发生在 gguf_write_to_file 的写数据阶段。",
   src: "ggml/src/gguf.cpp",
-  mark: [2, 3, 4, 5, 6, 12, 13, 14, 17, 18, 24],
+  mark: [2, 3, 5, 6, 7, 13, 15, 16, 19, 20],
   lineNo: 0,
   code: `void gguf_add_tensor(
              struct gguf_context * ctx,
@@ -696,7 +696,7 @@ void gguf_set_tensor_data(struct gguf_context * ctx, const char * name, const vo
   sub: "从文件第 0 字节到张量数据第一字节，逐段过一遍；表里的每一项都能在源码里找到出处。",
   caption: "下一课 L2-01：llama.h 的公共 API —— 看 llama.cpp 怎么用 gguf_* 这套 API 把模型装起来。",
   src: "ggml/src/gguf.cpp",
-  mark: [3, 6, 8, 10],
+  mark: [3, 7, 9, 12],
   lineNo: 0,
   code: `struct gguf_context {
     uint32_t version = GGUF_VERSION;

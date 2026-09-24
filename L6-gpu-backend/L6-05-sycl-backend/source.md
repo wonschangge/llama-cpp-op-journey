@@ -186,7 +186,7 @@ ggml/src/ggml-cuda/ggml-cuda.cu
 
 ★ 本课的核心洞察：**SYCL 与 CUDA 的结构同构，差异集中在数据面抽象与编译链。**CUDA 侧用 `cudaStream_t` + `cudaMalloc` + `cuBLAS`；SYCL 侧换成 `sycl::queue` + USM 指针 + oneDNN/oneMKL。算子层（`GGML_OP_*` 的 switch、量化类型的 switch、虚表的字段顺序）几乎可以逐行对着看 —— 这正是 SYCL 后端能跟上 CUDA 侧算子覆盖的原因。
 
-本课覆盖计划指派给 L6-05 的**全部 174 个文件**：`ggml/include/ggml-sycl.h` 与 `ggml/src/ggml-sycl/` 下的 173 个文件（含 46 个模板实例）。其中 7 个核心文件逐字引用，其余按族在 `source.md` 里用表格分类说明。
+本课覆盖计划指派给 L6-05 的**全部 174 个文件**：`ggml/include/ggml-sycl.h` 与 `ggml/src/ggml-sycl/` 下的 173 个文件（含 46 个模板实例）。逐字引用的是其中 8 个 SYCL 侧源文件（`ggml-sycl.h`、一个模板实例文件、`ggml-sycl.cpp`、`common.hpp`、`common.cpp`、`mmq.cpp`、`mmvq.hpp`、`fattn.cpp`）加 4 个 CUDA 侧对照文件；其余按族在 `source.md` 里用表格分类说明。
 
 ---
 
@@ -234,7 +234,7 @@ $ python3 tools/plan_matrix.py --files | awk -F'\t' '$1=="L6-05"{print $2}' | wc
 
 **构建方式**：`CMakeLists.txt` 用 `file(GLOB ...)` 收集 `*.hpp` 与 `*.cpp`，再把 `template-instances/fattn-tile*.cpp` 与 `fattn-vec*.cpp` 追加进源列表 ——下半段的逐字引用就是这几行。
 
-> 说明：`CMakeLists.txt` 不在本视角的源文件后缀集合（`.c/.cc/.cpp/.h/.hpp/.cu/.cuh/.m/.mm/.metal/.comp`）内，因此它是「被引用但不计入覆盖率」的文件，不写进覆盖声明。
+> 说明：`CMakeLists.txt` 不在本视角的源文件后缀集合（`.c/.cc/.cpp/.h/.hpp/.cu/.cuh/.m/.mm/.metal/.comp`）内，因此它虽出现在覆盖声明里，但按门禁规则记为「真实存在但**不计入**覆盖率」。
 
 <!-- src: ggml/src/ggml-sycl/CMakeLists.txt -->
 ```cmake
@@ -359,7 +359,7 @@ struct ggml_backend_cuda_context {
 
 ## 八、设备内存：USM 分配器
 
-"USM 取代 cudaMalloc"这句话要落到具体函数上。SYCL 侧的设备分配只有一条路：`ggml_sycl_malloc_device(size, q, type)`（common.cpp:97）。它先试 Level Zero 的 `zeMemAllocDevice`（源码注释说明这是为了绕开 xe 驱动在多卡推理时的 DMA-buf 暂存），失败或未编译该扩展时回落到 `sycl::malloc_device(size, q)`。
+"USM 取代 cudaMalloc"这句话要落到具体函数上。SYCL 侧的设备分配统一走 `ggml_sycl_malloc_device(size, q, type)`（common.cpp:97）。它先试 Level Zero 的 `zeMemAllocDevice`（源码注释说明这是为了绕开 xe 驱动在多卡推理时的 DMA-buf 暂存），失败或未编译该扩展时回落到 `sycl::malloc_device(size, q)`。
 
 USM 指针是**普通指针**，所以 SYCL 侧的 kernel 形参（如 mmq 的 `src0_dd_i` / `dst_dd_i`）与 CUDA 侧一模一样，不需要 buffer 对象参与。这是"算子层可以照搬"的底层原因。
 
@@ -559,4 +559,4 @@ enum best_fattn_kernel {
 ## 说明
 
 - 覆盖声明 **179** 项 = 计划指派给 L6-05 的 **174** 个文件（`ggml/include/ggml-sycl.h` + `ggml/src/ggml-sycl/` 下 173 个）+ 本课逐字引用的 **4** 个 CUDA 侧对照文件（`common.cuh`、`fattn-vec.cuh`、`template-instances/fattn-vec-instance-f16-q4_0.cu`、`ggml-cuda.cu`）+ 1 个非覆盖域文件（下面的 `CMakeLists.txt`）。CUDA 这 4 个在计划里归属 L6-01 / L6-03 / L6-04，这里计入是因为「声明 = 本课逐字引用过的文件」：不虚报，也不漏报。
-- `ggml/src/ggml-sycl/CMakeLists.txt` 被逐字引用，但它不在覆盖域的源文件后缀集合内，按 `check_coverage.py` 的 B3 规则记为「真实存在但不计入覆盖率」，未写进覆盖声明。
+- `ggml/src/ggml-sycl/CMakeLists.txt` 被逐字引用，但它不在覆盖域的源文件后缀集合内，按 `check_coverage.py` 的 B3 规则记为「真实存在但不计入覆盖率」—— 它出现在声明块里，但不会被算进覆盖分子。
