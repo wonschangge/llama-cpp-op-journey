@@ -72,6 +72,9 @@ var SHELL = (function () {
       U.el('div', { class: 'shell-foot' }, els.play, replay, els.dots, els.tinfo));
 
     document.body.appendChild(shell);
+    buildDots();   /* ★ 曾经漏掉这一行：圆点定义了却从不生成，进度条永远是空的；
+                      而渲染门禁在 dots<=1 时静默跳过圆点自检，四项全绿也看不出来。
+                      现在门禁把"圆点数 == 幕数"作为硬断言。 */
 
     document.addEventListener('keydown', onKey);
     window.addEventListener('resize', function () { fitCode(); });

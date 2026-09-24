@@ -106,12 +106,19 @@ def check_lesson(browser, url, w, h):
             dots: document.querySelectorAll('.dot').length
         })""")
         res['scenes'] = info.get('count', 0)
+        res['dots'] = info.get('dots', 0)
         if not info.get('hasShell'):
             res['errors'].append('SHELL 未定义')
         if not info.get('hasVisual'):
             res['errors'].append('#visual 不存在')
         if info.get('count', 0) == 0:
             res['errors'].append('场景数为 0')
+        # ★ 圆点数必须等于幕数。曾经因为 buildDots() 从未被调用而全空，
+        #   而当时的检查写成 `if dots > 1: 测跳转` —— 静默跳过，四项全绿。
+        #   这类"门禁因为前置条件不成立而悄悄不测"是比报错更危险的失效模式。
+        if info.get('dots', 0) != info.get('count', 0):
+            res['errors'].append(
+                f"进度圆点数 {info.get('dots', 0)} != 幕数 {info.get('count', 0)}")
 
         # 交互自检
         try:
