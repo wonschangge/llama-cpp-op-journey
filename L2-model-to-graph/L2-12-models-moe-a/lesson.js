@@ -75,7 +75,7 @@ const SCENES = [
     const msg = wrap.querySelector('#msg');
     const texts = [
       '24 个文件，看起来是 24 个模型；<br>但它们<b>共用同一个图原语</b> —— 这就是本课要讲清的那一件事。',
-      '<span class="v">build_moe_ffn</span> 的签名有 <span class="k">23 个参数</span>：<br>' +
+      '<span class="v">build_moe_ffn</span> 的签名有 <span class="k">24 个参数</span>（另有 19 个参数的简版重载）：<br>' +
       '5 个张量（gate_inp + 三组 exps + exp_probs_b）、<span class="k">2 个整数</span>（n_expert / n_expert_used）、' +
       '门控与激活类型、归一化/缩放开关，以及一批可选张量。',
       '<span class="k">家族的差异全部落在参数上</span>：<br>' +
@@ -89,7 +89,7 @@ const SCENES = [
     }));
     tl.at(14500, () => {
       els.forEach(e => e.style.opacity = '1');
-      U.markLines(document, [0, 2, 3, 5, 7, 12]);
+      U.markLines(document, [0, 2, 3, 5, 7, 8, 12]);
       msg.innerHTML = texts[3];
     });
   }
@@ -443,7 +443,7 @@ const SCENES = [
   kicker: "L2-12 · 算子 5/7",
   title: "专家权重：<span class=\"hl-e\">get_rows</span> → 归一化 → 缩放",
   sub: "拿到 weights 之后有三段可选的加工，各由一个 bool / float 开关控制。",
-  caption: "clamp 的下界 `6.103515625e-5` 是 F16 能表示的最小正规数（源码注释写明了这个意图）。",
+  caption: "clamp 的下界 `6.103515625e-5`；源码注释逐字写着：`Avoid division by zero, clamp to smallest number representable by F16`。",
   src: "src/llama-graph.cpp",
   mark: [1, 3, 8, 10, 12, 16, 20, 25, 27],
   lineNo: 2126,
@@ -757,10 +757,10 @@ const SCENES = [
   }
 },
 
-/* ------------------------------------------------------ 9 24 个文件里，有 <span class="hl-g">6 个名实不符</span> */
+/* ------------------------------------------------------ 9 24 个文件里，有 <span class="hl-g">7 个需要点名</span> */
 {
   kicker: "L2-12 · 如实报告",
-  title: "24 个文件里，有 <span class=\"hl-g\">6 个名实不符</span>",
+  title: "24 个文件里，有 <span class=\"hl-g\">7 个需要点名</span>",
   sub: "分组依据是\"图构建代码命中了 MoE 图原语\"。命中了不等于\"这个文件就是 MoE\"。",
   caption: "下面这张表是逐个读出来的结论；每一行的原文引用见 source.md 第四节。",
   src: "src/models/deci.cpp",
@@ -789,35 +789,37 @@ const SCENES = [
     const t = U.table(
       ['文件', '文件里实际有什么', '判定'],
       [['src/models/deci.cpp', '只有一处 ffn_gate_inp == nullptr 判断；grep moe/expert 零命中', '完全不是 MoE'],
-       ['src/models/bert.cpp', '调 build_moe_ffn，但 gate_exps 传 nullptr（无 gate 专家）', 'MoE，但无 gate'],
-       ['src/models/deepseek2ocr.cpp', '只 create_tensor 专家张量，本文件不构图（80 行）', '只有加载面'],
-       ['src/models/ernie4-5.cpp', '只 create_tensor 专家张量；本文件的图是稠密分支', '只有加载面'],
-       ['src/models/granite-moe.cpp', '只 create_tensor 专家张量（84 行），图类不在本文件', '只有加载面'],
-       ['src/models/lfm2moe.cpp', '只 create_tensor 专家张量（85 行），图类不在本文件', '只有加载面']],
+       ['src/models/deepseek2ocr.cpp', '只 create_tensor 专家张量，本文件不构图（80 行）', '图里没有 MoE'],
+       ['src/models/ernie4-5.cpp', '只 create_tensor 专家张量；本文件的图是稠密分支', '图里没有 MoE'],
+       ['src/models/granite-moe.cpp', '只 create_tensor 专家张量（84 行），图类不在本文件', '图里没有 MoE'],
+       ['src/models/lfm2moe.cpp', '只 create_tensor 专家张量（85 行），图类不在本文件', '图里没有 MoE'],
+       ['src/models/bert.cpp', '调 build_moe_ffn，但 gate_exps 传 nullptr', 'MoE，但无 gate 专家'],
+       ['src/models/ernie4-5-moe.cpp', '只调 build_moe_ffn；张量由 ernie4-5.cpp 创建', '反向拆分']],
       { monoCols: [0] });
     wrap.querySelector('#tbl').appendChild(t.el);
     const rows = t.body.querySelectorAll('tr');
 
     const msg = wrap.querySelector('#msg');
     const texts = [
-      '24 个文件里 <span class="k">18 个</span>是"张量 + 构图都在本文件"的真 MoE，另外 <span class="k">6 个</span>需要点名。',
-      '<span class="v">deci.cpp</span> 最彻底：它是 Nemotron 稠密模型，<br>文件里唯一的 MoE 痕迹是一个"专家张量为空就走稠密"的分支判断。',
-      '<span class="v">bert.cpp</span> 是 MoE（moe_every_n_layers），但没有 gate 专家张量：<br>' +
-      'build_moe_ffn 的 gate_exps 传 nullptr，激活退化成 <span class="k">ggml_silu</span>。',
-      '<span class="v">deepseek2ocr.cpp</span> / <span class="v">ernie4-5.cpp</span> / <span class="v">granite-moe.cpp</span> / ' +
-      '<span class="v">lfm2moe.cpp</span>：<br>只负责 <span class="k">create_tensor</span>，图类定义在别的 TU 里。',
-      '还有反向的一例：<span class="v">ernie4-5-moe.cpp</span> 只负责构图，专家张量由 <span class="v">ernie4-5.cpp</span> 创建。<br>' +
+      '24 个文件里 <span class="k">17 个</span>是"专家张量与构图都在本文件"的真 MoE，<br>' +
+      '另外 <span class="k">7 个</span>要单独点名（见上表）。',
+      '<span class="v">deci.cpp</span> 最彻底：它是 Nemotron 稠密模型，<br>' +
+      '文件里唯一的 MoE 痕迹是一个"专家张量为空就走稠密"的分支判断 —— 而且没有 else。',
+      '<span class="v">deepseek2ocr.cpp</span> / <span class="v">ernie4-5.cpp</span> / ' +
+      '<span class="v">granite-moe.cpp</span> / <span class="v">lfm2moe.cpp</span>：<br>' +
+      '只负责 <span class="k">create_tensor</span>，图类定义在别的 TU 里。',
+      '<span class="v">bert.cpp</span> 是 MoE（<span class="m">moe_every_n_layers</span>），' +
+      '但没有 gate 专家张量：<br>build_moe_ffn 的 gate_exps 传 nullptr，激活退化成 <span class="k">ggml_silu</span>。',
+      '还有反向的一例：<span class="v">ernie4-5-moe.cpp</span> 只负责构图，专家张量由 ' +
+      '<span class="v">ernie4-5.cpp</span> 创建。<br>' +
       '所以"一个文件 = 一个模型"这个直觉在 <span class="v">src/models/</span> 里不成立。'
     ];
     tl.at(700, () => { msg.innerHTML = texts[0]; });
-    rows.forEach((r, i) => tl.at(2800 + i * 3300, () => {
-      rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
-      msg.innerHTML = texts[Math.min(i + 1, 4)];
-    }));
-    tl.at(19000, () => {
-      rows.forEach(x => { x.className = ''; });
-      msg.innerHTML = texts[4];
-    });
+    tl.at(3600, () => { rows.forEach((x, k) => { x.className = (k === 0) ? 'on' : ''; }); msg.innerHTML = texts[1]; });
+    tl.at(7600, () => { rows.forEach((x, k) => { x.className = (k >= 1 && k <= 4) ? 'on' : ''; }); msg.innerHTML = texts[2]; });
+    tl.at(11800, () => { rows.forEach((x, k) => { x.className = (k === 5) ? 'on' : ''; }); msg.innerHTML = texts[3]; });
+    tl.at(16200, () => { rows.forEach((x, k) => { x.className = (k === 6) ? 'on' : ''; }); msg.innerHTML = texts[4]; });
+    tl.at(20200, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[4]; });
   }
 },
 

@@ -209,9 +209,8 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
 | 22 | `src/models/hy-v3.cpp` | 真 MoE（形态 C） |
 | 23 | `src/models/laguna.cpp` | 真 MoE |
 | 24 | `src/models/lfm2moe.cpp` | 只有加载面 |
-| 25 | `src/models/deci.cpp` | （重引·上下文） |
 
-统计：**18 个真 MoE**（张量与构图至少有一处在文件内）、**1 个 MoE 但无 gate 专家**（`bert.cpp`）、**4 个只有加载面**（`deepseek2ocr.cpp` / `ernie4-5.cpp` / `granite-moe.cpp` / `lfm2moe.cpp`）、**1 个完全不是 MoE**（`deci.cpp`）、再加 1 个"只构图不建张量"的反例（`ernie4-5-moe.cpp`）。
+统计（24 个）：**17 个**专家张量与 `build_moe_ffn` 构图**都在本文件**；**1 个**是 `ernie4-5-moe.cpp`（只构图，张量在 `ernie4-5.cpp`）；**1 个**是 `bert.cpp`（是 MoE，但 `gate_exps` 传 `nullptr`，无 gate 专家）；**4 个**只建专家张量、本文件不构图（`deepseek2ocr.cpp` / `ernie4-5.cpp` / `granite-moe.cpp` / `lfm2moe.cpp`）；**1 个**完全不是 MoE（`deci.cpp`）。17 + 1 + 1 + 4 + 1 = 24。
 
 <!-- src: src/models/dbrx.cpp -->
 ```c
@@ -683,35 +682,6 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
             layer.ffn_down_exps   = create_tensor(tn(LLM_TENSOR_FFN_DOWN_EXPS, "weight", i), {hparams.n_ff_exp(),   n_embd, n_expert}, 0);
             layer.ffn_up_exps     = create_tensor(tn(LLM_TENSOR_FFN_UP_EXPS, "weight", i),   {n_embd, hparams.n_ff_exp(), n_expert}, 0);
             layer.ffn_exp_probs_b = create_tensor(tn(LLM_TENSOR_FFN_EXP_PROBS_B, "bias", i), {n_expert}, 0);
-```
-
-## 四.25 src/models/deci.cpp —— （重引·上下文）
-
-把 deci.cpp 的判断块连同前后文完整引一次，便于核对"没有 else 分支"这一点。
-
-<!-- src: src/models/deci.cpp -->
-```c
-        // modified to support attention-free layer of Llama-3_1-Nemotron-51B
-        ggml_tensor * ffn_inp = cur;
-        if (n_head > 0) {
-            ffn_inp = ggml_add(ctx0, cur, inpSA);
-            cb(ffn_inp, "ffn_inp", il);
-        }
-        // feed-forward network
-        if (model.layers[il].ffn_gate_inp == nullptr) {
-            cur = build_norm(ffn_inp, model.layers[il].ffn_norm, NULL, LLM_NORM_RMS, il);
-            cb(cur, "ffn_norm", il);
-
-            cur = build_ffn(cur,
-                model.layers[il].ffn_up, model.layers[il].ffn_up_b, NULL,
-                model.layers[il].ffn_gate, model.layers[il].ffn_gate_b, NULL,
-                model.layers[il].ffn_down, model.layers[il].ffn_down_b, NULL,
-                NULL, LLM_FFN_SILU, LLM_FFN_PAR, il);
-            cb(cur, "ffn_out", il);
-        }
-        cur = ggml_add(ctx0, cur, ffn_inp);
-        cb(cur, "ffn_out", il);
-
 ```
 
 ---
