@@ -8,7 +8,7 @@ src/llama-model-loader.cpp
 
 **一句话**：`ggml_tensor` 的 `buffer` / `data` 两个字段指向的，就是本课的两个对象 —— **buffer type**（哪一类内存：怎么造、对齐多少、上限多大、是不是 host）与 **buffer**（这一块内存本身）。
 
-本课与 L4-02 覆盖同样两个文件，但焦点不同：L4-02 讲**调度器怎么按 buffer type 切图**，本课讲 **buffer type 本身**——分配、初始化、属性查询，以及 host buffer 与 device buffer 的分工。切分算法不在这里重复。
+本课与 L4-02 的主覆盖文件相同（就是上面这两个 ggml 文件），但焦点不同：L4-02 讲**调度器怎么按 buffer type 切图**，本课讲 **buffer type 本身**——分配、初始化、属性查询，以及 host buffer 与 device buffer 的分工。切分算法不在这里重复。
 
 ---
 

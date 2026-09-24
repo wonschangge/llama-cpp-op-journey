@@ -548,8 +548,9 @@ const texts = [
   'A 的 nibble 与 B 的 int8 直接做 <b>dot</b>，比反量化成浮点再 FMA 更省。',
   '<span class="v">B</span> 不是权重 —— 是激活。权重（A）保持量化态不被展开，' +
   '这是 Vulkan 后端省显存/带宽的关键。',
-  '三个族的<b>分工边界是 M</b>：M=1 的解码走 <span class="v">mul_mat_vec</span>，' +
-  'M 很大走 <span class="v">mul_mm</span>，两者都能量化×量化时用 <span class="v">mul_mmq</span>。',
+  '三个族的<b>分工边界</b>不同：<span class="v">mul_mat_vec_*</span> 的 pipeline 表按' +
+  '<b>列数</b>索引（source.md 第七节：<span class="v">[dmmv_wg][a_type][num_cols-1]</span>），' +
+  '<span class="v">mul_mm*</span> 按 M/N 分块，<span class="v">mul_mmq</span> 走整数点积。',
   '<span class="v">MUL_MAT_ID</span> 分支（第 38-41 行）多两个 binding：' +
   '专家 id 与每专家行数 —— MoE 的 <span class="v">GGML_OP_MUL_MAT_ID</span> 就落在这里。'
 ];

@@ -110,7 +110,7 @@
 
 ### 与 CANN / OpenVINO 的路线差别
 
-L7-01 的 CANN 与 L7-03 的 OpenVINO 都是**运行期映射**：前者把 ggml op 变成 ACL 描述符（`aclCreateTensor`，`ggml-cann/acl_tensor.cpp:89`），后者把 ggml 子图翻成 `ov::Tensor` / `ov::op` 组成的模型（`ggml-openvino/ggml-decoder.cpp:1392`）再交给厂商栈编译。ET 把"翻译"提前到构建期，运行期只做执行 —— 代价是**算子集固定**：没有内核的 op 只能在 `supports_op` 阶段被拒（44 个 case），回退由调度器（L4-02）完成。
+L7-01 的 CANN 与 L7-03 的 OpenVINO 都是**运行期映射**：前者把 ggml op 变成 ACL 描述符（`aclCreateTensor`，`ggml-cann/acl_tensor.cpp:89`），后者把 ggml 子图翻成 `ov::Tensor` / `ov::op` 组成的模型（`ggml-openvino/ggml-decoder.cpp:1392`）再交给 OpenVINO 运行时（L7-03 展开）。ET 把"翻译"提前到构建期，运行期只做执行 —— 代价是**算子集固定**：没有内核的 op 只能在 `supports_op` 阶段被拒（44 个 case），回退由调度器（L4-02）完成。
 
 ### 数据面抽象：共享表示 + 独立内存
 

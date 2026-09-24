@@ -523,7 +523,7 @@ root.appendChild(wrap);
 const t = U.table(
   ['跳（函数）', '文件:行号', '判据：谁决定下一步'],
   [['模型 build → build_attn', 'src/models/llama.cpp:169', '层里有 wo 权重 → 走注意力块'],
-   ['build_attn → build_lora_mm(wo, cur)', 'src/llama-graph.cpp:2804', 'wo 非空 },
+   ['build_attn → build_lora_mm(wo, cur)', 'src/llama-graph.cpp:2804', 'wo 非空 → 做输出投影'],
    ['build_lora_mm → ggml_mul_mat(w, cur)', 'src/llama-graph.cpp:1518', '这一次调用只是加节点'],
    ['构造器：断言 + ne[] + op/src', 'ggml/src/ggml.c:3333 / 3348', 'can_mul_mat 的三条 ne 判据'],
    ['ggml_build_forward_expand → visit_parents', 'ggml/src/ggml.c:7337 → 7236', 'visited_hash_set 没见过才继续 DFS'],
@@ -712,7 +712,17 @@ L.section(
     src=SRC_CPUC, parts=[(1744, 1756), (1869, 1872), (240, 249), (1165, 1183)], lang='c')
 
 L.section(
-    '八、同一跳在 CUDA 侧（对照）',
+    '八、链路的终点：x86 上的 ggml_vec_dot_q4_0_q8_0',
+    '`vec_dot` 的函数指针最终落到某个具体内核。以 x86 为例，'
+    '`ggml/src/ggml-cpu/arch/x86/quants.c:701` 的 `ggml_vec_dot_q4_0_q8_0` 就是 Q4_0 权重'
+    '（`block_q4_0`）与 Q8_0 激活（`block_q8_0`）相乘的那一段：'
+    '`nb = n / QK8_0` 个块，每块用 `x[ib].d * y[ib].d` 做 scale，'
+    'AVX2 分支用 `_mm256_setzero_ps()` 起累加器（718-720）。\n\n'
+    '**这一课到此处闭合**：`ggml_mul_mat` 这一行代码，最终变成了这里的 SIMD 指令。',
+    src=SRC_X86, parts=[(701, 720)], lang='c')
+
+L.section(
+    '九、同一跳在 CUDA 侧（对照）',
     '同一个 `iface.graph_compute` 槽，在 CUDA 后端里填的是 '
     '`ggml_backend_cuda_graph_compute`（`ggml/src/ggml-cuda/ggml-cuda.cu:4421`，接口表见 4853）。'
     '它内部的 `ggml_cuda_compute_forward`（2067）同样是一个 `switch (dst->op)`，'
@@ -723,7 +733,7 @@ L.section(
                          (4850, 4854)], lang='cpp')
 
 L.section(
-    '九、完整调用链表（每一步的判据）',
+    '十、完整调用链表（每一步的判据）',
     '把这一课压成一张表。左列是跳，中间是位置，右列是"谁决定下一步走哪"。\n\n'
     '| # | 跳（函数） | 文件:行号 | 判据 |\n|---|---|---|---|\n'
     '| 0 | 模型 build → `build_attn` | `src/models/llama.cpp:169` | 层里有 `wo` → 走注意力块 |\n'

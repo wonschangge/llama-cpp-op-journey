@@ -454,7 +454,7 @@ void main() {
     const uint tid = gl_LocalInvocationID.x % 64;
 //>> tid 在 block 内的编号 0..63
     const uint il  = tid/32;
-//>> il ∈ {0,1}：il=0 管低 nibble 的 16 个，il=1 管高 nibble 的 16 个
+//>> il ∈ {0,1}：决定从 qs 的哪 8 个字节取值（0..7 还是 8..15）
     const uint ir  = tid%32;
     const uint ib = 32*i + ir;
 //>> ib：全局块号；第 17 行越界就返回
@@ -493,11 +493,11 @@ void main() {
 
     const rows = wrap.querySelector('#rows');
     function mkRow(label, cls) {
-      const r = U.el('div', { class: 'row', style: 'gap:5px;align-items:center' });
-      r.appendChild(U.el('span', { class: 'cm', style: 'margin:0;width:118px', text: label }));
+      const r = U.el('div', { class: 'row', style: 'gap:4px;align-items:center' });
+      r.appendChild(U.el('span', { class: 'cm', style: 'margin:0;width:132px;font-size:9px', text: label }));
       const cells = [];
       for (let i = 0; i < 16; i++) {
-        const c = U.el('div', { style: 'width:26px;height:17px;border:1px solid var(--border);border-radius:2px;' +
+        const c = U.el('div', { style: 'width:24px;height:17px;border:1px solid var(--border);border-radius:2px;' +
           'background:#10151b;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--dim)' });
         c.textContent = '--';
         r.appendChild(c); cells.push(c);
@@ -505,8 +505,8 @@ void main() {
       rows.appendChild(r);
       return { r: r, cells: cells, cls: cls };
     }
-    const lo = mkRow('il=0 -> 低 nibble', 'a');
-    const hi = mkRow('il=1 -> 高 nibble', 'e');
+    const lo = mkRow('+l  <- 低 nibble', 'a');
+    const hi = mkRow('+l+16  <- 高 nibble', 'e');
     lo.r.style.opacity = '.35'; hi.r.style.opacity = '.35';
 
     const msg = wrap.querySelector('#msg');
@@ -514,23 +514,31 @@ void main() {
       '输入是一个 <span class="k">block_q4_0</span>：一个 f16 scale + 16 字节（32 个 nibble）。' +
       '输出是 32 个 f16。',
       '第 <span class="v">11</span> 行：一个 workgroup 认领 <b>4 个块</b>，' +
-      '<span class="v">tid/64</span> 决定自己管哪一个。',
-      '第 <span class="v">13-14</span> 行：块内 64 个线程再对半分 —— ' +
-      '<span class="v">il=0</span> 处理低 4 位，<span class="v">il=1</span> 处理高 4 位。',
-      '第 <span class="v">21-22</span> 行算出读写下标；第 <span class="v">24</span> 行取 scale。',
-      '第 <span class="v">26-29</span> 行：8 次 unroll，每次写两个元素' +
-      '（<span class="v">+l</span> 低 nibble、<span class="v">+l+16</span> 高 nibble）—— 正好 32 个。',
+      '<span class="v">tid/64</span> 决定自己管哪一个；第 <span class="v">13-14</span> 行再把 64 个线程对半分。',
+      '第 <span class="v">27-28</span> 行每次 unroll 写<b>两个</b>元素：' +
+      '<span class="v">+l</span> 取低 4 位、<span class="v">+l+16</span> 取高 4 位 —— ' +
+      '所以两行分别是输出的前 16 个与后 16 个。',
+      '<span class="v">il=0</span> 的线程读 <span class="v">qs[0..7]</span>（<span class="v">q_idx=0</span>），' +
+      '填两行的<b>前 8 格</b>。',
+      '<span class="v">il=1</span> 的线程读 <span class="v">qs[8..15]</span>（<span class="v">q_idx=8</span>），' +
+      '填两行的<b>后 8 格</b> —— 32 个元素这才齐。',
       '一句话：<span class="k">dequant_*.comp 只有块布局不同</span>，骨架完全一致。'
     ];
     tl.at(600, () => { msg.innerHTML = texts[0]; });
-    tl.at(3400, () => { msg.innerHTML = texts[1]; lo.r.style.opacity = '1'; hi.r.style.opacity = '.35'; });
-    tl.at(6400, () => { msg.innerHTML = texts[2]; hi.r.style.opacity = '1'; });
+    tl.at(3400, () => { msg.innerHTML = texts[1]; lo.r.style.opacity = '1'; hi.r.style.opacity = '1'; });
+    tl.at(6400, () => {
+      lo.cells.forEach(c => { c.textContent = '?'; });
+      hi.cells.forEach(c => { c.textContent = '?'; });
+      msg.innerHTML = texts[2];
+    });
     tl.at(9400, () => {
-      lo.cells.forEach((c, i) => { c.style.background = 'rgba(88,166,255,.20)'; c.style.borderColor = 'var(--a)'; c.textContent = 'n' + i; });
+      lo.cells.slice(0, 8).forEach((c, i) => { c.style.background = 'rgba(88,166,255,.20)'; c.style.borderColor = 'var(--a)'; c.textContent = 'q' + i; });
+      hi.cells.slice(0, 8).forEach((c, i) => { c.style.background = 'rgba(88,166,255,.20)'; c.style.borderColor = 'var(--a)'; c.textContent = 'q' + i; });
       msg.innerHTML = texts[3];
     });
     tl.at(12400, () => {
-      hi.cells.forEach((c, i) => { c.style.background = 'rgba(247,120,186,.20)'; c.style.borderColor = 'var(--e)'; c.textContent = 'n' + (i + 16); });
+      lo.cells.slice(8).forEach((c, i) => { c.style.background = 'rgba(247,120,186,.20)'; c.style.borderColor = 'var(--e)'; c.textContent = 'q' + (i + 8); });
+      hi.cells.slice(8).forEach((c, i) => { c.style.background = 'rgba(247,120,186,.20)'; c.style.borderColor = 'var(--e)'; c.textContent = 'q' + (i + 8); });
       msg.innerHTML = texts[4];
     });
     tl.at(16400, () => {
@@ -596,8 +604,9 @@ layout (binding = 4) readonly buffer Counts {int data_expert_count[];};
       'A 的 nibble 与 B 的 int8 直接做 <b>dot</b>，比反量化成浮点再 FMA 更省。',
       '<span class="v">B</span> 不是权重 —— 是激活。权重（A）保持量化态不被展开，' +
       '这是 Vulkan 后端省显存/带宽的关键。',
-      '三个族的<b>分工边界是 M</b>：M=1 的解码走 <span class="v">mul_mat_vec</span>，' +
-      'M 很大走 <span class="v">mul_mm</span>，两者都能量化×量化时用 <span class="v">mul_mmq</span>。',
+      '三个族的<b>分工边界</b>不同：<span class="v">mul_mat_vec_*</span> 的 pipeline 表按' +
+      '<b>列数</b>索引（source.md 第七节：<span class="v">[dmmv_wg][a_type][num_cols-1]</span>），' +
+      '<span class="v">mul_mm*</span> 按 M/N 分块，<span class="v">mul_mmq</span> 走整数点积。',
       '<span class="v">MUL_MAT_ID</span> 分支（第 38-41 行）多两个 binding：' +
       '专家 id 与每专家行数 —— MoE 的 <span class="v">GGML_OP_MUL_MAT_ID</span> 就落在这里。'
     ];
@@ -631,17 +640,17 @@ layout (binding = 4) readonly buffer Counts {int data_expert_count[];};
 //>> dm 是两个 f16：d（scale）与 dmin
 
         const uint32_t scale0_u32 = data_a_packed16[ib0 + i].scales[v_im    ];
-//>> scales 的 12 个字节里塞了 8 个 6-bit scale
+//>> scales 的 12 个字节里塞了 8 个 6-bit scale + 8 个 6-bit min
         const uint32_t scale4_u32 = data_a_packed16[ib0 + i].scales[v_im + 2];
         const uint32_t scale8_u32 = data_a_packed16[ib0 + i].scales[v_im + 4];
 
         const uint32_t scale_0_4_l = (scale4_u32 << 16) | scale0_u32;
-//>> 低位 4 个 scale 先拼进一个 uint32
+//>> 把相邻两个 16-bit 槽拼成一个 uint32
         const uint32_t scale_0_4_h = (scale_0_4_l & 0xC0C0C0C0) >> 2;
         const vec4 scale_0_4_l_f = vec4(unpack8(scale_0_4_l & 0x3F3F3F3F));
-//>> unpack8：把一个 uint32 的 4 个字节各取 6 位 —— 这就是 6-bit 解包
+//>> unpack8 + 掩码 0x3F3F3F3F：从一个 uint32 里取出 4 个 6-bit scale
         const vec4 scale8_f = vec4(unpack8((((scale8_u32 << 12) | scale8_u32) & 0x0F0F0F0F) | scale_0_4_h));
-//>> 高 4 个 scale 从剩下的位里拼出来
+//>> 后 4 个 scale 连同刚才溢出的高位一起拼出来
 
         const FLOAT_TYPE sc0 = scale_0_4_l_f.x;
         const FLOAT_TYPE sc1 = scale_0_4_l_f.y;
@@ -680,8 +689,9 @@ layout (binding = 4) readonly buffer Counts {int data_expert_count[];};
       'K-quant 的块是 <span class="k">super-block</span>：256 个元素，8 个 sub-block 各 32 个。',
       '每个 sub-block 有自己的 6-bit scale。8 个 x 6 bit = 48 bit，正好塞进 ' +
       '<span class="v">scales[12]</span>（12 字节 = 96 bit，另一半留给 min）。',
-      '第 <span class="v">19-21</span> 行一次取 3 个 uint32（每个含 2 个 scale），' +
-      '第 <span class="v">23-26</span> 行用移位/掩码把它们摊成 8 个浮点 scale。',
+      '第 <span class="v">19-21</span> 行一次取 3 个 16-bit 槽' +
+      '（<span class="v">scales[]</span> 一共 6 个 uint16 = 12 字节），' +
+      '第 <span class="v">23-26</span> 行用移位/掩码把它们摊成 8 个 6-bit scale。',
       '第 <span class="v">12-13</span> 行：一个 super-block 的数据被劈成 ' +
       '<span class="v">y1_idx</span>（前 128 元素）与 <span class="v">y2_idx</span>（后 128）。',
       '第 <span class="v">37-38</span> 行取 qs：<span class="v">q_offset/4</span> 与 <span class="v">+16</span> —— ' +

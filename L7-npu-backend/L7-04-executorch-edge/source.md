@@ -77,7 +77,7 @@ ggml/src/ggml-et/et-kernels/src/unary_f32.c
 
 **验收点**：看完这一课，你要能说出它与 GPU 后端在**数据面抽象**上的不同 —— 关键一条是：跨 host/device 边界的不是"裸指针 + 形状 + 元素数"，而是**整个 `struct ggml_tensor` 按值**（`ggml-et-ops.cpp:282`），设备内核直接读它的 `ne[]` / `nb[]` / `type` / `data`（`scale_f32.c:32-40`）。
 
-**关于课名的说明（实测修正）**：计划里这一课叫"ExecuTorch 后端"，讲解要点写的是"ExecuTorch 的委托机制、图导出与运行时"。在本仓库 v0.5.0 的 `ggml/src/ggml-et/` 里**搜不到** `executorch` / `torch` / `delegate` / `.pte` 任何一个符号：它用的是 ET 平台 SDK 的 `dev::IDeviceLayer` + `rt::IRuntime`（`ggml-et-common.h:6-8`、`CMakeLists.txt:239` 链接 `runtime::etrt_static deviceLayer::deviceLayer`），机制是"**预编译内核 + 运行期加载**"，不是"导出 `.pte` 再委托"。本课按代码实际机制写，并把这条差异显式讲出来。
+**关于课名的说明（实测修正）**：计划里这一课叫"ExecuTorch 后端"，讲解要点写的是"ExecuTorch 的委托机制、图导出与运行时"。在本仓库 v0.5.0 的 `ggml/src/ggml-et/` 里**搜不到** `executorch` / `torch` / `delegate` / `.pte` 任何一个符号：它用的是 ET 平台 SDK 的 `dev::IDeviceLayer` + `rt::IRuntime`（`ggml-et-common.h:6-8`；`ggml/src/ggml-et/CMakeLists.txt:239` 链接 `runtime::etrt_static deviceLayer::deviceLayer`），机制是"**预编译内核 + 运行期加载**"，不是"导出 `.pte` 再委托"。本课按代码实际机制写，并把这条差异显式讲出来。
 
 ---
 
@@ -624,7 +624,7 @@ static inline int ggml_tensor_is_contiguous(const struct ggml_tensor * t, int ty
 
 ET 后端自带一套"逐算子对照"设施：`ggml_et_cpu_compare_ctx` 同时持有 CPU 与 ET 两侧的张量、图和数据指针，先（`init_pre`）把输入拷到 CPU 侧，等 ET 内核跑完再（`compute_and_check`）用 CPU 后端算一遍并按容差比较。
 
-每个 op 的配置（`ggml-et-ops.cpp:11-90` 起）都是 `enabled = false`：默认关闭，调试时打开。**一个没有图级编译器的后端，只能用对拍来定位精度问题** —— 这与 L5-04 里 CPU 侧靠 repack/量化内核的单元测试保证正确性形成对照。
+每个 op 家族的配置（从 `ggml-et-ops.cpp:12` 的 rope 到 `2217` 的 gated_delta_net）都是 `enabled = false`：默认关闭，调试时打开。**一个没有图级编译器的后端，只能用对拍来定位精度问题** —— 这与 L5-04 里 CPU 侧靠 repack/量化内核的单元测试保证正确性形成对照。
 
 <!-- src: ggml/src/ggml-et/ggml-et-cpu-compare.h -->
 ```c

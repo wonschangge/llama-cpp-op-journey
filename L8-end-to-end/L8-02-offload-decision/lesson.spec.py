@@ -363,24 +363,26 @@ wrap.innerHTML = `
 root.appendChild(wrap);
 
 const lane = wrap.querySelector('#lane');
-const B = [1,1,0,1,0,0,1,0,1,1];   // 1 = GPU 权重节点, 0 = CPU 权重节点, 空 = 无权重
-const KIND = ['w','w','-','w','-','-','w','-','w','w'];
+const KIND = ['w','-','w', 'w','-','w', 'w','-','w', 'w','-','w', 'w','-','w', 'w','-','w'];
+const GPU  = [ 0,  0,  0,   0,  0,  0,   0,  0,  0,   0,  0,  0,   1,  1,  1,   1,  1,  1];
 const cells = [];
-const row = U.el('div', { style: 'display:flex;gap:4px;align-items:center;width:100%' });
+const row = U.el('div', { style: 'display:flex;gap:3px;align-items:center;width:100%' });
 lane.appendChild(row);
 KIND.forEach((k, i) => {
-  const base = B[i] === 1;
-  const c = U.el('div', { style: 'width:34px;height:30px;flex:0 0 auto;border:1px solid ' +
-    (base ? 'var(--b)' : 'var(--a)') + ';border-radius:3px;background:' +
-    (base ? 'rgba(63,185,80,.18)' : 'rgba(88,166,255,.18)') +
+  const g = GPU[i] === 1, hasW = k === 'w';
+  const c = U.el('div', { style: 'width:30px;height:30px;flex:0 0 auto;border:1px solid ' +
+    (hasW ? (g ? 'var(--b)' : 'var(--a)') : 'var(--border)') + ';border-radius:3px;background:' +
+    (hasW ? (g ? 'rgba(63,185,80,.18)' : 'rgba(88,166,255,.18)') : '#10151b') +
     ';display:flex;align-items:center;justify-content:center;font-size:9px;color:' +
-    (base ? 'var(--b)' : 'var(--a)') });
-  c.textContent = k === 'w' ? ('#' + i) : ('#' + i);
-  if (k === '-') { c.style.borderStyle = 'dashed'; c.style.opacity = '.5'; }
+    (hasW ? (g ? 'var(--b)' : 'var(--a)') : 'var(--dim)') });
+  c.textContent = Math.floor(i / 3);
+  if (k === '-') { c.style.borderStyle = 'dashed'; }
+  if (i > 0 && i % 3 === 0) c.style.marginLeft = '8px';
   row.appendChild(c); cells.push(c);
 });
 lane.appendChild(U.el('div', { class: 'formula', style: 'padding:3px 8px;font-size:9.5px',
-  html: '实线 = pass 1 已被权重<b>钉死</b>归属（蓝=CPU / 绿=GPU）；虚线 = 无权重输入，pass 1 返回 -1，归属未知' }));
+  html: '格内数字 = 层号，一层 3 个节点。实线 = pass 1 已被权重<b>钉死</b>归属（蓝 = CPU / 绿 = GPU）；' +
+        '虚线 = 没有权重输入，pass 1 返回 -1，归属未知' }));
 
 wrap.querySelector('#notes5').innerHTML =
   '<div class="card" style="border-left-color:var(--b)">' +
@@ -617,7 +619,7 @@ L.section(
     '- **输入层永远在 CPU**（1536-1537 行硬编码，源码注释给了理由：几乎没有好处）；\n'
     '- **输出层不是特例**：它走的是同一个 `get_layer_buft_list(n_layer_all)`；\n'
     '- **多卡时的层分配**用 `std::upper_bound(splits, ..., float(il - i_gpu_start)/act_gpu_layers)`，'
-    '而 `splits` 是各卡空闲显存归一化后的前缀和（1507-1519 行）—— 这一条 L3-02 已经展开过。\n\n'
+    '而 `splits` 是各卡空闲显存归一化后的前缀和（1511-1519 行）—— 这一条 L3-02 已经展开过。\n\n'
     '回顾 L2-05：那一课引用过 `1521-1546` 这一段，讲的是"层怎么被分配给设备"；'
     '本课往下追的是"这个分配结果怎么影响图的形状"。',
     src=MODEL, parts=[(1535, 1546)], lang='c')

@@ -53,10 +53,10 @@ enum ApirCommandType {
 
     const t = U.table(
       ['族', '文件', '跑在哪', '本课怎么讲'],
-      [['客户机侧 frontend', '18', 'VM 里的 ggml-virtgpu 库', '幕 2 / 5 / 6 / 7 / 8 逐字'],
-       ['宿主机侧 backend', '11', 'virglrenderer 加载的库', '幕 3 / 7 逐字'],
-       ['两侧共用协议', '6', 'backend/shared/，编译进两边', '幕 1 / 4 逐字'],
-       ['通用工具', '4', '客户机侧：窗口 + 稀疏数组', '幕 8 逐字']]);
+      [['客户机侧 frontend', '18', 'VM 里的 ggml-virtgpu 库', '幕 2/5/6/7/9，第七/十三节'],
+       ['宿主机侧 backend', '11', 'virglrenderer 加载的库', '幕 3，第六/十二节'],
+       ['两侧共用协议', '6', 'backend/shared/，编译进两边', '幕 1/4，第二节'],
+       ['通用工具', '4', '客户机侧：窗口 + 稀疏数组', '幕 8，第十四节']]);
     wrap.querySelector('#tbl').appendChild(t.el);
 
     const msg = wrap.querySelector('#msg');
@@ -688,7 +688,7 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_virtgpu_reg();
        ['buffer 分配', '只发命令，拿回一个句柄', '真后端 alloc_buffer（记入跟踪表）', 'backend-dispatched-buffer-type.cpp:60-79'],
        ['数据写入', 'memcpy 进共享窗口', 'get_shmem_ptr 换指针后写设备', 'virtgpu-forward-buffer.cpp:53 / backend-dispatched-buffer.cpp:64,71'],
        ['图执行', '整图序列化后一次发走', '反序列化后交给真后端 graph_compute', 'virtgpu-forward-backend.cpp:17 / backend-dispatched-backend.cpp:56,93'],
-       ['同步', '轮询 reply 窗口的 atomic', '不做额外事：执行完就写回复', 'virtgpu.cpp:490 / backend-dispatched-backend.cpp:95-97'],
+       ['同步', '轮询 reply 窗口的 atomic', '真后端是异步的则补一次 synchronize', 'virtgpu.cpp:490 / backend-dispatched-backend.cpp:95-97'],
        ['地址', '只持有偏移与句柄', '持有真指针与真 buffer', 'apir_cs_ggml-rpc-front.cpp:42 / …-back.cpp:50']],
       { monoCols: [] });
     wrap.querySelector('#tbl').appendChild(t.el);
@@ -716,14 +716,15 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_virtgpu_reg();
       '<span class="k">buffer 分配</span>：客户机只有一个句柄，宿主侧才真正持有 buffer 对象（还在跟踪表里）。',
       '<span class="k">数据写入</span>：客户机做的是 memcpy，宿主做的是"换指针 + 写设备"。',
       '<span class="k">图执行</span>：一次往返算整张图，命令流并不细碎。',
+      '<span class="k">同步</span>：客户机这一侧只有一个 atomic 计数器；宿主只在真后端异步时补一次 synchronize。',
       '记住验收点：<span class="v">设备内存在宿主机上，客户机拿不到指针</span>，所以只能"共享内存窗口 + 命令流"。'
     ];
     tl.at(700, () => { msg.innerHTML = texts[0]; });
     rows.forEach((r, i) => tl.at(2400 + i * 2300, () => {
       rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
-      msg.innerHTML = texts[Math.min(i + 1, 5)];
+      msg.innerHTML = texts[Math.min(i + 1, 6)];
     }));
-    tl.at(16800, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[5]; });
+    tl.at(16800, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[6]; });
   }
 },
 

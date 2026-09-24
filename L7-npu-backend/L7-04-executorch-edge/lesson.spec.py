@@ -143,7 +143,7 @@ L.note('**验收点**：看完这一课，你要能说出它与 GPU 后端在**�
 L.note('**关于课名的说明（实测修正）**：计划里这一课叫"ExecuTorch 后端"，讲解要点写的是'
        '"ExecuTorch 的委托机制、图导出与运行时"。在本仓库 v0.5.0 的 `ggml/src/ggml-et/` 里'
        '**搜不到** `executorch` / `torch` / `delegate` / `.pte` 任何一个符号：它用的是 ET 平台 SDK 的 '
-       '`dev::IDeviceLayer` + `rt::IRuntime`（`ggml-et-common.h:6-8`、`CMakeLists.txt:239` 链接 '
+       '`dev::IDeviceLayer` + `rt::IRuntime`（`ggml-et-common.h:6-8`；`ggml/src/ggml-et/CMakeLists.txt:239` 链接 '
        '`runtime::etrt_static deviceLayer::deviceLayer`），机制是"**预编译内核 + 运行期加载**"，'
        '不是"导出 `.pte` 再委托"。本课按代码实际机制写，并把这条差异显式讲出来。')
 
@@ -214,7 +214,7 @@ L.scene(
     kicker='L7-04 · 运行期',
     title='运行期没有编译：一张图 = 一个 <span class="hl-c">for</span> + 一个 <span class="hl-c">switch</span>',
     sub='graph_compute 逐节点分派，只在两处做图级融合（RMS_NORM+MUL、MUL_MAT+ADD）。',
-    caption='★ 对照 L7-03：OpenVINO 在运行期把子图翻成 ov::Model 再编译；ET 这里没有任何"编译"调用。',
+    caption='★ 对照 L7-03：OpenVINO 在运行期把子图翻成 ov::Tensor / ov::op 组成的模型；ET 这里没有任何"编译"调用。',
     src=ET, parts=[(657, 680)], duration=22000,
     mark_src=[659, 661, 664, 670, 675],
     notes_src={659: 'uberkernel：本图要打包成"一个设备内核"时，先开一段',
@@ -346,7 +346,7 @@ root.appendChild(wrap);
 
 const t = U.table(
   ['对象', '类型', '本课证据'],
-  [['_drv.device_layer', 'dev::IDeviceLayer', 'createPcieDeviceLayer / createSysEmuDeviceLayer（153-157）'],
+  [['_drv.device_layer', 'dev::IDeviceLayer', 'createPcieDeviceLayer / createSysEmuDeviceLayer（152-158）'],
    ['_drv.runtime', 'rt::IRuntime', 'IRuntime::create(device_layer)（160）'],
    ['dev_ctx->default_stream', 'rt::StreamId', '一个设备一条默认流，内核按序执行（1771）'],
    ['dev_ctx->loaded_kernels', 'map<string, rt::KernelId>', '名字 -> 设备内核句柄（common.h:75, kernels.cpp:176）'],
@@ -597,7 +597,7 @@ const t = U.table(
    ['设备侧看到的元数据',
     'ne / nb / type / data 全在<br>scale_f32.c:32-40',
     '只有入参里的维度与指针',
-    '厂商自己的 shape / stride（L7-01 / L7-03 展开）'],
+    '厂商自己的 shape / stride 表示（acl_tensor.cpp:87-90）'],
    ['量化块布局',
     '设备侧直接 include ggml-common.h<br>quants.h:10-11',
     '复用 ggml 的 block_* 定义',
@@ -883,7 +883,8 @@ L.section(
     'ET 后端自带一套"逐算子对照"设施：`ggml_et_cpu_compare_ctx` 同时持有 CPU 与 ET 两侧的张量、'
     '图和数据指针，先（`init_pre`）把输入拷到 CPU 侧，等 ET 内核跑完再'
     '（`compute_and_check`）用 CPU 后端算一遍并按容差比较。\n\n'
-    '每个 op 的配置（`ggml-et-ops.cpp:11-90` 起）都是 `enabled = false`：'
+    '每个 op 家族的配置（从 `ggml-et-ops.cpp:12` 的 rope 到 `2217` 的 gated_delta_net）'
+    '都是 `enabled = false`：'
     '默认关闭，调试时打开。**一个没有图级编译器的后端，只能用对拍来定位精度问题** —— '
     '这与 L5-04 里 CPU 侧靠 repack/量化内核的单元测试保证正确性形成对照。',
     src=CMPH, parts=[(24, 46)], lang='c')
@@ -965,7 +966,7 @@ L.conclusion(
     '与 CANN / OpenVINO 的路线差别',
     'L7-01 的 CANN 与 L7-03 的 OpenVINO 都是**运行期映射**：前者把 ggml op 变成 ACL 描述符'
     '（`aclCreateTensor`，`ggml-cann/acl_tensor.cpp:89`），后者把 ggml 子图翻成 `ov::Tensor` / '
-    '`ov::op` 组成的模型（`ggml-openvino/ggml-decoder.cpp:1392`）再交给厂商栈编译。'
+    '`ov::op` 组成的模型（`ggml-openvino/ggml-decoder.cpp:1392`）再交给 OpenVINO 运行时（L7-03 展开）。'
     'ET 把"翻译"提前到构建期，运行期只做执行 —— 代价是**算子集固定**：'
     '没有内核的 op 只能在 `supports_op` 阶段被拒（44 个 case），回退由调度器（L4-02）完成。')
 

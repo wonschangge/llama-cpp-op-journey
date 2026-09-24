@@ -187,17 +187,12 @@ void quantize_row_q8_1(const float * GGML_RESTRICT x, void * GGML_RESTRICT y, in
   kicker: "L5-04 · 核心",
   title: "★ <span class=\"hl-a\">repack</span>：交错布局从类型号里搬进后端",
   sub: "block<K,N>：一个块里放 N 行的 scale 和 N 行的 quants —— 字节总数不变，只是换了顺序。",
-  caption: "回顾 L1-01：旧式的 GGML_TYPE_Q4_0_4_4 把 4x4 交错编进了类型号（ggml.h:421 注明 support has been removed）；现在同一件事改由后端的 repack 缓冲做。引用区间为 repack.h:26-27 与 31-46（28-29 行是 qs 成员声明，见注解）。",
+  caption: "回顾 L1-01：旧式的 GGML_TYPE_Q4_0_4_4 把 4x4 交错编进了类型号（ggml.h:421 注明 support has been removed）；现在同一件事改由后端的 repack 缓冲做。模板本身在 repack.h:13-29（QK_0<K>() + block<K,N>），这里的 7 条 static_assert 与 7 个别名说明\"N 行合成一块、字节数不变\"。",
   src: "ggml/src/ggml-cpu/repack.h",
-  mark: [0, 1, 7, 15, 16, 18, 20],
-  lineNo: 0,
-  code: `template <int K, int N> struct block {
-    ggml_half d[N];                         // deltas for N qK_0 blocks
-//>> 下一个成员是 qs：N 行的 4-bit 数据交错放在后面（总位数 = QK_0<K>() * N * K，即下面 static_assert 里的 QK8_0 * 2 / * 4 / * 8）；K 由 QK_0<K>() 选量化家族（1 -> QK1_0、4 -> QK4_0、8 -> QK8_0），N 是交错进同一块的行数
-//>> ---- ggml/src/ggml-cpu/repack.h:31-46 ----
-// control size
+  mark: [2, 3, 4, 10, 11, 12, 13, 14, 15],
+  lineNo: 31,
+  code: `// control size
 static_assert(sizeof(block<1, 4>) == 4 * sizeof(ggml_half) + QK1_0 / 2, "wrong block<1,4> size/padding");
-//>> 下一个成员是 qs：N 行的 4-bit 数据交错放在后面（总位数 = QK_0<K>() * N * K，即下面 static_assert 里的 QK8_0 * 2 / * 4 / * 8）；K 由 QK_0<K>() 选量化家族（1 -> QK1_0、4 -> QK4_0、8 -> QK8_0），N 是交错进同一块的行数
 static_assert(sizeof(block<4, 4>) == 4 * sizeof(ggml_half) + QK8_0 * 2, "wrong block<4,4> size/padding");
 static_assert(sizeof(block<4, 8>) == 8 * sizeof(ggml_half) + QK8_0 * 4, "wrong block<4,8> size/padding");
 static_assert(sizeof(block<4, 16>) == 16 * sizeof(ggml_half) + QK8_0 * 8, "wrong block<4,16> size/padding");
@@ -254,22 +249,22 @@ using block_q8_0x16 = block<8, 16>;`,
 
     const msg = wrap.querySelector('#msg');
     const texts = [
-      'repack 加的是<span class="k">新布局</span>，不是新类型号：<span class="v">block&lt;K,N&gt;</span> 是编译期模板。',
-      '<span class="v">ggml_half d[N]</span>：N 行的 scale 先集中放在块首。',
-      '<span class="v">int8_t qs[...]</span>：N 行的 4-bit 数据交错放在后面 —— "SIMD 友好"就来自这里。',
-      '<span class="v">block_q4_0x4 = block&lt;4,4&gt;</span>、<span class="v">block_q4_0x8 = block&lt;4,8&gt;</span>、<span class="v">block_q4_0x16 = block&lt;4,16&gt;</span>：N = 交错几行。',
-      '<span class="v">block_q8_0x4 / x8 / x16 = block&lt;8,N&gt;</span>：激活侧用 K = 8 的同一族模板。',
+      'repack 加的是<span class="k">新布局</span>，不是新类型号：<span class="v">block_q4_0x4 = block&lt;4,4&gt;</span> 只是给模板起了个别名。',
+      '<span class="v">4 * sizeof(ggml_half)</span>：N 行的 scale 先集中放在块首（4 行 = 8 字节）。',
+      '<span class="v">QK8_0 * 2 / * 4 / * 8</span>：后面 64 / 128 / 256 字节是 N 行交错的量化数据 —— "SIMD 友好"就来自这里。',
+      '<span class="v">block_q4_0x4 / x8 / x16</span> = <span class="v">block&lt;4, 4 / 8 / 16&gt;</span>：N = 交错进同一块的行数。',
+      '<span class="v">block_q8_0x4 / x8 / x16</span> = <span class="v">block&lt;8, N&gt;</span>：激活侧用 K = 8 的同一族模板。',
       'static_assert 把等式钉在编译期：<span class="v">4 x 2 + 32 x 2 = 72 = 4 x 18</span> —— <span class="k">字节数一个不多一个不少</span>，只是排列变了。'
     ];
-    tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, [0]); });
-    tl.at(3400, () => { msg.innerHTML = texts[1]; U.markLines(document, [1]); });
-    tl.at(6400, () => { msg.innerHTML = texts[2]; U.markLines(document, [4,6]); });
-    tl.at(9800, () => { msg.innerHTML = texts[3]; U.markLines(document, [4,6]); });
-    tl.at(13200, () => { msg.innerHTML = texts[4]; U.markLines(document, [14,15,17,19]); });
+    tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, [10,11]); });
+    tl.at(3400, () => { msg.innerHTML = texts[1]; U.markLines(document, [2]); });
+    tl.at(6400, () => { msg.innerHTML = texts[2]; U.markLines(document, [3,4]); });
+    tl.at(9800, () => { msg.innerHTML = texts[3]; U.markLines(document, [10,11,12]); });
+    tl.at(13200, () => { msg.innerHTML = texts[4]; U.markLines(document, [13,14,15]); });
     tl.at(16500, () => {
       rows.forEach(r => { r.className = 'on'; });
       msg.innerHTML = texts[5];
-      U.markLines(document, [4,6,8,10]);
+      U.markLines(document, [2,3,4]);
     });
   }
 },

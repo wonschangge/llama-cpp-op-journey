@@ -123,7 +123,8 @@ const msg = wrap.querySelector('#msg');
 const texts = [
   '16 个开关，<span class="k">从上到下就是注册顺序</span>：CUDA 在最前（120 行），CPU 在最后（171 行）。',
   '前 4 个是 GPU 家族：<span class="v">CUDA</span> / <span class="v">METAL</span> / <span class="v">SYCL</span> / <span class="v">VULKAN</span>。<br>' +
-    '注意 <span class="v">GGML_USE_CUDA</span> 这个宏在 HIP 构建（ROCm）和 MUSA 构建下也被打开 —— 见 L6-01。',
+    '注意 <span class="v">GGML_USE_CUDA</span> 这个宏在 HIP 构建（ROCm）和 MUSA 构建下也被打开<br>' +
+    '（<span class="v">ggml-hip/CMakeLists.txt:83</span>、<span class="v">ggml-musa/CMakeLists.txt:65</span>）—— 见 L6-01。',
   '中间 6 个是各家加速器：<span class="v">WEBGPU</span> / <span class="v">ZDNN</span> / <span class="v">VIRTGPU</span> / <span class="v">OPENCL</span> / <span class="v">ZENDNN</span> / <span class="v">HEXAGON</span>。',
   '后 6 个：<span class="v">CANN</span>（昇腾 NPU，L7-01）/ <span class="v">BLAS</span> / <span class="v">RPC</span> / <span class="v">OPENVINO</span> / <span class="v">ET</span> / <span class="v">CPU</span>。',
   '宏是谁定义的？<span class="k">ggml/src/CMakeLists.txt:428-439</span>：只有 <span class="v">GGML_BACKEND_DL=OFF</span> 时才给 ggml 目标加这些宏。<br>' +
@@ -426,7 +427,8 @@ const texts = [
   '★ 关键：<span class="k">这张表与构造函数的 #ifdef 顺序不是同一张表</span>。<br>' +
     '例如 <span class="v">CANN</span>：静态顺序在 CUDA 之后（156 vs 120），动态顺序在 CUDA 之前（587 vs 588）。',
   '而 <span class="v">register_backend()</span> 只做 push_back（201）—— 所以“同一个后端是编译进来的还是加载进来的”，<br>会改变它在 devices[] 里的下标。',
-  '一个只在运行期出现的后端，<span class="k">不可能挤到静态后端前面</span>；要改设备编号，只能改编译期开关的组合。'
+  '一个只在运行期出现的后端，<span class="k">不可能挤到静态后端前面</span>；要改默认编号只能改编译期开关的组合，' +
+    '或者在运行期用 <span class="v">--device</span> 显式给出顺序（第 10 幕）。'
 ];
 function light(i) { trs.forEach((r, k) => { r.className = (k === i) ? 'on' : ''; }); }
 tl.at(700,  () => { msg.innerHTML = texts[0]; light(0); });
@@ -720,7 +722,8 @@ L.footnote_add('按行号指路、未引用原文因而**不计入本课覆盖�
                '`ggml/src/CMakeLists.txt:428-439`（谁定义 GGML_USE_*）、`common/arg.cpp:1116-1180`（设备名解析与 RPC 注册）、'
                '`ggml/src/ggml-cuda/ggml-cuda.cu:5798` 与 `ggml/include/ggml-cuda.h:11/14/17`（CUDA/ROCm/MUSA 设备名）、'
                '`ggml/src/ggml-cpu/ggml-cpu.cpp:353-357`（CPU 设备名）、`ggml/src/ggml-metal/ggml-metal.cpp:307`、'
-               '`ggml/src/ggml-rpc/ggml-rpc.cpp:2273-2276`（RPC 设备数来自 context）、'
+               '`ggml/src/ggml-rpc/ggml-rpc.cpp:2273-2276` 与 `:2311`（RPC 设备数来自 context，初始为 NULL）、'
+               '`ggml/src/ggml-hip/CMakeLists.txt:83` 与 `ggml/src/ggml-musa/CMakeLists.txt:65`（HIP/MUSA 构建复用 GGML_USE_CUDA）、'
                '`ggml/src/ggml-cann/ggml-cann.cpp:2807-2810`（CANN 设备是 GPU 型）、'
                '`src/llama-model.cpp:1488-1542`（splits 与 dev_layer，L2-05 已逐字引用）。')
 L.footnote_add('第 3、5 幕的“本机实测”来自作者自建的临时 harness（直接调用 `ggml_backend_register()` 注册两个假后端，'

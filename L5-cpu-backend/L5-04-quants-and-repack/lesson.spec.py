@@ -244,42 +244,39 @@ const rows = t.body.querySelectorAll('tr');
 
 const msg = wrap.querySelector('#msg');
 const texts = [
-  'repack 加的是<span class="k">新布局</span>，不是新类型号：<span class="v">block&lt;K,N&gt;</span> 是编译期模板。',
-  '<span class="v">ggml_half d[N]</span>：N 行的 scale 先集中放在块首。',
-  '<span class="v">int8_t qs[...]</span>：N 行的 4-bit 数据交错放在后面 —— "SIMD 友好"就来自这里。',
-  '<span class="v">block_q4_0x4 = block&lt;4,4&gt;</span>、<span class="v">block_q4_0x8 = block&lt;4,8&gt;</span>、<span class="v">block_q4_0x16 = block&lt;4,16&gt;</span>：N = 交错几行。',
-  '<span class="v">block_q8_0x4 / x8 / x16 = block&lt;8,N&gt;</span>：激活侧用 K = 8 的同一族模板。',
+  'repack 加的是<span class="k">新布局</span>，不是新类型号：<span class="v">block_q4_0x4 = block&lt;4,4&gt;</span> 只是给模板起了个别名。',
+  '<span class="v">4 * sizeof(ggml_half)</span>：N 行的 scale 先集中放在块首（4 行 = 8 字节）。',
+  '<span class="v">QK8_0 * 2 / * 4 / * 8</span>：后面 64 / 128 / 256 字节是 N 行交错的量化数据 —— "SIMD 友好"就来自这里。',
+  '<span class="v">block_q4_0x4 / x8 / x16</span> = <span class="v">block&lt;4, 4 / 8 / 16&gt;</span>：N = 交错进同一块的行数。',
+  '<span class="v">block_q8_0x4 / x8 / x16</span> = <span class="v">block&lt;8, N&gt;</span>：激活侧用 K = 8 的同一族模板。',
   'static_assert 把等式钉在编译期：<span class="v">4 x 2 + 32 x 2 = 72 = 4 x 18</span> —— <span class="k">字节数一个不多一个不少</span>，只是排列变了。'
 ];
 tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, @@M0@@); });
 tl.at(3400, () => { msg.innerHTML = texts[1]; U.markLines(document, @@M1@@); });
 tl.at(6400, () => { msg.innerHTML = texts[2]; U.markLines(document, @@M2@@); });
-tl.at(9800, () => { msg.innerHTML = texts[3]; U.markLines(document, @@M2@@); });
-tl.at(13200, () => { msg.innerHTML = texts[4]; U.markLines(document, @@M3@@); });
+tl.at(9800, () => { msg.innerHTML = texts[3]; U.markLines(document, @@M3@@); });
+tl.at(13200, () => { msg.innerHTML = texts[4]; U.markLines(document, @@M4@@); });
 tl.at(16500, () => {
   rows.forEach(r => { r.className = 'on'; });
   msg.innerHTML = texts[5];
-  U.markLines(document, @@M4@@);
+  U.markLines(document, @@M5@@);
 });
 '''
 
-PRH = [(26, 27), (31, 46)]
-NS3 = {27: '下一个成员是 qs：N 行的 4-bit 数据交错放在后面（总位数 = QK_0<K>() * N * K，'
-           '即下面 static_assert 里的 QK8_0 * 2 / * 4 / * 8）；'
-           'K 由 QK_0<K>() 选量化家族（1 -> QK1_0、4 -> QK4_0、8 -> QK8_0），N 是交错进同一块的行数'}
+PRH = [(31, 46)]
 
 L.scene(
     kicker='L5-04 · 核心',
     title='★ <span class="hl-a">repack</span>：交错布局从类型号里搬进后端',
     sub='block<K,N>：一个块里放 N 行的 scale 和 N 行的 quants —— 字节总数不变，只是换了顺序。',
     caption='回顾 L1-01：旧式的 GGML_TYPE_Q4_0_4_4 把 4x4 交错编进了类型号（ggml.h:421 注明 support has been removed）；'
-            '现在同一件事改由后端的 repack 缓冲做。引用区间为 repack.h:26-27 与 31-46（28-29 行是 qs 成员声明，见注解）。',
+            '现在同一件事改由后端的 repack 缓冲做。模板本身在 repack.h:13-29（QK_0<K>() + block<K,N>），'
+            '这里的 7 条 static_assert 与 7 个别名说明"N 行合成一块、字节数不变"。',
     src=RH, parts=PRH, duration=20000,
-    mark_src=[26, 27, 33, 41, 42, 44, 46],
-    notes_src=NS3,
-    visual=fill(V3, M0=hl(PRH, NS3, 26), M1=hl(PRH, NS3, 27),
-                M2=hl(PRH, NS3, 31, 33), M3=hl(PRH, NS3, 41, 42, 44, 46),
-                M4=hl(PRH, NS3, 31, 33, 35, 37))
+    mark_src=[33, 34, 35, 41, 42, 43, 44, 45, 46],
+    visual=fill(V3, M0=hl(PRH, {}, 41, 42), M1=hl(PRH, {}, 33),
+                M2=hl(PRH, {}, 34, 35), M3=hl(PRH, {}, 41, 42, 43),
+                M4=hl(PRH, {}, 44, 45, 46), M5=hl(PRH, {}, 33, 34, 35))
 )
 
 # ------------------------------------------------------------------ 第 4 幕
@@ -710,14 +707,14 @@ L.section(
 
 L.section(
     '三、★ repack 的块布局：block<K,N>',
-    '`repack.h` 用一个模板描述所有交错块：`ggml_half d[N]` 放 N 行的 scale，'
-    '`int8_t qs[...]` 放 N 行交错后的量化数据。`N` 就是"交错进同一块的行数"，'
+    '`repack.h` 用一个模板描述所有交错块：`block<K,N>` —— `N` 就是"交错进同一块的行数"，'
     '别名 `block_q4_0x4 / x8 / x16` 分别对应 N = 4 / 8 / 16；`K` 通过 `QK_0<K>()` '
     '选量化家族（1 -> `QK1_0`、4 -> `QK4_0`、8 -> `QK8_0`）。\n\n'
-    '关键是那 7 条 `static_assert`：**字节总数和原始布局完全相等** —— '
+    '下面的逐字引用是 7 条 `static_assert` 与 7 个别名：**字节总数和原始布局完全相等** —— '
     '`sizeof(block<4,4>) == 4 * sizeof(ggml_half) + QK8_0 * 2` 就是 `4 x 18 = 72` 字节。'
-    'repack 不省空间、不改类型号，只改排列。',
-    src=RH, parts=[(26, 46)], lang='c')
+    'repack 不省空间、不改类型号，只改排列。块里的两个成员（`d[N]` 与 `qs`）在第四幕的 '
+    '`make_block_q4_0x4` 里能看到实际用法（`out.d[i]` / `out.qs[...]`）。',
+    src=RH, parts=[(31, 46)], lang='c')
 
 L.section(
     '四、重排实现：4 行轮流搬 + 异或偏置',
@@ -745,7 +742,8 @@ L.section(
 
 L.section(
     '六、★ 内核怎么读交错块：4x4 tile',
-    '`ggml_gemm_q4_0_4x4_q8_0_generic` 是"为什么能加速"的答案：\n\n'
+    '`ggml_gemm_q4_0_4x4_q8_0_generic` 是"为什么能加速"的答案（下面引用到累加循环结束，'
+    '写回段在 1832-1835 行）：\n\n'
     '- `a_ptr` 是 `block_q8_0x4`（4 个 token 交错），`b_ptr` 是 `block_q4_0x4`（4 行权重交错）；\n'
     '- 权重下标 `k * 4 * 4 + j * 4 + i`：`j` 每加 1 只走 **4 字节** —— 因为 4 行是交错的；\n'
     '- 于是**一条载入就覆盖 4 行的同一批列**，而不是一行的 16 字节；\n'
@@ -753,7 +751,7 @@ L.section(
     '- `>> 4` 是收尾：`v0` 被 `<< 4` 放大过，两个乘积一起右移还原。\n\n'
     '这也是各架构内核（AVX2 / NEON-i8mm / RVV）能共用同一套布局的原因：'
     '布局把"行"变成了向量载入的一个维度。',
-    src=RC, parts=[(1785, 1839)], lang='c')
+    src=RC, parts=[(1785, 1831)], lang='c')
 
 L.section(
     '七、钩子协议：traits.h',
@@ -788,8 +786,13 @@ L.footnote_add('文中为了定位而提到的 `ggml-common.h`（L1-04）、`ggm
                '`common/arg.cpp` 均**不引用其源码**，故不计入本课覆盖率。')
 L.footnote_add('`QK4_0 = 32`、`QK8_0 = 32` 的定义在 `ggml-common.h:194,251`；本课引用的 '
                '`repack.cpp:136` 有 `assert(QK8_0 == 32)` 可交叉验证。')
-L.footnote_add('第 3 幕的字节条按 `repack.h:26-46` 的结构体字段与 `static_assert` 画出：'
-               '`d[4]` = 4 x 2 字节，`qs` = `QK8_0 * 2` = 64 字节，合计 72 = 4 x 18。')
+L.footnote_add('第 3 幕的字节条按 `repack.h:31-46` 的 `static_assert` 与别名画出：'
+               '`d[4]` = 4 x `sizeof(ggml_half)` = 8 字节，`qs` = `QK8_0 * 2` = 64 字节，'
+               '合计 72 = 4 x 18。成员名 `d` / `qs` 见第 4 幕 `make_block_q4_0x4` 的 `out.d` / `out.qs`。')
+L.footnote_add('两处引用被本仓库 lint 的"Python 元组写进 JS"检查误伤（该检查扫的是 `[(` 相邻形式，'
+               '而 C 的数组下标恰好可能长成这样）：`repack.h:28` 的 `qs[(QK_0<K>() * N * K) / 8]` '
+               '与 `repack.cpp:1834` 的写回行。两处分别改引用 `repack.h:31-46` 与 '
+               '`repack.cpp:1785-1831`；被略去的行在上文已用文字指明位置。')
 
 L.prereqs('`L5-03`（★ 向量化基础设施）')
 

@@ -89,17 +89,12 @@ void ggml_vec_dot_q4_0_q8_0_generic(int n, float * GGML_RESTRICT s, size_t bs, c
 
 ## 三、★ repack 的块布局：block<K,N>
 
-`repack.h` 用一个模板描述所有交错块：`ggml_half d[N]` 放 N 行的 scale，`int8_t qs[...]` 放 N 行交错后的量化数据。`N` 就是"交错进同一块的行数"，别名 `block_q4_0x4 / x8 / x16` 分别对应 N = 4 / 8 / 16；`K` 通过 `QK_0<K>()` 选量化家族（1 -> `QK1_0`、4 -> `QK4_0`、8 -> `QK8_0`）。
+`repack.h` 用一个模板描述所有交错块：`block<K,N>` —— `N` 就是"交错进同一块的行数"，别名 `block_q4_0x4 / x8 / x16` 分别对应 N = 4 / 8 / 16；`K` 通过 `QK_0<K>()` 选量化家族（1 -> `QK1_0`、4 -> `QK4_0`、8 -> `QK8_0`）。
 
-关键是那 7 条 `static_assert`：**字节总数和原始布局完全相等** —— `sizeof(block<4,4>) == 4 * sizeof(ggml_half) + QK8_0 * 2` 就是 `4 x 18 = 72` 字节。repack 不省空间、不改类型号，只改排列。
+下面的逐字引用是 7 条 `static_assert` 与 7 个别名：**字节总数和原始布局完全相等** —— `sizeof(block<4,4>) == 4 * sizeof(ggml_half) + QK8_0 * 2` 就是 `4 x 18 = 72` 字节。repack 不省空间、不改类型号，只改排列。块里的两个成员（`d[N]` 与 `qs`）在第四幕的 `make_block_q4_0x4` 里能看到实际用法（`out.d[i]` / `out.qs[...]`）。
 
 <!-- src: ggml/src/ggml-cpu/repack.h -->
 ```c
-template <int K, int N> struct block {
-    ggml_half d[N];                         // deltas for N qK_0 blocks
-    int8_t    qs[(QK_0<K>() * N * K) / 8];  // quants for N qK_0 blocks
-};
-
 // control size
 static_assert(sizeof(block<1, 4>) == 4 * sizeof(ggml_half) + QK1_0 / 2, "wrong block<1,4> size/padding");
 static_assert(sizeof(block<4, 4>) == 4 * sizeof(ggml_half) + QK8_0 * 2, "wrong block<4,4> size/padding");
@@ -223,7 +218,7 @@ void ggml_quantize_mat_q8_0_4x4_generic(const float * GGML_RESTRICT x, void * GG
 
 ## 六、★ 内核怎么读交错块：4x4 tile
 
-`ggml_gemm_q4_0_4x4_q8_0_generic` 是"为什么能加速"的答案：
+`ggml_gemm_q4_0_4x4_q8_0_generic` 是"为什么能加速"的答案（下面引用到累加循环结束，写回段在 1832-1835 行）：
 
 - `a_ptr` 是 `block_q8_0x4`（4 个 token 交错），`b_ptr` 是 `block_q4_0x4`（4 行权重交错）；
 - 权重下标 `k * 4 * 4 + j * 4 + i`：`j` 每加 1 只走 **4 字节** —— 因为 4 行是交错的；
@@ -282,14 +277,6 @@ void ggml_gemm_q4_0_4x4_q8_0_generic(int n, float * GGML_RESTRICT s, size_t bs, 
                         }
                     }
                 }
-                for (int m = 0; m < 4; m++) {
-                    for (int j = 0; j < ncols_interleaved; j++)
-                        s[(y * 4 + m) * bs + x * ncols_interleaved + j] = sumf[m][j];
-                }
-            }
-        }
-    }
-}
 ```
 
 ## 七、钩子协议：traits.h
@@ -384,4 +371,5 @@ bool ggml_cpu_extra_compute_forward(struct ggml_compute_params * params, struct 
 - 本课只引用 `ggml/src/ggml-cpu/` 下的 6 个文件（quants.c / quants.h / repack.cpp / repack.h / traits.cpp / traits.h），全部计入覆盖率。
 - 文中为了定位而提到的 `ggml-common.h`（L1-04）、`ggml-cpu.c`（L5-01）、`arch/x86/repack.cpp` 与 `arch-fallback.h`（L5-05）、`src/llama-model.cpp`（L2 系列）、`common/arg.cpp` 均**不引用其源码**，故不计入本课覆盖率。
 - `QK4_0 = 32`、`QK8_0 = 32` 的定义在 `ggml-common.h:194,251`；本课引用的 `repack.cpp:136` 有 `assert(QK8_0 == 32)` 可交叉验证。
-- 第 3 幕的字节条按 `repack.h:26-46` 的结构体字段与 `static_assert` 画出：`d[4]` = 4 x 2 字节，`qs` = `QK8_0 * 2` = 64 字节，合计 72 = 4 x 18。
+- 第 3 幕的字节条按 `repack.h:31-46` 的 `static_assert` 与别名画出：`d[4]` = 4 x `sizeof(ggml_half)` = 8 字节，`qs` = `QK8_0 * 2` = 64 字节，合计 72 = 4 x 18。成员名 `d` / `qs` 见第 4 幕 `make_block_q4_0x4` 的 `out.d` / `out.qs`。
+- 两处引用被本仓库 lint 的"Python 元组写进 JS"检查误伤（该检查扫的是 `[(` 相邻形式，而 C 的数组下标恰好可能长成这样）：`repack.h:28` 的 `qs[(QK_0<K>() * N * K) / 8]` 与 `repack.cpp:1834` 的写回行。两处分别改引用 `repack.h:31-46` 与 `repack.cpp:1785-1831`；被略去的行在上文已用文字指明位置。

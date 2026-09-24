@@ -91,7 +91,7 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_et_reg(void);
   kicker: "L7-04 · 运行期",
   title: "运行期没有编译：一张图 = 一个 <span class=\"hl-c\">for</span> + 一个 <span class=\"hl-c\">switch</span>",
   sub: "graph_compute 逐节点分派，只在两处做图级融合（RMS_NORM+MUL、MUL_MAT+ADD）。",
-  caption: "★ 对照 L7-03：OpenVINO 在运行期把子图翻成 ov::Model 再编译；ET 这里没有任何\"编译\"调用。",
+  caption: "★ 对照 L7-03：OpenVINO 在运行期把子图翻成 ov::Tensor / ov::op 组成的模型；ET 这里没有任何\"编译\"调用。",
   src: "ggml/src/ggml-et/ggml-et.cpp",
   mark: [2, 5, 9, 16, 22],
   lineNo: 657,
@@ -310,7 +310,7 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_et_reg(void);
 
     const t = U.table(
       ['对象', '类型', '本课证据'],
-      [['_drv.device_layer', 'dev::IDeviceLayer', 'createPcieDeviceLayer / createSysEmuDeviceLayer（153-157）'],
+      [['_drv.device_layer', 'dev::IDeviceLayer', 'createPcieDeviceLayer / createSysEmuDeviceLayer（152-158）'],
        ['_drv.runtime', 'rt::IRuntime', 'IRuntime::create(device_layer)（160）'],
        ['dev_ctx->default_stream', 'rt::StreamId', '一个设备一条默认流，内核按序执行（1771）'],
        ['dev_ctx->loaded_kernels', 'map<string, rt::KernelId>', '名字 -> 设备内核句柄（common.h:75, kernels.cpp:176）'],
@@ -639,7 +639,7 @@ struct ggml_backend_et_context {
        ['设备侧看到的元数据',
         'ne / nb / type / data 全在<br>scale_f32.c:32-40',
         '只有入参里的维度与指针',
-        '厂商自己的 shape / stride（L7-01 / L7-03 展开）'],
+        '厂商自己的 shape / stride 表示（acl_tensor.cpp:87-90）'],
        ['量化块布局',
         '设备侧直接 include ggml-common.h<br>quants.h:10-11',
         '复用 ggml 的 block_* 定义',

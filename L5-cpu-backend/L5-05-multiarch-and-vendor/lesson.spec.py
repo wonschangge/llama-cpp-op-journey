@@ -531,7 +531,7 @@ root.appendChild(wrap);
 const chain = wrap.querySelector('#chain');
 chain.innerHTML = '<div class="cm" style="margin:0 0 2px">一个权重张量在 AMX 路径上的一生</div>';
 const steps = [
-  { c: 'a', t: '① ggml_backend_amx_buffer_type()', b: '注册名为 AMX 的 buffer type；初始化时申请 XTILEDATA 权限' },
+  { c: 'a', t: '① ggml_backend_amx_buffer_type()', b: '注册 buffer type（名字 AMX，121-125 行）；初始化时申请 XTILEDATA 权限' },
   { c: 'b', t: '② init_tensor -> tensor->extra', b: '张量一进 AMX buffer，就挂上 tensor_traits 实例' },
   { c: 'c', t: '③ set_tensor -> convert_weight', b: '权重写入时直接重排成 VNNI 打包格式（不是原始块布局）' },
   { c: 'd', t: '④ supports_op 判形状', b: 'ne[0] % (TILE_N*2) 必须为 0；类型要在白名单里（qtype_has_amx_kernels）' },
@@ -832,9 +832,12 @@ L.section(
 
 L.section(
     '五、KleidiAI：特性掩码从哪来',
-    '掩码由 aarch64 运行期探测拼出来（DOTPROD / I8MM / FP16 / SVE），'
-    'SME 家族还要额外算一个「SME 线程上限」——因为 SME 的流式模式计算单元（SMCU）数量有限。'
-    '这一段还展示了调试用的环境变量覆盖（`GGML_KLEIDIAI_SME` 等）：**厂商路径一定要能关**。',
+    '掩码由 aarch64 运行期探测拼出来：DOTPROD / I8MM / FP16 / SVE 各占一位（SVE 还要求 '
+    '`sve_cnt` 正好等于 QK8_0）。这一段还展示了三个调试用的环境变量覆盖 '
+    '（`GGML_KLEIDIAI_SME` / `GGML_TOTAL_THREADS` / `GGML_KLEIDIAI_CHUNK_MULTIPLIER`）：'
+    '**厂商路径一定要能关**。\n\n'
+    'SME 家族的处理在这段之后（338-355 行）：先数出可用的流式模式计算单元（SMCU），'
+    '数不到就保守地把 SME 线程上限设为 1 —— 因为 SME 的流式模式是有限硬件资源。',
     src=KLD, parts=[(301, 320)], lang='c++')
 
 L.section(
@@ -864,7 +867,8 @@ L.section(
 
 L.section(
     '九、AMX：把整颗 MUL_MAT 接过去',
-    'AMX（Intel）不新增类型、也不改 traits 表，而是注册一个名为 `AMX` 的 buffer type：'
+    'AMX（Intel）不新增类型、也不改 traits 表，而是注册一个 buffer type'
+    '（`get_name` 返回 `"AMX"`，见 121-125 行）：'
     '权重在 `set_tensor` 时被重排成 VNNI 打包格式，`compute_forward` 里只拦 `GGML_OP_MUL_MAT`。'
     '这是「厂商层插在二维表之上」的最清晰形态：**判据是形状与类型白名单，代价是权重格式被绑定**。',
     src=AX, parts=[(19, 42)], lang='c++')

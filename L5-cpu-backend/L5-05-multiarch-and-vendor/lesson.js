@@ -601,7 +601,7 @@ static ggml::cpu::tensor_traits * get_tensor_traits(ggml_backend_buffer_t, struc
     const chain = wrap.querySelector('#chain');
     chain.innerHTML = '<div class="cm" style="margin:0 0 2px">一个权重张量在 AMX 路径上的一生</div>';
     const steps = [
-      { c: 'a', t: '① ggml_backend_amx_buffer_type()', b: '注册名为 AMX 的 buffer type；初始化时申请 XTILEDATA 权限' },
+      { c: 'a', t: '① ggml_backend_amx_buffer_type()', b: '注册 buffer type（名字 AMX，121-125 行）；初始化时申请 XTILEDATA 权限' },
       { c: 'b', t: '② init_tensor -> tensor->extra', b: '张量一进 AMX buffer，就挂上 tensor_traits 实例' },
       { c: 'c', t: '③ set_tensor -> convert_weight', b: '权重写入时直接重排成 VNNI 打包格式（不是原始块布局）' },
       { c: 'd', t: '④ supports_op 判形状', b: 'ne[0] % (TILE_N*2) 必须为 0；类型要在白名单里（qtype_has_amx_kernels）' },
