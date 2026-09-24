@@ -13,13 +13,13 @@
 
 > ggml 用什么统一表示一个算子：张量、op 枚举、图
 >
-> 6 课，覆盖 17 个源文件。
+> 6 课，覆盖 18 个源文件。
 
 - [ ] **`L1-01`** ggml 张量：算子的数据面　`P0`　1 文件
   - 讲解要点：张量结构体字段、数据类型枚举、维度与步长约定；为什么 ggml 用 type 而非 dtype 表达量化
   - 验收点：能说出 ggml_tensor 里哪些字段决定一次内核调用的形状
   - 目录：`L1-operator-representation/L1-01-tensor-data-plane/`
-- [ ] **`L1-02`** 算子枚举与元数据：算子的身份　`P0`　3 文件
+- [x] **`L1-02`** 算子枚举与元数据：算子的身份　`P0`　3 文件
   - 讲解要点：GGML_OP_* 枚举、ggml_op_name、参数个数表 nargs、算子如何在图上成为一个节点
   - 验收点：给出任意一个 GGML_OP_*，能说出它的输入个数与输出形状规则在哪定义
   - 目录：`L1-operator-representation/L1-02-op-enum-and-nargs/`
@@ -27,12 +27,12 @@
   - 讲解要点：ggml_cgraph、view_src/view_offs、ggml_build_forward_expand 的拓扑排序、visited_hash_set
   - 验收点：能解释为什么拓扑排序用 hash set 而不是标记位
   - 目录：`L1-operator-representation/L1-03-graph-and-toposort/`
-- [ ] **`L1-04`** 量化块结构：算子内层的压缩数据　`P0`　3 文件
+- [x] **`L1-04`** 量化块结构：算子内层的压缩数据　`P0`　3 文件
   - 讲解要点：block_q4_0 等块布局、scale/min 的表示、反量化函数族、GGML_TYPE 与块大小的绑定
   - 验收点：能画出 Q4_0 与 Q4_K 的块内存布局差异，并说出对内核的影响
   - 目录：`L1-operator-representation/L1-04-quant-block-layout/`
-- [ ] **`L1-05`** 上下文、线程与优化器接口　`P0`　5 文件
-  - 讲解要点：ggml_context 的对象分配、线程池、ggml-opt 的训练接口
+- [ ] **`L1-05`** 上下文、线程与优化器接口　`P0`　6 文件
+  - 讲解要点：ggml_context 的 arena 对象分配（实测在 ggml.c）、全局临界区、ggml-opt 的训练接口
   - 验收点：能说明 ggml_context 为什么用 arena 而非逐个 malloc
   - 目录：`L1-operator-representation/L1-05-context-threads-opt/`
 - [ ] **`L1-06`** GGUF：算子的权重从文件来　`P0`　2 文件

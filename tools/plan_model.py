@@ -53,8 +53,12 @@ dict(id="L1-04", layer="L1", prio="P0",
 dict(id="L1-05", layer="L1", prio="P0",
      title="上下文、线程与优化器接口",
      paths=["ggml/src/ggml.cpp", "ggml/src/ggml-threading.cpp", "ggml/src/ggml-threading.h",
-            "ggml/src/ggml-opt.cpp", "ggml/include/ggml-opt.h"],
-     ideas="ggml_context 的对象分配、线程池、ggml-opt 的训练接口",
+            "ggml/src/ggml-opt.cpp", "ggml/include/ggml-opt.h",
+            # 实测回改：arena 的真实实现在 ggml.c（958-985 / 1611-1677 / 1708-1759），
+            # 不在本课原清单里。ggml.cpp 实测只有 26 行、装一个 std::terminate handler；
+            # ggml-threading.* 实测只有全局互斥锁、没有线程池。原计划措辞有误，已回改。
+            "ggml/src/ggml.c"],
+     ideas="ggml_context 的 arena 对象分配（实测在 ggml.c）、全局临界区、ggml-opt 的训练接口",
      accept="能说明 ggml_context 为什么用 arena 而非逐个 malloc"),
 
 dict(id="L1-06", layer="L1", prio="P0",
