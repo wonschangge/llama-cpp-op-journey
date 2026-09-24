@@ -1,0 +1,22 @@
+llama-cpp-op-journey
+====================
+
+这是 llama.cpp 的动画课件，不是 llama.cpp 本身。
+
+上游项目
+--------
+llama.cpp
+https://github.com/ggml-org/llama.cpp
+锚定版本: v0.5.0 (commit 7fe450e19305b828c199d602c23a8337aaa1f03b)
+许可: MIT
+版权: Copyright (c) 2023-2026 The ggml authors
+
+本仓库中的课件正文、shared/ 动画引擎、tools/ 门禁脚本
+以 MIT 许可发布，Copyright (c) 2026 wonschangge。
+
+课件中"逐字引用"的代码片段来自上游 llama.cpp，
+按 MIT 许可使用，版权归上游贡献者所有。
+引用块均标注来源文件路径，并由 tools/check_ir_fidelity.py
+逐字校验其与上游源文件一致（含位置连续性）。
+
+上游 MIT 许可证全文见 LICENSE-llama.cpp。
