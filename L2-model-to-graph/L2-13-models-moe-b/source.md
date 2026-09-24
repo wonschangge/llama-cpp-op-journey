@@ -52,11 +52,11 @@ python3 tools/plan_matrix.py --files | awk -F'\t' '$1=="L2-13"{print $2}'
 
 | 事实 | 命令 | 结果 |
 |---|---|---|
-| 有 4 个文件全篇没有 MoE 调用 | `grep -c "build_moe_ffn(" src/models/*.cpp` | minicpm / nomic-bert-moe / phimoe / refact 各 0 次 |
-| 有 3 个文件借别人的图 | `grep -n "using graph" src/models/models.h` | 341 / 663 / 1739 三行 |
-| 全部 24 个文件都没写分组路由 | `grep -c "n_expert_groups" <24 文件>` | 全为 0 |
+| 有 4 个文件全篇没有 MoE 调用 | `grep -c "build_moe_ffn(" src/models/minicpm.cpp src/models/nomic-bert-moe.cpp src/models/phimoe.cpp src/models/refact.cpp` | 四个文件各 0 次 |
+| 本课有 3 个文件借别人的图 | `grep -n "using graph" src/models/models.h` | 再与本课 24 个架构对照，只剩 341 / 663 / 1739 三行 |
+| 本课 24 个文件都没写分组路由 | `grep -c "n_expert_groups\|n_group_used" <本课 24 个文件>` | 每个文件都是 0 |
 
-这三点分别在第 7 幕、第 3 幕与本节的表格里展开。
+这三点分别在第 7 幕（借图）、第 3 幕与第 9 幕（分组路由）、以及第六节的逐文件证据里展开。
 
 ## 二、★ build_moe_ffn 的两条声明：哪些参数控制专家选择
 
@@ -102,7 +102,7 @@ python3 tools/plan_matrix.py --files | awk -F'\t' '$1=="L2-13"{print $2}'
 
 1. **算 logits 或直接用 probs_in**（2024-2032）：`probs_in == nullptr` 时才调用 `build_lora_mm(gate_inp, cur)`。
 2. **logits 变概率**（2039-2068）：`gating_op` 的四分支 switch；随后 `exp_probs_b` **只加到 `selection_probs`**，源码注释写明"leave probs unbiased as it's later used to get expert weights"。
-3. **top-k 与加权**（2106-2152）：`ggml_argsort_top_k(..., n_expert_used)` 选出专家，`ggml_get_rows` 取权重，然后才是可选的 `norm_w` 与 `w_scale`。
+3. **top-k 与加权**（2106-2152）：`ggml_argsort_top_k(ctx0, selection_probs, n_expert_used)` 选出专家，`ggml_get_rows` 取权重，然后才是可选的 `norm_w` 与 `w_scale`。
 
 注意 2020 / 2072 / 2076 / 2114 / 2228 这几处 `arch == LLM_ARCH_*` 特判：它们是**架构属性**，模型文件同样没有选择权。
 
@@ -736,7 +736,7 @@ MoE 侧参数与 qwen3moe 逐字相同（SILU / true / hparams.expert_weights_sc
         cur = ggml_add(ctx0, moe_out, sh_out);
 ```
 
-## 七、借图：models.h 里的 `using graph = ...`
+## 七、借图：models.h 里的 `using graph =` 别名
 
 `llm_graph_context` 是抽象基类；每个架构要么在 `models.h` 里声明自己的 `struct graph`，要么用 `using` 别名借别人的。本课 24 个文件里 21 个是前者，3 个是后者。被借的三张图分别在 `bert.cpp` / `granite.cpp`（L2-12 覆盖）与 `phi3.cpp`（本课覆盖）。
 
@@ -871,6 +871,6 @@ struct llama_model_phimoe : public llama_model_base {
 
 - 本课计划内的 **24 个文件**全部来自 `python3 tools/plan_matrix.py --files` 中 `L2-13` 的分配，逐字引用并计入覆盖率。
 - `src/llama-graph.cpp`（`build_moe_ffn` 的实现）与 `src/llama-graph.h`（它的两条声明）按计划属于 `L2-06`；本课把"参数如何控制专家选择"作为核心引用对象，**计入覆盖率声明**，但这不改变计划的文件归属。
-- `src/models/models.h` 按计划属于 `L2-10` / `L2-15`；本课只引用它的三处 `using graph = ...` 别名（341 / 663 / 1739）来证明"借图"。
+- `src/models/models.h` 按计划属于 `L2-10` / `L2-15`；本课只引用它的三处 `using graph =` 别名（341 / 663 / 1739）来证明"借图"。
 - `src/llama-hparams.h`（`L2-02`）与 `src/llama-model.cpp`（`L2-05`）本课各引用一段，用来定位分组路由那两个字段的来路。
 - 第 5 幕与第 9 幕的统计数字（21 处调用点、各取值的出现次数、`n_expert_groups` 0 次）由脚本对这 24 个文件静态扫描得出，不是目测。

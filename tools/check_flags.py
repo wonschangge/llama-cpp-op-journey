@@ -164,9 +164,23 @@ def strip_verbatim(text, is_js):
             return None, f'SCENES 解析失败: {data["parseError"]}'
         with open(text, encoding='utf-8', errors='replace') as fh:
             content = fh.read()
+        # ★ 必须用【转义后】的形式去匹配。lessonkit 写 lesson.js 时把 code 里的
+        #   `\`、反引号、`${` 做了 JS 模板字符串转义（js_escape）。若拿未转义的
+        #   code 去 replace，只要代码里含这三者之一就匹配不上 —— 整块上游代码
+        #   被当成散文扫描，里面的命令行参数（如 glslc 的 --target-env）全部误报。
+        #   由 L6-07 子代理定位到字节（L6-06 的 CMakeLists 里的 ${...} 命中此坑）。
+        def _js_escape(s):
+            return (s.replace('\\', '\\\\')
+                     .replace('`', '\\`')
+                     .replace('${', '\\${'))
         for s in data.get('scenes', []):
             if s.get('code'):
-                content = content.replace(s['code'], '\n')
+                esc = _js_escape(s['code'])
+                if esc in content:
+                    content = content.replace(esc, '\n')
+                else:
+                    return None, (f"第 {s['i'] + 1} 幕的逐字引用无法从 lesson.js 定位"
+                                  f"（转义形式也不匹配）—— 拒绝静默降级")
         return content, None
     # markdown: 抠掉带 <!-- src: --> 声明的围栏代码块
     lines = text.split('\n')

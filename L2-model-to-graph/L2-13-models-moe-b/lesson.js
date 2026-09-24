@@ -53,7 +53,7 @@ const SCENES = [
     const defs = [
       { c: 'a', t: '共享专家 shexp', b: '9 / 24 个文件声明了<br>ffn_*_shexp 张量', m: 'ffn_gate_shexp' },
       { c: 'c', t: '分组路由', b: '24 个文件里 0 处提到<br>n_expert_groups / n_group_used', m: 'hparams.n_expert_groups' },
-      { c: 'e', t: '与注意力变体的组合', b: '同一个 MoE 分支，喂进来的 cur<br>来自 SWA / MSA / MTP 等不同的图', m: 'build_attn(...)' }
+      { c: 'e', t: '与注意力变体的组合', b: '同一个 MoE 分支，喂进来的 cur<br>来自 SWA / MSA / MTP 等不同的图', m: 'build_attn' }
     ];
     const host = wrap.querySelector('#faces');
     const els = defs.map(d => { const e = U.card(d, { style: 'width:220px' }); host.appendChild(e); return e; });
@@ -270,9 +270,9 @@ const SCENES = [
     root.appendChild(wrap);
 
     const defs = [
-      { c: 'a', t: '自带门控', b: 'qwen2moe:147-165<br>ffn_gate_inp_shexp 出一个标量门，<br>乘在共享专家输出上再相加', m: 'ggml_mul(cur_ffn, cur_gate)' },
-      { c: 'b', t: '直接相加', b: 'llama4:232-240 · step35:327-335<br>minimax-m3:575-581<br>共享专家是一个普通 build_ffn', m: 'ggml_add(moe_out, sh_out)' },
-      { c: 'd', t: '只声明不接线', b: 'llama:85-88 · minicpm:77-81<br>mistral3:80-83 · refact:66-70<br>张量建了，图里没有对应支路', m: 'ffn_gate_shexp = create_tensor(...)' }
+      { c: 'a', t: '自带门控', b: 'qwen2moe:147-165<br>ffn_gate_inp_shexp 出一个标量门，<br>乘在共享专家输出上再相加', m: 'ggml_mul(ctx0, cur_ffn, cur_gate)' },
+      { c: 'b', t: '直接相加', b: 'llama4:232-240 · step35:327-335<br>minimax-m3:575-581<br>共享专家是一个普通 build_ffn', m: 'ggml_add(ctx0, moe_out, sh_out)' },
+      { c: 'd', t: '只声明不接线', b: 'llama:85-88 · minicpm:77-81<br>mistral3:80-83 · refact:66-70<br>张量建了，图里没有对应支路', m: 'ffn_gate_shexp / ffn_up_shexp / ffn_down_shexp' }
     ];
     const host = wrap.querySelector('#faces');
     const els = defs.map(d => { const e = U.card(d, { style: 'width:222px' }); host.appendChild(e); return e; });
@@ -654,7 +654,7 @@ const SCENES = [
     const t = U.table(
       ['问', '答'],
       [['控制专家选择的参数有哪些？', 'n_expert · n_expert_used · gating_op · exp_probs_b · norm_w · w_scale · probs_in · selected_experts_in'],
-       ['哪一个决定"选几个专家"？', 'n_expert_used —— 2109 行 ggml_argsort_top_k(..., n_expert_used)'],
+       ['哪一个决定"选几个专家"？', 'n_expert_used —— 2109 行 ggml_argsort_top_k(ctx0, selection_probs, n_expert_used)'],
        ['分组路由怎么开？', '不是参数：hparams.n_expert_groups 大于 1 时自动生效（2083）'],
        ['共享专家在哪？', '不在 build_moe_ffn 里：调用点外的第二条支路（9/24 个文件）']],
       { monoCols: [1] });

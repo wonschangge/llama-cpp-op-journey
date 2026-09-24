@@ -10,7 +10,7 @@
 共享专家、分组路由、以及 MoE 与注意力变体的组合。
 
 `src/llama-graph.cpp` / `src/llama-graph.h`（`build_moe_ffn` 的定义与声明）、
-`src/models/models.h`（`using graph = ...` 别名）、`src/llama-hparams.h`、
+`src/models/models.h`（`using graph =` 别名）、`src/llama-hparams.h`、
 `src/llama-model.cpp` 是按计划分配给别课的公共文件，本课作为**对照**逐字引用，
 见文末「说明」。
 """
@@ -56,7 +56,7 @@ COVERED = [
 
 GRAPH_CPP = 'src/llama-graph.cpp'    # build_moe_ffn 的实现（L2-06 / L8-01 的计划文件）
 GRAPH_H   = 'src/llama-graph.h'      # build_moe_ffn 的两条声明（L2-06 的计划文件）
-MODELS_H  = 'src/models/models.h'    # using graph = ... 别名（L2-10 / L2-15 的计划文件）
+MODELS_H  = 'src/models/models.h'    # using graph = 别名（L2-10 / L2-15 的计划文件）
 HPARAMS_H = 'src/llama-hparams.h'    # 专家相关超参（L2-02 的计划文件）
 MODEL_CPP = 'src/llama-model.cpp'    # GGUF 元数据 -> hparams（L2-05 的计划文件）
 
@@ -111,7 +111,7 @@ root.appendChild(wrap);
 const defs = [
   { c: 'a', t: '共享专家 shexp', b: '9 / 24 个文件声明了<br>ffn_*_shexp 张量', m: 'ffn_gate_shexp' },
   { c: 'c', t: '分组路由', b: '24 个文件里 0 处提到<br>n_expert_groups / n_group_used', m: 'hparams.n_expert_groups' },
-  { c: 'e', t: '与注意力变体的组合', b: '同一个 MoE 分支，喂进来的 cur<br>来自 SWA / MSA / MTP 等不同的图', m: 'build_attn(...)' }
+  { c: 'e', t: '与注意力变体的组合', b: '同一个 MoE 分支，喂进来的 cur<br>来自 SWA / MSA / MTP 等不同的图', m: 'build_attn' }
 ];
 const host = wrap.querySelector('#faces');
 const els = defs.map(d => { const e = U.card(d, { style: 'width:220px' }); host.appendChild(e); return e; });
@@ -269,9 +269,9 @@ wrap.innerHTML = `<div class="row center" id="faces" style="gap:8px"></div>
 root.appendChild(wrap);
 
 const defs = [
-  { c: 'a', t: '自带门控', b: 'qwen2moe:147-165<br>ffn_gate_inp_shexp 出一个标量门，<br>乘在共享专家输出上再相加', m: 'ggml_mul(cur_ffn, cur_gate)' },
-  { c: 'b', t: '直接相加', b: 'llama4:232-240 · step35:327-335<br>minimax-m3:575-581<br>共享专家是一个普通 build_ffn', m: 'ggml_add(moe_out, sh_out)' },
-  { c: 'd', t: '只声明不接线', b: 'llama:85-88 · minicpm:77-81<br>mistral3:80-83 · refact:66-70<br>张量建了，图里没有对应支路', m: 'ffn_gate_shexp = create_tensor(...)' }
+  { c: 'a', t: '自带门控', b: 'qwen2moe:147-165<br>ffn_gate_inp_shexp 出一个标量门，<br>乘在共享专家输出上再相加', m: 'ggml_mul(ctx0, cur_ffn, cur_gate)' },
+  { c: 'b', t: '直接相加', b: 'llama4:232-240 · step35:327-335<br>minimax-m3:575-581<br>共享专家是一个普通 build_ffn', m: 'ggml_add(ctx0, moe_out, sh_out)' },
+  { c: 'd', t: '只声明不接线', b: 'llama:85-88 · minicpm:77-81<br>mistral3:80-83 · refact:66-70<br>张量建了，图里没有对应支路', m: 'ffn_gate_shexp / ffn_up_shexp / ffn_down_shexp' }
 ];
 const host = wrap.querySelector('#faces');
 const els = defs.map(d => { const e = U.card(d, { style: 'width:222px' }); host.appendChild(e); return e; });
@@ -539,7 +539,7 @@ root.appendChild(wrap);
 const t = U.table(
   ['问', '答'],
   [['控制专家选择的参数有哪些？', 'n_expert · n_expert_used · gating_op · exp_probs_b · norm_w · w_scale · probs_in · selected_experts_in'],
-   ['哪一个决定"选几个专家"？', 'n_expert_used —— 2109 行 ggml_argsort_top_k(..., n_expert_used)'],
+   ['哪一个决定"选几个专家"？', 'n_expert_used —— 2109 行 ggml_argsort_top_k(ctx0, selection_probs, n_expert_used)'],
    ['分组路由怎么开？', '不是参数：hparams.n_expert_groups 大于 1 时自动生效（2083）'],
    ['共享专家在哪？', '不在 build_moe_ffn 里：调用点外的第二条支路（9/24 个文件）']],
   { monoCols: [1] });
@@ -592,10 +592,10 @@ L.section(
     'ffn_gate_inp` 分到 `moe` 组，再排序对半分给 `L2-12` 与 `L2-13`。'
     '**分组依据是命中图原语，不是内容判定。** 实测三个后续事实：\n\n'
     '| 事实 | 命令 | 结果 |\n|---|---|---|\n'
-    '| 有 4 个文件全篇没有 MoE 调用 | `grep -c "build_moe_ffn(" src/models/*.cpp` | minicpm / nomic-bert-moe / phimoe / refact 各 0 次 |\n'
-    '| 有 3 个文件借别人的图 | `grep -n "using graph" src/models/models.h` | 341 / 663 / 1739 三行 |\n'
-    '| 全部 24 个文件都没写分组路由 | `grep -c "n_expert_groups" <24 文件>` | 全为 0 |\n\n'
-    '这三点分别在第 7 幕、第 3 幕与本节的表格里展开。')
+    '| 有 4 个文件全篇没有 MoE 调用 | `grep -c "build_moe_ffn(" src/models/minicpm.cpp src/models/nomic-bert-moe.cpp src/models/phimoe.cpp src/models/refact.cpp` | 四个文件各 0 次 |\n'
+    '| 本课有 3 个文件借别人的图 | `grep -n "using graph" src/models/models.h` | 再与本课 24 个架构对照，只剩 341 / 663 / 1739 三行 |\n'
+    '| 本课 24 个文件都没写分组路由 | `grep -c "n_expert_groups\\|n_group_used" <本课 24 个文件>` | 每个文件都是 0 |\n\n'
+    '这三点分别在第 7 幕（借图）、第 3 幕与第 9 幕（分组路由）、以及第六节的逐文件证据里展开。')
 
 L.section(
     '二、★ build_moe_ffn 的两条声明：哪些参数控制专家选择',
@@ -616,7 +616,7 @@ L.section(
     '1. **算 logits 或直接用 probs_in**（2024-2032）：`probs_in == nullptr` 时才调用 `build_lora_mm(gate_inp, cur)`。\n'
     '2. **logits 变概率**（2039-2068）：`gating_op` 的四分支 switch；随后 `exp_probs_b` **只加到 `selection_probs`**，'
     '源码注释写明"leave probs unbiased as it\'s later used to get expert weights"。\n'
-    '3. **top-k 与加权**（2106-2152）：`ggml_argsort_top_k(..., n_expert_used)` 选出专家，'
+    '3. **top-k 与加权**（2106-2152）：`ggml_argsort_top_k(ctx0, selection_probs, n_expert_used)` 选出专家，'
     '`ggml_get_rows` 取权重，然后才是可选的 `norm_w` 与 `w_scale`。\n\n'
     '注意 2020 / 2072 / 2076 / 2114 / 2228 这几处 `arch == LLM_ARCH_*` 特判：'
     '它们是**架构属性**，模型文件同样没有选择权。',
@@ -681,7 +681,7 @@ for _name, _nlines, _prose, _parts in _PER_FILE:
         src=_rel, parts=_parts, lang='c')
 
 L.section(
-    '七、借图：models.h 里的 `using graph = ...`',
+    '七、借图：models.h 里的 `using graph =` 别名',
     '`llm_graph_context` 是抽象基类；每个架构要么在 `models.h` 里声明自己的 `struct graph`，'
     '要么用 `using` 别名借别人的。本课 24 个文件里 21 个是前者，3 个是后者。'
     '被借的三张图分别在 `bert.cpp` / `granite.cpp`（L2-12 覆盖）与 `phi3.cpp`（本课覆盖）。\n\n'
@@ -723,7 +723,7 @@ L.footnote_add('`src/llama-graph.cpp`（`build_moe_ffn` 的实现）与 `src/lla
                '按计划属于 `L2-06`；本课把"参数如何控制专家选择"作为核心引用对象，'
                '**计入覆盖率声明**，但这不改变计划的文件归属。')
 L.footnote_add('`src/models/models.h` 按计划属于 `L2-10` / `L2-15`；本课只引用它的三处 '
-               '`using graph = ...` 别名（341 / 663 / 1739）来证明"借图"。')
+               '`using graph =` 别名（341 / 663 / 1739）来证明"借图"。')
 L.footnote_add('`src/llama-hparams.h`（`L2-02`）与 `src/llama-model.cpp`（`L2-05`）本课各引用一段，'
                '用来定位分组路由那两个字段的来路。')
 L.footnote_add('第 5 幕与第 9 幕的统计数字（21 处调用点、各取值的出现次数、'
@@ -735,7 +735,7 @@ L.goal(
     '说出 `build_moe_ffn` 的参数里哪些控制**专家选择**（对应验收点），哪些只控制加权；',
     '解释"分组路由"为什么在这 24 个文件里一次都搜不到（它由 GGUF 元数据决定）；',
     '说出共享专家的三种接法，并指出 `ffn_up_exps_s` 与 `ffn_gate_shexp` 的区别；',
-    '判断一个 `src/models/*.cpp` 是不是"借图"（`using graph = ...`），以及这对读代码意味着什么。')
+    '判断一个 `src/models/*.cpp` 是不是"借图"（一个 `using graph =` 别名），以及这对读代码意味着什么。')
 
 L.conclusion(
     '★ 控制专家选择的 8 个参数',

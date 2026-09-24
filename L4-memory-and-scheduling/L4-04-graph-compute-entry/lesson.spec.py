@@ -77,10 +77,11 @@ const texts = [
   '异步入口（第 461 行）没有等待：第 463 行把活交出去就返回。',
   '所以"异步"不是让后端跑得更快，而是把"完成"这件事交给别处的同步点 —— 事件、调度器收尾、或读回数据时。'
 ];
-defs.forEach((_, i) => tl.at(700 + i * 3400, () => {
-  els.forEach((e, k) => { e.style.opacity = k === i ? '1' : '.30'; });
-  msg.innerHTML = texts[i];
-  U.markLines(document, [[1], [1], [2], []][i]);
+const steps = [[], [2, 3], [10], [2, 3, 10]];
+texts.forEach((txt, i) => tl.at(700 + i * 3400, () => {
+  els.forEach((e, k) => { e.style.opacity = k === Math.min(i, 2) ? '1' : '.30'; });
+  msg.innerHTML = txt;
+  U.markLines(document, steps[i]);
 }));
 '''
 )
@@ -94,7 +95,7 @@ L.scene(
     caption='对照：L5-01 的 ggml/src/ggml-cpu/ggml-cpu.cpp:201 写着 .synchronize = NULL；'
             'L6-01 的 ggml/src/ggml-cuda/ggml-cuda.cu:2544 ggml_backend_cuda_synchronize() 里是 cudaStreamSynchronize()。',
     src=BE, parts=[(425, 432)], duration=18000,
-    mark_src=[427, 428, 431],
+    mark_src=[427, 428, 429, 431],
     notes_src={427: '判空：后端可以完全不实现 synchronize —— 那就没有"异步未完成"这回事',
                431: '真正的等待：这一行会阻塞到后端的队列/流排空'},
     visual='''
@@ -118,10 +119,11 @@ const texts = [
   'CPU 就是这种情况：等待没有消失，而是<b>压根不需要</b> —— CPU 的 graph_compute 返回时已经算完（L5-01）。',
   '结论：问"同步路径在哪一步等"，必须先问"<span class="v">这个后端的 iface.synchronize 是什么</span>"。'
 ];
-defs.forEach((_, i) => tl.at(700 + i * 3400, () => {
-  els.forEach((e, k) => { e.style.opacity = k === i ? '1' : '.30'; });
-  msg.innerHTML = texts[i];
-  U.markLines(document, [[2], [0, 1], [2], []] [i]);
+const steps = [[7], [2, 4, 5], [2, 4, 5], [7]];
+texts.forEach((txt, i) => tl.at(700 + i * 3400, () => {
+  els.forEach((e, k) => { e.style.opacity = k === Math.min(i, 2) ? '1' : '.30'; });
+  msg.innerHTML = txt;
+  U.markLines(document, steps[i]);
 }));
 '''
 )
@@ -134,7 +136,7 @@ L.scene(
     sub='record 在一次提交之后盖章；wait 让另一个后端等，synchronize 让 host 等。',
     caption='注意 event_new 收的是 device，record / wait 收的是 backend —— 事件是设备级对象，能被不同后端共同引用。',
     src=BE, parts=[(534, 567)], duration=22000,
-    mark_src=[534, 542, 549, 556, 563],
+    mark_src=[534, 542, 549, 553, 556, 563],
     notes_src={536: '设备不实现 event_new 时返回 NULL —— 调用方必须接受"没有事件"这种情况',
                549: 'record：在当前后端已提交的工作后面插一个标记',
                563: 'wait：只让这个后端等那个标记，host 不被阻塞'},
@@ -172,12 +174,12 @@ const texts = [
   '于是"完成"变成一个<b>可以被传递的对象</b>：提交者盖章，消费者按需等待。',
   '调度器正是这样做的：每个 split 提交后盖章（第 1839 行），下一个 split 需要这块数据时才等（第 1688 行）。'
 ];
-tl.at(600, () => { msg.innerHTML = texts[0]; U.markLines(document, []); });
-tl.at(3900, () => { msg.innerHTML = texts[1]; U.markLines(document, [0, 1]); });
-tl.at(7200, () => { msg.innerHTML = texts[2]; U.markLines(document, [2]); });
-tl.at(10500, () => { msg.innerHTML = texts[3]; U.markLines(document, [3, 4]); });
-tl.at(14000, () => { msg.innerHTML = texts[4]; U.markLines(document, [0, 1, 2, 3, 4]); });
-tl.at(17500, () => { msg.innerHTML = texts[5]; U.markLines(document, [2, 3]); });
+const steps = [[], [0, 2], [16, 21], [24, 31], [0, 9, 16, 21, 24, 31], [24, 31]];
+const times = [600, 3900, 7200, 10500, 14000, 17500];
+texts.forEach((txt, i) => tl.at(times[i], () => {
+  msg.innerHTML = txt;
+  U.markLines(document, steps[i]);
+}));
 '''
 )
 
@@ -186,11 +188,11 @@ tl.at(17500, () => { msg.innerHTML = texts[5]; U.markLines(document, [2, 3]); })
 L.scene(
     kicker='L4-04 · 调度器',
     title='调度器把同一对入口又写了一遍',
-    sub='ggml_backend_sched_graph_compute() = 异步版 + 对<b>所有</b>后端各等一次。',
+    sub='ggml_backend_sched_graph_compute() = 异步版 + 对所有后端各等一次。',
     caption='llama.cpp 自己走异步入口：src/llama-context.cpp:2588 调 _async，src/llama-context.cpp:772 用 sched synchronize 兜底。'
             '同步入口的用户是"必须逐步看结果"的场景，例如本文件第 2298 行的 ggml_backend_compare_graph_backend。',
     src=BE, parts=[(2011, 2030)], duration=21000,
-    mark_src=[2012, 2013, 2019, 2023, 2029],
+    mark_src=[2012, 2013, 2014, 2019, 2023, 2029],
     notes_src={2019: '只有"没复位且没分配"时才复位 —— 否则沿用上一次的状态',
                2023: '已经分配过就直接跳过：切分与 buffer 都复用上一次的（graph reuse）'},
     visual='''
@@ -210,18 +212,23 @@ const rows = t.body.querySelectorAll('tr');
 const msg = wrap.querySelector('#msg');
 const texts = [
   '调度器层不是新的执行路径，只是同一套"提交 / 等待"多了一层编排。',
-  '<span class="v">第 2012 行</span> 调异步版，<span class="v">第 2013 行</span> 对<b>所有</b>后端同步 —— 这是 sched 级同步路径的全部内容。',
-  '<span class="v">第 2029 行</span> 才是真正干活的地方：ggml_backend_sched_compute_splits()，按 split 逐个提交。',
-  '<span class="v">第 2019-2027 行</span> 是两个短路：已经复位就不重复复位，已经分配就直接复用 —— 这是 graph reuse 的入口。',
-  '一句话：<span class="k">同步版 = 异步版 + 一次"等所有后端"</span>。'
+  '第 2012 行调异步版，第 2013 行对<b>所有</b>后端同步 —— 这是 sched 级同步路径的全部内容。',
+  '第 2029 行才是真正干活的地方：ggml_backend_sched_compute_splits()，按 split 逐个提交。',
+  '第 2032-2043 行：循环 sched->n_backends 次逐个同步（下一幕展开）。',
+  '两个短路（第 2019-2027 行）：已复位就不重复复位，已分配就直接复用 —— 这是 graph reuse 的入口。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; });
+const steps = [[], [1, 2, 3], [20], [2, 3], [8, 13, 20]];
+tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, steps[0]); });
 rows.forEach((r, i) => tl.at(3000 + i * 3400, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
   msg.innerHTML = texts[i + 1];
-  U.markLines(document, [[0, 1], [2], [4, 5]][i]);
+  U.markLines(document, steps[i + 1]);
 }));
-tl.at(17000, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[4]; U.markLines(document, [1, 2]); });
+tl.at(17000, () => {
+  rows.forEach(x => { x.className = ''; });
+  msg.innerHTML = texts[4];
+  U.markLines(document, steps[4]);
+});
 '''
 )
 
@@ -233,7 +240,7 @@ L.scene(
     sub='判据是"每个节点的后端归属有没有变"；没变就落回上一次的分配结果。',
     caption='复用的最后一跳在 ggml_gallocr_alloc_graph() 内部（L4-01）：在预留好的块里重新指派地址，成功就完全不需要 reserve。',
     src=BE, parts=[(1591, 1611)], duration=19000,
-    mark_src=[1592, 1594, 1600, 1611],
+    mark_src=[1592, 1594, 1595, 1600, 1611],
     notes_src={1594: 'node_backend_ids 与 prev_* 比较：后端换了、且 buffer type 也换了，才算"变了"',
                1611: '没变就直接 alloc —— 命中复用路径，不会走到下面的 reserve'},
     visual='''
@@ -263,16 +270,18 @@ root.appendChild(wrap);
 const msg = wrap.querySelector('#msg');
 const texts = [
   '同一张图、同一组输入反复跑，是推理的常态 —— 每一步 decode 都要跑一遍图。',
-  '所以调度器把"上次怎么切的、内存分到哪"整套留下：<span class="k">第 1594 行</span> 只比后端归属。',
+  '所以调度器把"上次怎么切的、内存分到哪"整套留下：<span class="k">第 1592-1594 行</span> 只比后端归属。',
   '判据必须保守：<span class="v">后端编号变了 且 buffer type 变了</span> 才重算（第 1594-1595 行）。',
   '真要重算时，第 1949 行的 ggml_backend_sched_reset() 会把 hash 表与后端映射清空，下一轮重新切分。',
+  '判据不成立时，第 1611 行的 ggml_gallocr_alloc_graph() 直接在预留块里重新指派地址（细节见 L4-01）。',
   '前提是图本身能复用 —— 这正是 L2-07 里 llama_context 的判据（src/llama-context.cpp:1405 res->can_reuse(gparams)）。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, []); });
-tl.at(3900, () => { msg.innerHTML = texts[1]; U.markLines(document, [1, 2]); });
-tl.at(7300, () => { msg.innerHTML = texts[2]; U.markLines(document, [1, 2, 3]); });
-tl.at(10700, () => { msg.innerHTML = texts[3]; U.markLines(document, [5, 6]); });
-tl.at(14300, () => { msg.innerHTML = texts[4]; U.markLines(document, [4]); });
+const steps = [[], [1, 3], [3, 5], [], [21], []];
+const times = [700, 3900, 7300, 10700, 14300, 17000];
+texts.forEach((txt, i) => tl.at(times[i], () => {
+  msg.innerHTML = txt;
+  U.markLines(document, steps[i]);
+}));
 '''
 )
 
@@ -284,7 +293,7 @@ L.scene(
     sub='ggml_backend_sched_synchronize() 循环所有后端，顺带把 next_copy 归零。',
     caption='多副本字段：GGML_SCHED_MAX_COPIES = 4（第 772 行）、n_copies / cur_copy / next_copy（第 816-818 行）。',
     src=BE, parts=[(2032, 2043)], duration=18000,
-    mark_src=[2034, 2035, 2037, 2041],
+    mark_src=[2034, 2035, 2037, 2038, 2039, 2040, 2041],
     notes_src={2034: '注意是 n_backends 次，不是 1 次 —— 一张图可能横跨多个设备',
                2041: '同步之后固定用副本 0：让每轮 decode 的图结构完全一致'},
     visual='''
@@ -317,10 +326,12 @@ const texts = [
   '第 2037-2041 行：同步之后把 next_copy 固定回 0 —— 多副本是为流水线重叠准备的，',
   '但副本轮转会让每轮的图长得不一样，图缓存（如 CUDA graph）就失效了，所以同步点顺手把图"摆正"。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, [2, 3]); });
-tl.at(4200, () => { msg.innerHTML = texts[1]; U.markLines(document, [2, 3]); });
-tl.at(8100, () => { msg.innerHTML = texts[2]; U.markLines(document, [5, 6]); });
-tl.at(12100, () => { msg.innerHTML = texts[3]; U.markLines(document, [5, 6, 8]); });
+const steps = [[2, 4], [2, 4], [6, 10], [6, 7, 8, 9, 10]];
+const times = [700, 4200, 8100, 12100];
+texts.forEach((txt, i) => tl.at(times[i], () => {
+  msg.innerHTML = txt;
+  U.markLines(document, steps[i]);
+}));
 '''
 )
 
@@ -362,12 +373,18 @@ const texts = [
   '<span class="v">提交与盖章</span>（第 1799、1839 行）：都不等待。这正是 L4-02 讲的"切分后每段独立提交"能重叠的前提。',
   '最后一道保险是收尾：ggml_backend_sched_synchronize()（第 2032-2043 行）。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; });
+const steps = [[2], [5], [7], [21], [30], [], []];
+tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, steps[0]); });
 rows.forEach((r, i) => tl.at(3200 + i * 3200, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
   msg.innerHTML = texts[i < 4 ? i + 1 : 3];
+  U.markLines(document, steps[i + 1]);
 }));
-tl.at(20500, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[4]; U.markLines(document, [0, 1, 2, 3, 4]); });
+tl.at(20500, () => {
+  rows.forEach(x => { x.className = ''; });
+  msg.innerHTML = texts[4];
+  U.markLines(document, [2, 5, 7, 21, 30]);
+});
 '''
 )
 
@@ -407,22 +424,21 @@ const els = defs.map(d => { const e = U.card(d, { style: 'width:163px' }); host.
 els.forEach(e => e.style.opacity = '.30');
 const msg = wrap.querySelector('#msg');
 const texts = [
-  'ggml.c 留下的是<b>图的表示</b>：容器、视图、状态字符串。执行入口整体搬去了后端层。',
-  '视图是调度器切 split 的工具：ggml-backend.cpp:1460 对每段 split 调 ggml_graph_view。',
-  '一次只算一个节点时也用它：ggml-backend.cpp:2332 的 compare 路径 ggml_graph_view(g1, i, i+1)。',
+  '图的容器：图的内存预算在创建时就算定，装不下就只能换一张更大的图。',
+  '图视图：零拷贝切出节点数组的一段 —— 调度器给每段 split 造的就是它（ggml-backend.cpp:1460）。',
+  '复用与状态：ggml_graph_clear（7646）就地复位节点数与 hash 表；ggml_status_to_string（438）翻译执行结果。',
+  '搬走的执行入口：ggml_graph_plan 在 ggml-cpu.c:2815；ggml_graph_compute 在 ggml-cpu.c:3399。',
+  '一次只算一个节点时也用视图：ggml-backend.cpp:2332 的 compare 路径 ggml_graph_view(g1, i, i+1)。',
   '回到本课主线：<span class="k">提交给 graph_compute 的，永远是这种"视图"</span>，而不是整张图。'
 ];
-defs.forEach((_, i) => tl.at(700 + i * 3600, () => {
-  els.forEach((e, k) => { e.style.opacity = k === i ? '1' : '.30'; });
-  msg.innerHTML = texts[Math.min(i, 1)];
-  U.markLines(document, [[0], [0, 1, 2, 3], [0], [0]][i]);
+const steps = [[0], [3, 5, 11], [], [], [0, 3, 5], [0, 3, 5]];
+const times = [700, 4300, 7900, 11500, 15500, 18000];
+texts.forEach((txt, i) => tl.at(times[i], () => {
+  if (i < 4) { els.forEach((e, k) => { e.style.opacity = k === i ? '1' : '.30'; }); }
+  else { els.forEach(e => { e.style.opacity = '1'; }); }
+  msg.innerHTML = txt;
+  U.markLines(document, steps[i]);
 }));
-tl.at(15500, () => {
-  els.forEach(e => e.style.opacity = '1');
-  msg.innerHTML = texts[2];
-  U.markLines(document, [0]);
-});
-tl.at(18000, () => { msg.innerHTML = texts[3]; U.markLines(document, [2, 3]); });
 '''
 )
 
@@ -466,18 +482,23 @@ const rows = t.body.querySelectorAll('tr');
 const texts = [
   '一条主线上有三个同步点，别把它们混成一个：',
   '<span class="k">后端接口</span>（第 431 行）是唯一真正阻塞的地方；它的有无决定"异步"是否存在。',
-  '<span class="v">事件</span>让等待可以被传递：提交者盖章（1839），消费者按需等（1688）。',
   '<span class="v">调度器收尾</span>（2032-2043）是最后一道保险，也是 sched 级同步路径的全部内容。',
+  '<span class="v">异步</span>路径就是第 456 行那一次调用 —— 它<b>不碰</b>第 457 行。',
   '记住一句话：<span class="k">异步执行把"提交"与"完成"分开，中间靠 event / synchronize 划界</span> —— ' +
   '这正是 llama.cpp 能在多后端流水线里重叠计算与拷贝的原因。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; });
+const steps = [[], [2], [], [1], [1, 2]];
+tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, steps[0]); });
 rows.forEach((r, i) => tl.at(3000 + i * 3500, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
   msg.innerHTML = texts[i + 1];
-  U.markLines(document, [[1], [1], []][i]);
+  U.markLines(document, steps[i + 1]);
 }));
-tl.at(15500, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[4]; U.markLines(document, [1]); });
+tl.at(15500, () => {
+  rows.forEach(x => { x.className = ''; });
+  msg.innerHTML = texts[4];
+  U.markLines(document, steps[4]);
+});
 '''
 )
 

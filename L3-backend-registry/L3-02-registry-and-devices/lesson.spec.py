@@ -53,6 +53,10 @@ wrap.innerHTML = `
   <div class="row center" id="cards" style="gap:8px"></div>
   <div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
+// 点亮本幕 mark_src 标记的全部行；不传子集，避免把未选中的行 display:none 掉
+const lightAll = () => U.markLines(document, Array.from(document.querySelectorAll('#code mark.ln-mark'))
+  .map(m => +m.getAttribute('data-l')));
+
 
 const defs = [
   { c: 'a', t: '注册', b: '静态：构造函数里的 #ifdef<br>动态：load_backend() 之后追加', m: 'register_backend(reg)' },
@@ -71,10 +75,10 @@ const texts = [
   '这一课的落点：<span class="k">devices[i] 的下标</span>如何一路变成 offload 时“哪张卡放哪些层”。',
   '下一幕先看静态注册：<span class="v">16 个 #ifdef</span> 就把这台机器“有哪些后端”定死了。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, [1, 2]); });
-tl.at(3600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [5, 6]); });
-tl.at(6800, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [5, 6]); });
-tl.at(10000, () => { els[2].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, []); });
+tl.at(700, () => { msg.innerHTML = texts[0]; lightAll(); });
+tl.at(3600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[1]; lightAll(); });
+tl.at(6800, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[2]; lightAll(); });
+tl.at(10000, () => { els[2].style.opacity = '1'; msg.innerHTML = texts[3]; lightAll(); });
 tl.at(13000, () => { els.forEach(e => e.style.opacity = '1'); msg.innerHTML = texts[4]; });
 '''
 )
@@ -154,6 +158,10 @@ wrap.innerHTML = `<div class="row" style="gap:9px">
   </div>
   <div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
+// 点亮本幕 mark_src 标记的全部行；不传子集，避免把未选中的行 display:none 掉
+const lightAll = () => U.markLines(document, Array.from(document.querySelectorAll('#code mark.ln-mark'))
+  .map(m => +m.getAttribute('data-l')));
+
 
 const left = wrap.querySelector('#left');
 left.innerHTML = '<div class="cm" style="margin-bottom:2px">devices[] 的生长过程（本机实测）</div>';
@@ -197,11 +205,11 @@ const texts = [
   '于是 <span class="k">一个后端在后端列表里的位置，决定了它的设备在设备列表里的位置</span>。',
   '这就是第 6 幕要用到的全部机制：<span class="k">devices[] 的下标 = 注册顺序</span>。'
 ];
-tl.at(700,  () => { els[0].style.opacity = '1'; msg.innerHTML = texts[0]; U.markLines(document, [1, 5]); });
-tl.at(3700, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [15]); });
-tl.at(6700, () => { els[2].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [16, 17]); });
-tl.at(9700, () => { els[3].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, [5]); });
-tl.at(12700,() => { els[4].style.opacity = '1'; msg.innerHTML = texts[4]; U.markLines(document, []); });
+tl.at(700,  () => { els[0].style.opacity = '1'; msg.innerHTML = texts[0]; lightAll(); });
+tl.at(3700, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[1]; lightAll(); });
+tl.at(6700, () => { els[2].style.opacity = '1'; msg.innerHTML = texts[2]; lightAll(); });
+tl.at(9700, () => { els[3].style.opacity = '1'; msg.innerHTML = texts[3]; lightAll(); });
+tl.at(12700,() => { els[4].style.opacity = '1'; msg.innerHTML = texts[4]; lightAll(); });
 '''
 )
 
@@ -228,6 +236,10 @@ wrap.innerHTML = `
   <div class="row center" id="cards" style="gap:9px"></div>
   <div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
+// 点亮本幕 mark_src 标记的全部行；不传子集，避免把未选中的行 display:none 掉
+const lightAll = () => U.markLines(document, Array.from(document.querySelectorAll('#code mark.ln-mark'))
+  .map(m => +m.getAttribute('data-l')));
+
 
 const defs = [
   { c: 'c', t: '注册表是懒的', b: '没有任何全局初始化函数：<br>第一次触碰才构造，构造即注册。' },
@@ -247,10 +259,10 @@ const texts = [
   '于是“有哪些后端”= <span class="k">编译期静态集合</span> ∪ <span class="k">运行期加载的集合</span>，且前者总是先来。',
   '顺序也由此定死：<span class="k">静态后端永远排在动态后端前面</span>。'
 ];
-tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1]); });
-tl.at(3700, () => { msg.innerHTML = texts[1]; U.markLines(document, [0]); });
-tl.at(6700, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [6, 7, 8]); });
-tl.at(9700, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, []); });
+tl.at(700,  () => { msg.innerHTML = texts[0]; lightAll(); });
+tl.at(3700, () => { msg.innerHTML = texts[1]; lightAll(); });
+tl.at(6700, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[2]; lightAll(); });
+tl.at(9700, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[3]; lightAll(); });
 tl.at(12700,() => { msg.innerHTML = texts[4]; });
 '''
 )
@@ -270,6 +282,10 @@ wrap.innerHTML = `<div class="row center" id="strip" style="gap:7px"></div>
   <div class="row center" id="cards" style="gap:9px"></div>
   <div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
+// 点亮本幕 mark_src 标记的全部行；不传子集，避免把未选中的行 display:none 掉
+const lightAll = () => U.markLines(document, Array.from(document.querySelectorAll('#code mark.ln-mark'))
+  .map(m => +m.getAttribute('data-l')));
+
 
 const strip = wrap.querySelector('#strip');
 const items = [
@@ -304,10 +320,10 @@ const texts = [
   '<span class="v">ggml_backend_dev_by_type()</span>（355-363）与 <span class="v">by_name()</span>（345-353）都是<b>从头扫、返回第一个匹配</b>，<br>所以“同一个类型有多块设备时返回谁”，答案还是顺序。',
   '记住：<span class="k">这里的下标不是硬件编号，是注册顺序</span>。下一幕看它的后果。'
 ];
-tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1]); });
-tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [4, 5, 6]); });
-tl.at(6600, () => { els[1].style.opacity = '1'; els[2].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, []); });
-tl.at(9600, () => { cels[0].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, []); });
+tl.at(700,  () => { msg.innerHTML = texts[0]; lightAll(); });
+tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; lightAll(); });
+tl.at(6600, () => { els[1].style.opacity = '1'; els[2].style.opacity = '1'; msg.innerHTML = texts[2]; lightAll(); });
+tl.at(9600, () => { cels[0].style.opacity = '1'; msg.innerHTML = texts[3]; lightAll(); });
 tl.at(12600,() => { cels[1].style.opacity = '1'; msg.innerHTML = texts[4]; });
 '''
 )
@@ -335,6 +351,10 @@ wrap.innerHTML = `
   <div class="row wrap" id="cards" style="gap:8px"></div>
   <div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
+// 点亮本幕 mark_src 标记的全部行；不传子集，避免把未选中的行 display:none 掉
+const lightAll = () => U.markLines(document, Array.from(document.querySelectorAll('#code mark.ln-mark'))
+  .map(m => +m.getAttribute('data-l')));
+
 
 const defs = [
   { c: 'b', t: '① 收集', b: 'GPU 型设备按遇到的顺序 <span class="cm" style="margin:0">gpus.push_back</span>（254）；<br>RPC 设备单独收集。' },
@@ -359,10 +379,10 @@ const texts = [
   '所以：<span class="k">同一份 --tensor-split 3,1，在“设备顺序不同”的两台机器上，会把层分到不同的卡上</span>。',
   '顺序还会被写死的两张表改写：静态注册表与动态加载表顺序不同（下一幕），<span class="v">CANN</span> 与 <span class="v">CUDA</span> 就是一个真实的反例。'
 ];
-tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1]); });
-tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [8, 9]); });
-tl.at(6600, () => { msg.innerHTML = texts[2]; U.markLines(document, []); });
-tl.at(9600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, [9]); });
+tl.at(700,  () => { msg.innerHTML = texts[0]; lightAll(); });
+tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; lightAll(); });
+tl.at(6600, () => { msg.innerHTML = texts[2]; lightAll(); });
+tl.at(9600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[3]; lightAll(); });
 tl.at(12600,() => { els[2].style.opacity = '1'; msg.innerHTML = texts[4]; });
 tl.at(15600,() => { msg.innerHTML = texts[5]; });
 tl.at(18600,() => { msg.innerHTML = texts[6]; });
@@ -402,7 +422,7 @@ const texts = [
   '搜索路径：<span class="v">GGML_BACKEND_DIR</span>（编译期，若定义）→ 可执行文件目录 → 当前目录（488-499）；<br>' +
     '每个路径下找 <span class="v">libggml-&lt;name&gt;-*.so</span>（464-478 的前后缀），按 <span class="v">ggml_backend_score()</span> 选分最高的（504-543）。',
   '候选名字 <span class="k">15 个</span>，顺序写死：blas, zendnn, cann, cuda, hip, metal, rpc, sycl, vulkan, virtgpu, opencl, hexagon, musa, openvino, cpu。<br>' +
-    '（命令数出来：<span class="v">grep -c \'ggml_backend_load_best("\' ggml/src/ggml-backend-reg.cpp</span> = 15）',
+    '（命令数出来：<span class="v">grep -c "ggml_backend_load_best(" ggml/src/ggml-backend-reg.cpp</span> = 15）',
   '★ 关键：<span class="k">这张表与构造函数的 #ifdef 顺序不是同一张表</span>。<br>' +
     '例如 <span class="v">CANN</span>：静态顺序在 CUDA 之后（156 vs 120），动态顺序在 CUDA 之前（587 vs 588）。',
   '而 <span class="v">register_backend()</span> 只做 push_back（201）—— 所以“同一个后端是编译进来的还是加载进来的”，<br>会改变它在 devices[] 里的下标。',
@@ -434,6 +454,10 @@ const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div class="row wrap" id="cards" style="gap:8px"></div>
   <div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
+// 点亮本幕 mark_src 标记的全部行；不传子集，避免把未选中的行 display:none 掉
+const lightAll = () => U.markLines(document, Array.from(document.querySelectorAll('#code mark.ln-mark'))
+  .map(m => +m.getAttribute('data-l')));
+
 
 const defs = [
   { c: 'a', t: '它是聚合', b: 'simple_devs 是入参那串设备（54-57）；<br>Meta 设备的全部行为都转发给它们。' },
@@ -456,10 +480,10 @@ const texts = [
   '于是 <span class="v">ggml_backend_dev_count()</span> 永远数不到它（第 5 幕），<br>而 llama.cpp 的设备选择循环里遇到 META 型设备会 abort（src/llama.cpp:269-270）。',
   '它的价值：把“数据怎么切到多张卡”这件事<b>藏在一个设备后面</b>；<br>调度器仍然以为自己在跟一个设备打交道（L4-02）。拆开看是 <span class="v">simple_devs</span>。'
 ];
-tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1, 2]); });
-tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [3, 5]); });
-tl.at(6600, () => { els[3].style.opacity = '1'; els[4].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [23, 24, 25, 27, 28]); });
-tl.at(9600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, [23, 24, 25, 27, 28]); });
+tl.at(700,  () => { msg.innerHTML = texts[0]; lightAll(); });
+tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; lightAll(); });
+tl.at(6600, () => { els[3].style.opacity = '1'; els[4].style.opacity = '1'; msg.innerHTML = texts[2]; lightAll(); });
+tl.at(9600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[3]; lightAll(); });
 tl.at(12600,() => { els[2].style.opacity = '1'; msg.innerHTML = texts[3]; });
 tl.at(15600,() => { els[5].style.opacity = '1'; msg.innerHTML = texts[4]; });
 '''
@@ -481,6 +505,10 @@ wrap.innerHTML = `<div class="row center" id="strip" style="gap:8px"></div>
   <div class="row center" id="cards" style="gap:9px"></div>
   <div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
+// 点亮本幕 mark_src 标记的全部行；不传子集，避免把未选中的行 display:none 掉
+const lightAll = () => U.markLines(document, Array.from(document.querySelectorAll('#code mark.ln-mark'))
+  .map(m => +m.getAttribute('data-l')));
+
 
 const strip = wrap.querySelector('#strip');
 strip.innerHTML =
@@ -507,10 +535,10 @@ const texts = [
     '<span class="k">它在注册表里的下标与名字里的 0 没有必然关系</span>。',
   '实践建议：要钉住某块卡，用名字而不是下标 —— <span class="v">--device</span> 内部就是 by_name（common/arg.cpp:1116-1136），<br>它不随注册顺序漂移。'
 ];
-tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1, 2]); });
-tl.at(3600, () => { msg.innerHTML = texts[1]; U.markLines(document, [2, 8, 10]); });
-tl.at(6600, () => { cels[0].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [5, 6, 7]); });
-tl.at(9600, () => { chipEls.forEach(c => { c.style.opacity = '1'; }); msg.innerHTML = texts[3]; U.markLines(document, []); });
+tl.at(700,  () => { msg.innerHTML = texts[0]; lightAll(); });
+tl.at(3600, () => { msg.innerHTML = texts[1]; lightAll(); });
+tl.at(6600, () => { cels[0].style.opacity = '1'; msg.innerHTML = texts[2]; lightAll(); });
+tl.at(9600, () => { chipEls.forEach(c => { c.style.opacity = '1'; }); msg.innerHTML = texts[3]; lightAll(); });
 tl.at(12600,() => { cels[1].style.opacity = '1'; msg.innerHTML = texts[4]; });
 '''
 )
@@ -528,6 +556,10 @@ L.scene(
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div id="tbl"></div><div id="ex"></div><div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
+// 点亮本幕 mark_src 标记的全部行；不传子集，避免把未选中的行 display:none 掉
+const lightAll = () => U.markLines(document, Array.from(document.querySelectorAll('#code mark.ln-mark'))
+  .map(m => +m.getAttribute('data-l')));
+
 
 const t = U.table(
   ['问题', '答案', '依据'],
@@ -543,18 +575,19 @@ wrap.querySelector('#tbl').appendChild(t.el);
 const trs = t.body.querySelectorAll('tr');
 
 wrap.querySelector('#ex').appendChild(W.exercise(
-  '一台机器上有两张 NVIDIA 卡。构建 A 打开了 <span class="mono">GGML_USE_CUDA</span>（静态注册），' +
-  '构建 B 只静态编译了 CPU，CUDA 由运行期动态加载。为什么两次运行的 <span class="mono">--tensor-split</span> 可能指向不同的卡？' +
-  '要钉住某一张卡，应该用什么？',
-  '关键在 <span class="mono">devices[]</span> 里 GPU 设备的<b>顺序</b>：<br>' +
-  '· 构建 A：CUDA 后端在构造函数里注册（<span class="mono">reg.cpp:120-122</span>），它的卡先进数组；<br>' +
-  '· 构建 B：CUDA 由 <span class="mono">load_backend()</span> 追加（<span class="mono">reg.cpp:201</span>），排在所有静态后端之后。<br>' +
-  'llama.cpp 按 <span class="mono">ggml_backend_dev_get(i)</span> 的顺序收集 GPU（<span class="mono">src/llama.cpp:222-231, 254</span>），' +
+  '一台机器上既有 NVIDIA 卡（CUDA 后端）又有昇腾 NPU（CANN 后端）。构建 A 把两个后端都静态编译进来，' +
+  '构建 B 里两者都由运行期动态加载。两次运行都写 <span class="mono">--main-gpu 0</span>，会选中同一块硬件吗？' +
+  '要稳定钉住某一块，应该怎么做？',
+  '不一定 —— 关键在 <span class="mono">devices[]</span> 里两个后端的<b>先后</b>，而两张顺序表正好相反：<br>' +
+  '· 静态（构建 A）：构造函数里 CUDA 在 120 行、CANN 在 156 行 → <span class="mono">[CUDA0, CANN0]</span>；<br>' +
+  '· 动态（构建 B）：候选名字表里 cann 在 587 行、cuda 在 588 行 → <span class="mono">[CANN0, CUDA0]</span>。<br>' +
+  '注册只做 <span class="mono">push_back</span>（<span class="mono">reg.cpp:201</span>），所以两种构建的设备下标是反的。' +
+  'llama.cpp 按 <span class="mono">ggml_backend_dev_get(i)</span> 的顺序收集 GPU 型设备（<span class="mono">src/llama.cpp:222-231, 254</span>），' +
   '<span class="mono">--main-gpu N</span> 与 <span class="mono">--tensor-split</span> 的第 j 项都是 <span class="mono">model->devices</span> 的下标' +
-  '（<span class="mono">297-299</span>），最终决定每层落在哪张卡（<span class="mono">llama-model.cpp:1529</span>）。<br>' +
-  '机器上还有第二种 GPU 后端在册时（例如 CANN 与 CUDA 同时构建），静态与动态两张顺序表不同这一点就会直接改变映射。' +
-  '所以要用<b>名字</b>钉住设备：<span class="mono">--device CUDA1</span>，它内部走 ' +
-  '<span class="mono">ggml_backend_dev_by_name()</span>（<span class="mono">reg.cpp:345-353</span>，经 <span class="mono">common/arg.cpp:1127</span>）。'));
+  '（<span class="mono">297-299</span>、<span class="mono">llama-model.cpp:1488-1508</span>），最终决定每层落在哪块设备（<span class="mono">1529</span>）。<br>' +
+  '稳定做法是用<b>名字</b>：<span class="mono">--device</span> 内部走 ' +
+  '<span class="mono">ggml_backend_dev_by_name()</span>（<span class="mono">reg.cpp:345-353</span>，经 <span class="mono">common/arg.cpp:1127</span>），' +
+  '而且给出的顺序就是 <span class="mono">model->devices</span> 的顺序（<span class="mono">src/llama.cpp:181-183</span>）。'));
 
 const msg = wrap.querySelector('#msg');
 const texts = [
@@ -564,8 +597,8 @@ const texts = [
   '而顺序规则很朴素：<span class="v">register_backend() 只做 push_back</span>，先静态后动态。',
   'L2-03 讲权重落位、L2-05 讲 dev_layer、L4-02 讲调度器怎么按设备列表切图 —— 它们都吃这一课的输出。'
 ];
-tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [1, 2, 3]); });
-tl.at(3700, () => { msg.innerHTML = texts[1]; U.markLines(document, []); });
+tl.at(700,  () => { msg.innerHTML = texts[0]; lightAll(); });
+tl.at(3700, () => { msg.innerHTML = texts[1]; lightAll(); });
 trs.forEach((r, i) => tl.at(6400 + i * 1600, () => {
   trs.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
   msg.innerHTML = texts[2];
