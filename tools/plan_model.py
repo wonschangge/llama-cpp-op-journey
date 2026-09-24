@@ -46,8 +46,14 @@ dict(id="L1-03", layer="L1", prio="P0",
 
 dict(id="L1-04", layer="L1", prio="P0",
      title="量化块结构：算子内层的压缩数据",
-     paths=["ggml/src/ggml-quants.c", "ggml/src/ggml-quants.h", "ggml/src/ggml-common.h"],
-     ideas="block_q4_0 等块布局、scale/min 的表示、反量化函数族、GGML_TYPE 与块大小的绑定",
+     paths=["ggml/src/ggml-quants.c", "ggml/src/ggml-quants.h", "ggml/src/ggml-common.h",
+            # 实测回改：QK4_0 等块大小宏【不在】 ggml-quants.h，而在 ggml-common.h
+            # （ggml-quants.h 第 4 行 #include "ggml-common.h"）；
+            # ggml_type_traits 表实测只在 ggml.c（起于 632 行），是"类型号->块大小"
+            # 绑定的唯一出处，故追加引用 ggml.c。原计划措辞有误，已回改。
+            "ggml/src/ggml.c"],
+     ideas="block_q4_0 等块布局（实测：Q4_0=18B / Q4_1=20B / Q8_0=34B / Q4_K=144B / Q6_K=210B）、"
+           "scale/min 的表示、反量化函数族、ggml.c 里的 ggml_type_traits 表如何绑定类型与块大小",
      accept="能画出 Q4_0 与 Q4_K 的块内存布局差异，并说出对内核的影响"),
 
 dict(id="L1-05", layer="L1", prio="P0",
