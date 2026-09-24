@@ -362,7 +362,7 @@ const texts = [
 tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1]); });
 tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [8, 9]); });
 tl.at(6600, () => { msg.innerHTML = texts[2]; U.markLines(document, []); });
-tl.at(9600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, []); });
+tl.at(9600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, [9]); });
 tl.at(12600,() => { els[2].style.opacity = '1'; msg.innerHTML = texts[4]; });
 tl.at(15600,() => { msg.innerHTML = texts[5]; });
 tl.at(18600,() => { msg.innerHTML = texts[6]; });
@@ -459,7 +459,7 @@ const texts = [
 tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1, 2]); });
 tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [3, 5]); });
 tl.at(6600, () => { els[3].style.opacity = '1'; els[4].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [23, 24, 25, 27, 28]); });
-tl.at(9600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, []); });
+tl.at(9600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, [23, 24, 25, 27, 28]); });
 tl.at(12600,() => { els[2].style.opacity = '1'; msg.innerHTML = texts[3]; });
 tl.at(15600,() => { els[5].style.opacity = '1'; msg.innerHTML = texts[4]; });
 '''
