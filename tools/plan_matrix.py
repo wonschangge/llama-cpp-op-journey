@@ -145,6 +145,18 @@ def resolve():
 
 
 def main():
+    if '--help' in sys.argv or '-h' in sys.argv:
+        print("""usage: plan_matrix.py [--md] [--plan] [--files]
+
+生成覆盖矩阵与分层课程计划，并断言覆盖域中无未指派文件。
+
+options:
+  --md       写出 plan/COVERAGE.md（文件到课的映射矩阵）
+  --plan     写出 plan/TODOLIST.md（勾选状态由磁盘文件齐备度自动生成）
+  --files    逐行打印 课号<TAB>文件
+  -h, --help 显示本帮助
+""")
+        return 0
     assign, unassigned = resolve()
     uni = ru.universe()
     total = len(uni)
