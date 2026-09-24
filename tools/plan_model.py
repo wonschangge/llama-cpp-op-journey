@@ -142,10 +142,16 @@ dict(id="L2-09", layer="L2", prio="P1",
 
 # ---- 模型家族：按图构建原语静态分类（见 plan/COVERAGE.md 的分组依据）----
 dict(id="L2-10", layer="L2", prio="P0", group="models",
-     title="模型家族（一）：多模态与视觉编码",
+     # 实测回改：本组由静态扫描 mmproj/vision/image_/clip_ 得到，但逐文件读后确认
+     # 6 个文件里【没有一个是视觉编码器】：8 处命中里 5 处在注释、3 处是同一个
+     # 元数据键名，clip_ 零命中；clip.cpp 是 18 行的量化存根，
+     # 真正的视觉塔在 tools/mtmd/（不在覆盖域，已声明不计入覆盖率）。
+     title="模型家族（一）：公共声明头与图入口的分叉",
      paths=["src/models/clip.cpp", "src/models/deepseek4.cpp", "src/models/gemma4.cpp",
             "src/models/pockettts.cpp", "src/models/qwen4exp.cpp", "src/models/models.h"],
-     ideas="视觉/音频编码器如何进入同一个图；mmproj 的算子与 LLM 部分如何拼接",
+     ideas="models.h 作为 151 个模型类的公共声明头；文本图在入口按 ubatch.token / ubatch.embd "
+           "分叉；多模态不是新引擎而是「多张图接在一起」，视觉塔输出以 "
+           "[n_mmproj_embd, n_tokens] 填进 llama_batch.embd",
      accept="能说出视觉塔的输出以什么形状喂给 LLM 部分"),
 
 dict(id="L2-11", layer="L2", prio="P0", group="models",

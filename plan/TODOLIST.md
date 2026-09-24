@@ -82,8 +82,8 @@
   - 讲解要点：量化流水线、imatrix、LoRA 适配器如何改变图、对话模板
   - 验收点：能说出 LoRA 是在哪一步被加进图的
   - 目录：`L2-model-to-graph/L2-09-quant-export-adapter/`
-- [x] **`L2-10`** 模型家族（一）：多模态与视觉编码　`P0`　6 文件
-  - 讲解要点：视觉/音频编码器如何进入同一个图；mmproj 的算子与 LLM 部分如何拼接
+- [x] **`L2-10`** 模型家族（一）：公共声明头与图入口的分叉　`P0`　6 文件
+  - 讲解要点：models.h 作为 151 个模型类的公共声明头；文本图在入口按 ubatch.token / ubatch.embd 分叉；多模态不是新引擎而是「多张图接在一起」，视觉塔输出以 [n_mmproj_embd, n_tokens] 填进 llama_batch.embd
   - 验收点：能说出视觉塔的输出以什么形状喂给 LLM 部分
   - 目录：`L2-model-to-graph/L2-10-models-multimodal/`
 - [ ] **`L2-11`** 模型家族（二）：状态空间与线性注意力　`P0`　30 文件
