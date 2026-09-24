@@ -58,6 +58,20 @@ def lesson_dirs(only=None):
     return out
 
 
+def _planned_dirs():
+    """计划里的全部课件目录（相对仓库根）。用于区分「还没写」与「写错了」。"""
+    try:
+        sys.path.insert(0, os.path.join(HERE, 'tools'))
+        import plan_model as pm
+        import plan_matrix as pmat
+        return {pmat.lesson_dir(l) for l in pm.LESSONS}
+    except Exception:
+        return set()
+
+
+PLANNED = _planned_dirs()
+
+
 def lint_one(d):
     """返回 (lesson_id, [错误], [警告])"""
     rel = os.path.relpath(d, HERE)
@@ -116,8 +130,16 @@ def lint_one(d):
             if href.startswith(('http', 'data:', '#')):
                 continue
             target = os.path.normpath(os.path.join(d, href))
-            if not os.path.exists(target):
-                errs.append(f'导航链接指向不存在: {href}')
+            if os.path.exists(target):
+                continue
+            # 目标是「计划中但尚未撰写」的课 -> 只是警告，不是错误。
+            # 否则链接指向的就是真错（或最终交付时仍未补齐）。
+            tdir = os.path.dirname(target)
+            trel = os.path.relpath(tdir, HERE)
+            if trel in PLANNED or trel.rstrip('/') in PLANNED:
+                warns.append(f'导航指向计划中但尚未撰写的课: {href}')
+            else:
+                errs.append(f'导航链接指向不存在且不在计划内: {href}')
 
     rdm = os.path.join(d, 'README.md')
     if os.path.isfile(rdm):

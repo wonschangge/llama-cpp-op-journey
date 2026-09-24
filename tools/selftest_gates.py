@@ -140,28 +140,52 @@ CASES = [
 ]
 
 
+def safe_rm(path):
+    """只允许删除 L1-99-* 自检样本里面的东西。
+
+    ★ 事故记录（2026-09-25）：本脚本最初的清理写成 `shutil.rmtree(TMP)`，
+      而 TMP 被改成了【整个层目录】`L1-operator-representation`。
+      结果任何一次自检都会把该层下所有已完成的课和正在写的课一起删光
+      （L1-01 已提交可从 git 恢复；未跟踪的 lesson.spec.py 永久丢失）。
+      现在加这道断言：路径里必须含一个以 L1-99- 开头的目录段，否则拒绝删除。
+    """
+    ap = os.path.abspath(path)
+    parts = ap.split(os.sep)
+    if not any(p.startswith('L1-99-') for p in parts):
+        raise RuntimeError(f'拒绝删除非自检样本路径: {ap}')
+    shutil.rmtree(ap, ignore_errors=True)
+
+
+def clean_fixtures():
+    """只清理 L1-99-* 自检样本，绝不动真实课件。"""
+    if not os.path.isdir(TMP):
+        return
+    for name in os.listdir(TMP):
+        if name.startswith('L1-99-'):
+            safe_rm(os.path.join(TMP, name))
+
+
 def main():
     if '--help' in sys.argv or '-h' in sys.argv:
         print(USAGE)
         return 0
-    if os.path.isdir(TMP):
-        shutil.rmtree(TMP, ignore_errors=True)
+    clean_fixtures()
     os.makedirs(TMP, exist_ok=True)
     bad = 0
     print('门禁自检：每一条都构造一个【应当被抓到】的样本\n')
-    for name, fn in CASES:
-        try:
-            caught, detail = fn()
-        except Exception as e:
-            caught, detail = False, f'自检本身抛异常: {e}'
-        mark = '✓' if caught else '✗'
-        if not caught:
-            bad += 1
-        d = detail if isinstance(detail, str) else ' '.join(detail)
-        print(f'  {mark} {name:<16} {"已抓到" if caught else "【漏报！】"}  {d.strip()[:96]}')
-    for name in os.listdir(TMP):
-        if name.startswith('L1-99-'):
-            shutil.rmtree(os.path.join(TMP, name), ignore_errors=True)
+    try:
+        for name, fn in CASES:
+            try:
+                caught, detail = fn()
+            except Exception as e:
+                caught, detail = False, f'自检本身抛异常: {e}'
+            mark = '✓' if caught else '✗'
+            if not caught:
+                bad += 1
+            d = detail if isinstance(detail, str) else ' '.join(detail)
+            print(f'  {mark} {name:<16} {"已抓到" if caught else "【漏报！】"}  {d.strip()[:96]}')
+    finally:
+        clean_fixtures()
     print()
     if bad:
         print(f'✗ 门禁自检失败：{bad}/{len(CASES)} 个样本没被抓住 —— 门禁不可信')
