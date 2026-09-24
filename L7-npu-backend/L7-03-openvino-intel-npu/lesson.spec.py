@@ -58,7 +58,7 @@ FA = 'ggml/src/ggml-openvino/openvino/op/flash_attn_ext.cpp'
 def ridx(parts, notes_src, lines):
     """上游行号 -> 【渲染下标】的映射（与 lessonkit._render_code 同一算法）。
 
-    为什么需要它：`U.markLines(document, [...])` 吃的是**渲染下标**（含注解行），
+    为什么需要它：`hl([...])` 吃的是**渲染下标**（含注解行），
     而注解行是由 notes_src 插进去的 —— 手数下标必然错位（AUTHORING.md §3.1 的坑）。
     这里直接按 lessonkit 的同一套规则算出来，注入到 visual 里。
     """
@@ -100,10 +100,35 @@ L.note('这个视角解释了本课后面所有的"奇怪"设计：\n\n'
 L.note('本课覆盖 **82 个文件**：`ggml/include/ggml-openvino.h` + `ggml/src/ggml-openvino/` 下的 81 个。'
        '其中 45 个在 `openvino/op/` 下，一个文件（最多）负责一个（或一族）ggml 算子到 `ov::op` 的翻译。')
 
+FOCUS_JS = """
+const hl = (ids) => {
+  const ms = document.querySelectorAll('mark.ln-mark');
+  let first = null;
+  for (let i = 0; i < ms.length; i++) {
+    const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+    ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+    ms[i].style.display = 'inline-block';
+    if (on && !first) first = ms[i];
+  }
+  if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+};
+"""
+
+
+def mkvis(js, parts, notes_src):
+    """把 LN 表与高亮助手注入 visual。
+
+    高亮走的是【渲染下标】，且被高亮的行要滚进视野 —— 58 行的引用块里，
+    不滚动的话时间轴高亮的那几行可能根本不在屏幕上。
+    """
+    return (js.replace('/*__LN__*/null', mklines(parts, notes_src))
+              .replace('/*__FOCUS__*/', FOCUS_JS))
+
 # ==================================================================== 第 1 幕
 
 VIS1 = '''
-const LN = /*__LN1__*/null;
+const LN = /*__LN__*/null;
+/*__FOCUS__*/
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `
   <div class="flow" style="justify-content:center">
@@ -146,7 +171,7 @@ const texts = [
 tl.at(700, () => {
   bars.forEach((b, i) => { b.fill.style.width = (12 + i * 17) + '%'; b.val.textContent = groups[i].n; });
   msg.innerHTML = texts[0];
-  U.markLines(document, [LN[11], LN[14]]);
+  hl([LN[11], LN[14]]);
 });
 groups.forEach((g, i) => tl.at(3400 + i * 3000, () => {
   bars.forEach((b, k) => { b.el.style.opacity = k === i ? '1' : '.32'; });
@@ -155,7 +180,7 @@ groups.forEach((g, i) => tl.at(3400 + i * 3000, () => {
 tl.at(18400, () => {
   bars.forEach(b => { b.el.style.opacity = '1'; });
   msg.innerHTML = texts[6];
-  U.markLines(document, [LN[11], LN[14], LN[18], LN[27], LN[29], LN[31]]);
+  hl([LN[11], LN[14], LN[18], LN[27], LN[29], LN[31]]);
 });
 '''
 
@@ -170,18 +195,19 @@ N1 = {11: '后端名字：注册表里的 key 就是它（见 L3-02）',
 L.scene(
     kicker='L7 · NPU 与加速器后端',
     title='OpenVINO 后端：<span class="hl-a">翻译图</span>，而不是写 kernel',
-    sub='公共头只有 23 行有效内容、11 个 C 函数。真正的实现是 81 个 C++ 文件构成的"前端"。',
+    sub='公共头只有 23 行有效内容、10 个 C 函数。真正的实现是 81 个 C++ 文件构成的"前端"。',
     caption='L7-01 CANN 走的是同一路线（映射到厂商算子），L7-02 Hexagon 则把整图丢给远端 DSP；三课对照着看。',
     src=HDR, parts=P1, duration=21000,
     mark_src=[11, 14, 18, 27, 29, 31],
     notes_src=N1,
-    visual=VIS1.replace('/*__LN1__*/null', mklines(P1, N1))
+    visual=mkvis(VIS1, P1, N1)
 )
 
 # ==================================================================== 第 2 幕
 
 VIS2 = '''
-const LN = /*__LN2__*/null;
+const LN = /*__LN__*/null;
+/*__FOCUS__*/
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `
   <div class="row center" id="lane" style="gap:6px"></div>
@@ -216,12 +242,12 @@ const texts = [
     '所以这不是"算子一一对应"，而是<b>两张图之间的映射</b>。',
   '一句话：<span class="k">ggml 的 op 枚举 = OpenVINO 后端的"函数指针表索引"</span>。表的缺失项 = 不支持。'
 ];
-tl.at(700, () => { els.forEach((e, k) => { e.style.opacity = k === 0 ? '1' : '.26'; }); msg.innerHTML = texts[0]; U.markLines(document, [LN[297]]); });
-tl.at(3800, () => { els.forEach((e, k) => { e.style.opacity = k <= 1 ? '1' : '.26'; }); msg.innerHTML = texts[1]; U.markLines(document, [LN[298], LN[299]]); });
-tl.at(7300, () => { els.forEach((e, k) => { e.style.opacity = k <= 2 ? '1' : '.26'; }); msg.innerHTML = texts[2]; U.markLines(document, [LN[303], LN[304]]); });
-tl.at(11000, () => { els.forEach((e, k) => { e.style.opacity = k <= 3 ? '1' : '.26'; }); msg.innerHTML = texts[3]; U.markLines(document, [LN[306], LN[307]]); });
-tl.at(14700, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; U.markLines(document, [LN[307]]); });
-tl.at(17600, () => { msg.innerHTML = texts[5]; U.markLines(document, [LN[297], LN[298], LN[303], LN[304], LN[307]]); });
+tl.at(700, () => { els.forEach((e, k) => { e.style.opacity = k === 0 ? '1' : '.26'; }); msg.innerHTML = texts[0]; hl([LN[297]]); });
+tl.at(3800, () => { els.forEach((e, k) => { e.style.opacity = k <= 1 ? '1' : '.26'; }); msg.innerHTML = texts[1]; hl([LN[298], LN[299]]); });
+tl.at(7300, () => { els.forEach((e, k) => { e.style.opacity = k <= 2 ? '1' : '.26'; }); msg.innerHTML = texts[2]; hl([LN[303], LN[304]]); });
+tl.at(11000, () => { els.forEach((e, k) => { e.style.opacity = k <= 3 ? '1' : '.26'; }); msg.innerHTML = texts[3]; hl([LN[306], LN[307]]); });
+tl.at(14700, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; hl([LN[307]]); });
+tl.at(17600, () => { msg.innerHTML = texts[5]; hl([LN[297], LN[298], LN[303], LN[304], LN[307]]); });
 '''
 
 P2 = [(297, 307)]
@@ -240,13 +266,14 @@ L.scene(
     src=SESSION, parts=P2, duration=19000,
     mark_src=[297, 298, 299, 303, 304, 306, 307],
     notes_src=N2,
-    visual=VIS2.replace('/*__LN2__*/null', mklines(P2, N2))
+    visual=mkvis(VIS2, P2, N2)
 )
 
 # ==================================================================== 第 3 幕
 
 VIS3 = '''
-const LN = /*__LN3__*/null;
+const LN = /*__LN__*/null;
+/*__FOCUS__*/
 const wrap = U.el('div', { class: 'col', style: 'gap:8px;width:100%' });
 wrap.innerHTML = `<div id="tbl"></div><div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
@@ -287,30 +314,30 @@ tl.at(700, () => { msg.innerHTML = texts[0]; });
 tl.at(3000, () => {
   [0, 1, 2, 3, 4].forEach(k => { rows[k].className = 'on'; });
   msg.innerHTML = texts[1];
-  U.markLines(document, [LN[35], LN[27], LN[50], LN[54], LN[52]]);
+  hl([LN[35], LN[27], LN[50], LN[54], LN[52]]);
 });
 tl.at(8000, () => {
   rows.forEach(r => { r.className = ''; });
   [5].forEach(k => { rows[k].className = 'on'; });
   msg.innerHTML = texts[2];
-  U.markLines(document, [LN[40]]);
+  hl([LN[40]]);
 });
 tl.at(12000, () => {
   rows.forEach(r => { r.className = ''; });
   [6, 7].forEach(k => { rows[k].className = 'on'; });
   msg.innerHTML = texts[3];
-  U.markLines(document, [LN[41]]);
+  hl([LN[41]]);
 });
 tl.at(16400, () => {
   rows.forEach(r => { r.className = ''; });
   [8, 9, 10, 11, 12, 13, 14, 15].forEach(k => { rows[k].className = 'on'; });
   msg.innerHTML = texts[4];
-  U.markLines(document, [LN[36], LN[48], LN[33], LN[49], LN[34]]);
+  hl([LN[36], LN[48], LN[33], LN[49], LN[34]]);
 });
 tl.at(20600, () => {
   rows.forEach(r => { r.className = ''; });
   msg.innerHTML = texts[5];
-  U.markLines(document, [LN[23], LN[60]]);
+  hl([LN[23], LN[60]]);
 });
 '''
 
@@ -332,13 +359,14 @@ L.scene(
     src=OPT, parts=P3, duration=24000,
     mark_src=[23, 26, 27, 33, 34, 35, 36, 39, 40, 41, 48, 49, 50, 52, 54, 60],
     notes_src=N3,
-    visual=VIS3.replace('/*__LN3__*/null', mklines(P3, N3))
+    visual=mkvis(VIS3, P3, N3)
 )
 
 # ==================================================================== 第 4 幕
 
 VIS4 = '''
-const LN = /*__LN4__*/null;
+const LN = /*__LN__*/null;
+/*__FOCUS__*/
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `
   <div class="row center" id="gate" style="gap:7px"></div>
@@ -371,11 +399,11 @@ const texts = [
   '因此 <b>改 op_table.cpp 一行 = 改变后端的算力边界</b>；' +
     '13 种类型的白名单同理（下一幕）。'
 ];
-tl.at(700, () => { els.forEach((e, k) => { e.style.opacity = k === 0 ? '1' : '.28'; }); msg.innerHTML = texts[0]; U.markLines(document, [LN[1449]]); });
-tl.at(5600, () => { els.forEach((e, k) => { e.style.opacity = k <= 1 ? '1' : '.28'; }); msg.innerHTML = texts[1]; U.markLines(document, [LN[1461], LN[1462], LN[1470], LN[1471], LN[1476]]); });
-tl.at(11200, () => { els.forEach((e, k) => { e.style.opacity = k <= 2 ? '1' : '.28'; }); msg.innerHTML = texts[2]; U.markLines(document, [LN[1474], LN[1475], LN[1483]]); });
-tl.at(16600, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[3]; U.markLines(document, [LN[1452], LN[1453], LN[1454]]); });
-tl.at(21200, () => { msg.innerHTML = texts[4]; U.markLines(document, [LN[1490]]); });
+tl.at(700, () => { els.forEach((e, k) => { e.style.opacity = k === 0 ? '1' : '.28'; }); msg.innerHTML = texts[0]; hl([LN[1449]]); });
+tl.at(5600, () => { els.forEach((e, k) => { e.style.opacity = k <= 1 ? '1' : '.28'; }); msg.innerHTML = texts[1]; hl([LN[1461], LN[1462], LN[1470], LN[1471], LN[1476]]); });
+tl.at(11200, () => { els.forEach((e, k) => { e.style.opacity = k <= 2 ? '1' : '.28'; }); msg.innerHTML = texts[2]; hl([LN[1474], LN[1475], LN[1483]]); });
+tl.at(16600, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[3]; hl([LN[1452], LN[1453], LN[1454]]); });
+tl.at(21200, () => { msg.innerHTML = texts[4]; hl([LN[1490]]); });
 '''
 
 P4 = [(1449, 1493)]
@@ -396,13 +424,14 @@ L.scene(
     src=OW, parts=P4, duration=24000,
     mark_src=[1449, 1452, 1453, 1454, 1461, 1462, 1470, 1471, 1474, 1475, 1476, 1483, 1490],
     notes_src=N4,
-    visual=VIS4.replace('/*__LN4__*/null', mklines(P4, N4))
+    visual=mkvis(VIS4, P4, N4)
 )
 
 # ==================================================================== 第 5 幕
 
 VIS5 = '''
-const LN = /*__LN5__*/null;
+const LN = /*__LN__*/null;
+/*__FOCUS__*/
 const wrap = U.el('div', { class: 'col', style: 'gap:8px;width:100%' });
 wrap.innerHTML = `
   <div class="row" style="gap:8px">
@@ -414,10 +443,15 @@ root.appendChild(wrap);
 
 const cut = wrap.querySelector('#cut');
 cut.innerHTML = '<div class="cm" style="margin-bottom:3px">一段子图（拓扑序）</div>';
-const seq = ['MUL_MAT', 'RMS_NORM', 'ROPE', 'SOFT_MAX', 'FLASH_ATTN_EXT', 'GET_ROWS', 'ADD'];
-const cells = seq.map(n => {
+const seq = [
+  { n: 'MUL_MAT', ok: true }, { n: 'RMS_NORM', ok: true }, { n: 'SOFT_MAX', ok: true },
+  { n: 'MUL_MAT(3D 量化权重)', ok: false },
+  { n: 'FLASH_ATTN_EXT', ok: true }, { n: 'GET_ROWS', ok: true }, { n: 'ADD', ok: true }
+];
+const cells = seq.map(s => {
   const e = U.el('div', { class: 'formula', style: 'padding:3px 7px;font-size:9.5px' });
-  e.innerHTML = '<span style="color:var(--b)">&#10003;</span> ' + U.esc(n);
+  e.innerHTML = (s.ok ? '<span style="color:var(--b)">&#10003;</span> '
+                      : '<span style="color:var(--a)">&#10007;</span> ') + U.esc(s.n);
   cut.appendChild(e);
   return e;
 });
@@ -437,7 +471,7 @@ why.innerHTML =
 
 const msg = wrap.querySelector('#msg');
 const texts = [
-  '把三道门槛叠在一段子图上：<b>任何一格被否决，调度器就在那里断一刀</b>（L4-02 幕 6）。',
+  '把三道门槛叠在一段子图上。<b>任何一格被否决，调度器就在那里断一刀</b>（L4-02 幕 6）。',
   '第一道是布尔查表：<span class="v">supported_ops / supported_unary_ops / supported_glu_ops</span>。' +
     '<span class="k">有翻译器</span>才谈得上后面两道。',
   '第二道遍历 <span class="v">op-&gt;type</span> 和每个非空 <span class="v">src[i]-&gt;type</span>。' +
@@ -445,20 +479,25 @@ const texts = [
   '第三道是形状：<span class="v">ggml_is_quantized(src-&gt;type) &amp;&amp; src-&gt;ne[2] != 1</span> 一律否决。' +
     '量化的 3D 专家权重是唯一例外（MUL_MAT_ID）。',
   '所以"什么形状的子图交给 OpenVINO"的答案是：<span class="k">全部节点都过三道门槛的、最长的连续区间</span>。<br>' +
-    '一格不过，那一段就整段留在别的后端上 —— 最后还有设备级例外表兜底。'
+    '中间那个 MUL_MAT 被拒，它就落到别的后端；它前面的 RMS_NORM 与后面的 SOFT_MAX 于是分属两段。'
 ];
 tl.at(700, () => {
   msg.innerHTML = texts[0];
   cells.forEach((c, i) => { c.style.opacity = i === 0 ? '1' : '.35'; });
-  U.markLines(document, [LN[1495], LN[1496]]);
+  hl([LN[1495], LN[1496]]);
 });
-tl.at(4400, () => { msg.innerHTML = texts[1]; U.markLines(document, [LN[1497], LN[1507], LN[1521], LN[1522], LN[1523]]); });
-tl.at(9600, () => { msg.innerHTML = texts[2]; U.markLines(document, [LN[1532], LN[1533], LN[1540], LN[1541]]); });
-tl.at(15200, () => { msg.innerHTML = texts[3]; U.markLines(document, [LN[1543], LN[1544], LN[1545], LN[1546]]); });
+tl.at(4400, () => { msg.innerHTML = texts[1]; hl([LN[1497], LN[1507], LN[1521], LN[1522], LN[1523]]); });
+tl.at(9600, () => { msg.innerHTML = texts[2]; hl([LN[1532], LN[1533], LN[1540], LN[1541]]); });
+tl.at(15200, () => {
+  msg.innerHTML = texts[3];
+  cells[3].style.opacity = '1';
+  cells[3].style.background = 'rgba(247,120,186,.20)';
+  hl([LN[1543], LN[1544], LN[1545], LN[1546]]);
+});
 tl.at(20000, () => {
   cells.forEach(c => { c.style.opacity = '1'; });
   msg.innerHTML = texts[4];
-  U.markLines(document, [LN[1550], LN[1551]]);
+  hl([LN[1550], LN[1551]]);
 });
 '''
 
@@ -485,13 +524,14 @@ L.scene(
     mark_src=[1495, 1496, 1497, 1507, 1521, 1522, 1523, 1532, 1533, 1540, 1541,
               1543, 1544, 1545, 1546, 1550, 1551],
     notes_src=N5,
-    visual=VIS5.replace('/*__LN5__*/null', mklines(P5, N5))
+    visual=mkvis(VIS5, P5, N5)
 )
 
 # ==================================================================== 第 6 幕
 
 VIS6 = '''
-const LN = /*__LN6__*/null;
+const LN = /*__LN__*/null;
+/*__FOCUS__*/
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div class="row wrap" id="dev" style="gap:8px"></div>
   <div class="formula" id="msg"></div>`;
@@ -516,11 +556,11 @@ const texts = [
   '★ 设备名会渗透进 <span class="k">supports_op</span>：同一张图在 GPU 上可能比在 NPU 上多几个节点被接受。<br>' +
     '所以"支持什么"是 <b>(op, type, shape, device)</b> 四元组的函数，不是 op 的函数。'
 ];
-tl.at(700, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[0]; U.markLines(document, [LN[74], LN[75]]); });
-tl.at(4600, () => { els.forEach((e, i) => { e.style.opacity = i === 0 ? '1' : '.30'; }); msg.innerHTML = texts[1]; U.markLines(document, [LN[83], LN[84], LN[85], LN[86]]); });
-tl.at(9800, () => { els.forEach((e, i) => { e.style.opacity = i === 1 ? '1' : '.30'; }); msg.innerHTML = texts[2]; U.markLines(document, [LN[104]]); });
-tl.at(14600, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[3]; U.markLines(document, [LN[75], LN[76], LN[77], LN[78]]); });
-tl.at(19000, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; U.markLines(document, [LN[80]]); });
+tl.at(700, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[0]; hl([LN[74], LN[75]]); });
+tl.at(4600, () => { els.forEach((e, i) => { e.style.opacity = i === 0 ? '1' : '.30'; }); msg.innerHTML = texts[1]; hl([LN[83], LN[84], LN[85], LN[86]]); });
+tl.at(9800, () => { els.forEach((e, i) => { e.style.opacity = i === 1 ? '1' : '.30'; }); msg.innerHTML = texts[2]; hl([LN[104]]); });
+tl.at(14600, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[3]; hl([LN[75], LN[76], LN[77], LN[78]]); });
+tl.at(19000, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; hl([LN[80]]); });
 '''
 
 P6 = [(74, 104)]
@@ -536,17 +576,18 @@ L.scene(
     kicker='L7-03 · 设备选择',
     title='一个后端，三种设备：<span class="hl-c">NPU</span> / <span class="hl-c">GPU</span> / <span class="hl-c">CPU</span>',
     sub='设备名从 GGML_OPENVINO_DEVICE 读，默认 CPU；不可用就回退 CPU。设备一旦定下，编译配置与判据分支都跟着变。',
-    caption='设备名不只是"选硬件"：它直接进入 supports_op 的例外判断（如 GPU 上的 BF16 TRANSPOSE / REPEAT、NPU 上的 BF16 输入）。',
+    caption='设备名不只是"选硬件"：它直接进入 supports_op 的例外判断 —— NPU 上拒绝 BF16 输入（1286 行）、GPU 上拒绝 BF16 的 REPEAT（1405 行）。',
     src=EXTRA, parts=P6, duration=22000,
     mark_src=[74, 75, 76, 77, 78, 80, 83, 84, 85, 86, 104],
     notes_src=N6,
-    visual=VIS6.replace('/*__LN6__*/null', mklines(P6, N6))
+    visual=mkvis(VIS6, P6, N6)
 )
 
 # ==================================================================== 第 7 幕
 
 VIS7 = '''
-const LN = /*__LN7__*/null;
+const LN = /*__LN__*/null;
+/*__FOCUS__*/
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `
   <div class="flow" style="justify-content:center" id="flow2"></div>
@@ -585,12 +626,12 @@ const texts = [
   '<span class="v">is_naive</span> 另有一条捷径：节点数 &lt; 20 且没被切过，就一次性翻译整图（naive_compute）。',
   '★ 结论：OpenVINO 后端的"回退"是 <b>缺席</b>，不是分支。这跟写 kernel 的后端（L5/L6）完全相反。'
 ];
-tl.at(700, () => { els.forEach((e, i) => { e.style.opacity = i === 0 ? '1' : '.30'; }); msg.innerHTML = texts[0]; U.markLines(document, [LN[640]]); });
-tl.at(3800, () => { msg.innerHTML = texts[1]; U.markLines(document, [LN[652]]); });
-tl.at(7200, () => { els.forEach((e, i) => { e.style.opacity = i === 1 ? '1' : '.30'; }); msg.innerHTML = texts[2]; U.markLines(document, [LN[640]]); });
-tl.at(10600, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[3]; U.markLines(document, [LN[645], LN[646], LN[649]]); });
-tl.at(14200, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; U.markLines(document, [LN[654], LN[655], LN[656]]); });
-tl.at(17600, () => { msg.innerHTML = texts[5]; U.markLines(document, [LN[640], LN[652], LN[654]]); });
+tl.at(700, () => { els.forEach((e, i) => { e.style.opacity = i === 0 ? '1' : '.30'; }); msg.innerHTML = texts[0]; hl([LN[640]]); });
+tl.at(3800, () => { msg.innerHTML = texts[1]; hl([LN[652]]); });
+tl.at(7200, () => { els.forEach((e, i) => { e.style.opacity = i === 1 ? '1' : '.30'; }); msg.innerHTML = texts[2]; hl([LN[640]]); });
+tl.at(10600, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[3]; hl([LN[645], LN[646], LN[649]]); });
+tl.at(14200, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; hl([LN[654], LN[655], LN[656]]); });
+tl.at(17600, () => { msg.innerHTML = texts[5]; hl([LN[640], LN[652], LN[654]]); });
 '''
 
 P7 = [(640, 660)]
@@ -609,13 +650,14 @@ L.scene(
     src=UTILS, parts=P7, duration=20000,
     mark_src=[640, 645, 646, 649, 652, 654, 655, 656],
     notes_src=N7,
-    visual=VIS7.replace('/*__LN7__*/null', mklines(P7, N7))
+    visual=mkvis(VIS7, P7, N7)
 )
 
 # ==================================================================== 第 8 幕
 
 VIS8 = '''
-const LN = /*__LN8__*/null;
+const LN = /*__LN__*/null;
+/*__FOCUS__*/
 const wrap = U.el('div', { class: 'col', style: 'gap:10px;width:100%' });
 wrap.innerHTML = `
   <div class="row center" id="row1" style="gap:6px"></div>
@@ -641,7 +683,7 @@ r1.appendChild(note);
 const flat = [];
 [['v1::Multiply', 'b'], ['v1::ReduceMean', 'c'], ['v1::Add', 'd'],
  ['v0::Sqrt', 'e'], ['v1::Divide', 'f'], ['v1::Multiply', 'g']].forEach((p, i) => {
-  if (i) r2.appendChild(U.arrow('+'));
+  if (i) r2.appendChild(U.arrow('->'));
   flat.push(mk(r2, p[0], p[1]));
 });
 const cnt = mk(r2, '= 6 个 ov 节点', 'a');
@@ -659,12 +701,12 @@ const texts = [
   '反过来也成立：<span class="k">flash_attn_ext</span> 整块注意力落进一个融合算子 SDPA（第 228/232 行）。' +
     '粒度由 ov 算子集决定，不由 ggml 决定。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; flat.forEach(e => { e.style.opacity = '.30'; }); U.markLines(document, [LN[57]]); });
-tl.at(3600, () => { msg.innerHTML = texts[1]; flat[0].style.opacity = '1'; U.markLines(document, [LN[57]]); });
-tl.at(7000, () => { msg.innerHTML = texts[2]; flat[1].style.opacity = '1'; U.markLines(document, [LN[59], LN[60]]); });
-tl.at(10600, () => { msg.innerHTML = texts[3]; flat[2].style.opacity = '1'; U.markLines(document, [LN[62], LN[63]]); });
-tl.at(14200, () => { msg.innerHTML = texts[4]; flat.forEach(e => { e.style.opacity = '1'; }); U.markLines(document, [LN[65], LN[66], LN[68], LN[69], LN[71]]); });
-tl.at(17600, () => { msg.innerHTML = texts[5]; cnt.style.opacity = '1'; U.markLines(document, [LN[57], LN[71]]); });
+tl.at(700, () => { msg.innerHTML = texts[0]; flat.forEach(e => { e.style.opacity = '.30'; }); hl([LN[57]]); });
+tl.at(3600, () => { msg.innerHTML = texts[1]; flat[0].style.opacity = '1'; hl([LN[57]]); });
+tl.at(7000, () => { msg.innerHTML = texts[2]; flat[1].style.opacity = '1'; hl([LN[59], LN[60]]); });
+tl.at(10600, () => { msg.innerHTML = texts[3]; flat[2].style.opacity = '1'; hl([LN[62], LN[63]]); });
+tl.at(14200, () => { msg.innerHTML = texts[4]; flat.forEach(e => { e.style.opacity = '1'; }); hl([LN[65], LN[66], LN[68], LN[69], LN[71]]); });
+tl.at(17600, () => { msg.innerHTML = texts[5]; cnt.style.opacity = '1'; hl([LN[57], LN[71]]); });
 '''
 
 P8 = [(57, 73)]
@@ -683,13 +725,14 @@ L.scene(
     src=RMS, parts=P8, duration=20000,
     mark_src=[57, 59, 60, 62, 63, 65, 66, 68, 69, 71],
     notes_src=N8,
-    visual=VIS8.replace('/*__LN8__*/null', mklines(P8, N8))
+    visual=mkvis(VIS8, P8, N8)
 )
 
 # ==================================================================== 第 9 幕
 
 VIS9 = '''
-const LN = /*__LN9__*/null;
+const LN = /*__LN__*/null;
+/*__FOCUS__*/
 const wrap = U.el('div', { class: 'col', style: 'gap:8px;width:100%' });
 wrap.innerHTML = `<div id="tbl"></div><div id="ex"></div><div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
@@ -732,7 +775,7 @@ rows.forEach((r, i) => tl.at(2400 + i * 2600, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
   msg.innerHTML = texts[Math.min(i + 1, 5)];
 }));
-tl.at(18200, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[5]; U.markLines(document, [LN[81], LN[82]]); });
+tl.at(18200, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[5]; hl([LN[81], LN[82]]); });
 '''
 
 P9 = [(76, 83)]
@@ -749,7 +792,7 @@ L.scene(
     src=OPT, parts=P9, duration=20000,
     mark_src=[76, 77, 78, 79, 80, 81, 82],
     notes_src=N9,
-    visual=VIS9.replace('/*__LN9__*/null', mklines(P9, N9))
+    visual=mkvis(VIS9, P9, N9)
 )
 
 # ==================================================================== source.md
@@ -809,7 +852,8 @@ L.section(
     '1. **编译配置**：只有 `NPU` 会填 `NPU_COMPILER_DYNAMIC_QUANTIZATION` 与一整组 `NPUW_*` key；\n'
     '2. **内存通道**：只有 `GPU` 会建 OpenCL context/queue 并把 remote context 交给 OV；\n'
     '3. **支持判据**：`supports_op` 的例外表里大量出现 `ggml_openvino_get_device_name() == "GPU"` '
-    '`== "NPU"` 的比较 —— 同一个 op 在不同设备上的答案可以不同。\n\n'
+    '`== "NPU"` 的比较 —— 全文件 13 处，其中 12 处就在 `is_op_supported_case()` 那一段里，'
+    '所以同一个 op 在不同设备上的答案可以不同。\n\n'
     '另外 `is_npu` 直接决定执行路径：`utils.cpp:1470` 用 `ggml_openvino_is_npu()` 在 '
     '**static（NPU 形状固定）** 与 **dynamic** 两条路径之间二选一；'
     '`ggml-openvino.cpp:837` 里 stateful 执行也被显式禁用在 NPU 上。',

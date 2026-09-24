@@ -138,10 +138,10 @@ wrap.innerHTML = `<div class="formula" style="padding:5px 8px">`
 root.appendChild(wrap);
 
 const groups = [
-  { l: '常规算子内核', n: 73, c: 'a', d: 'element_wise / norm / softmax / cpy / rope / conv2d / im2col / getrows …（一个算子一对 .cpp+.hpp）' },
+  { l: '常规算子内核', n: 73, c: 'a', d: 'element_wise / norm / softmax / cpy / rope / conv2d / im2col / getrows …（多数是一个算子一对 .cpp+.hpp）' },
   { l: '模板实例化', n: 46, c: 'b', d: 'template-instances/：fattn-tile-* 10 个 + fattn-vec-* 36 个' },
   { l: '循环与融合', n: 18, c: 'c', d: 'ssm_scan / ssm_conv / wkv / gated_delta_net / gla / fusion / topk-* 之外的序列类算子' },
-  { l: '主机框架', n: 14, c: 'd', d: 'ggml-sycl.cpp（7292 行）/ common / mem / memtrace / sycl_hw / presets / backend.hpp' },
+  { l: '主机框架', n: 14, c: 'd', d: 'ggml-sycl.cpp（全后端最大单文件）/ common / mem / memtrace / sycl_hw / presets / backend.hpp' },
   { l: '量化矩阵乘', n: 11, c: 'e', d: 'mmq / mmvq / dmmv / vecdotq / dequantize / quants / gemm / esimd' },
   { l: 'FlashAttn', n: 11, c: 'f', d: 'fattn / fattn-tile / fattn-vec / fattn-buffers / fattn-onednn / fattn-mkl' },
   { l: '公共 API', n: 1, c: 'g', d: 'ggml-sycl.h：唯一对外可见的头' }
@@ -153,13 +153,13 @@ bars.forEach(b => { b.fill.style.width = '0%'; });
 const msg = wrap.querySelector('#msg');
 const texts = [
   '先分类再讲细节。<span class="k">73 个常规算子内核</span>是最大一族：'
-    + '一个算子一个 .cpp + .hpp，与 CUDA 侧同名配对。',
+    + '多数是一个算子一个 .cpp + .hpp，与 CUDA 侧同名配对。',
   '<span class="k">46 个模板实例化文件</span>（26%）单独放在 template-instances/ —— '
     + '每个文件只有几行 <span class="v">DECL_*</span> 宏，用显式实例化把模板 kernel 编出来。',
   '<span class="k">循环 / 状态空间类算子</span>（ssm_scan、wkv、gated_delta_net…）18 个文件；'
     + 'fusion.cpp 负责图融合判定，对应 CUDA 侧的 ggml_cuda_can_fuse。',
   '<span class="k">主机框架 14 个文件</span>撑起整个后端：上下文、设备探测、内存池、trace。'
-    + 'ggml-sycl.cpp 一个文件 7292 行，装下全部虚表与 graph compute。',
+    + 'ggml-sycl.cpp 是最大的单文件，装下全部虚表与 graph compute。',
   '<span class="k">量化矩阵乘 11 个文件</span>是本课重点之一：mmq（大 batch）/ mmvq（小 batch）/ '
     + 'dmmv（单向量）三条路，加共用的 vecdotq / dequantize / quants。',
   '<span class="k">FlashAttention 11 个文件</span>：tile / vec 两套 kernel，'
@@ -211,7 +211,7 @@ top.appendChild(U.card({ c: 'd', t: 'CUDA 侧：121 个实例文件',
 const t = U.table(
   ['SYCL（.hpp / .cpp）', 'CUDA（.cuh / .cu）'],
   [['common.hpp', 'common.cuh'],
-   ['mmq.cpp / mmvq.cpp / dmmv.cpp', 'mmq.cu / mmvq.cu /（v0.5.0 无 dmmv，并入 mmvq）'],
+   ['mmq.cpp / mmvq.cpp / dmmv.cpp', 'mmq.cu / mmvq.cu /（v0.5.0 无 dmmv.cu）'],
    ['fattn-tile.hpp / fattn-vec.hpp', 'fattn-tile.cuh / fattn-vec.cuh'],
    ['template-instances/*.cpp', 'template-instances/*.cu'],
    ['ggml-sycl.cpp', 'ggml-cuda.cu']],
@@ -315,7 +315,8 @@ L.scene(
     kicker='L6-05 · 核心 ★',
     title='★ 差异在<span class="hl-e">数据面</span>，不在算子层',
     sub='同一张算子表，换掉的是"怎么发命令、内存从哪来、谁来算 GEMM"。',
-    caption='编译链：oneAPI DPC++（icpx -fsycl）取代 nvcc；源码里用 dpct:: 命名空间承接 CUDA→SYCL 的映射。',
+    caption='编译链：oneAPI DPC++（icpx -fsycl）取代 nvcc；设备/队列/事件统一走 dpct:: 命名空间'
+            '（定义在 ggml-sycl/dpct/helper.hpp:101）。',
     src='ggml/src/ggml-sycl/common.hpp', parts=[(336, 358)], duration=21000,
     mark_src=[341, 349, 350, 356],
     visual='''
@@ -329,8 +330,8 @@ const defs = [
     b: '两边都是"设备 × 流"的二维数组；<br>stream() 返回的是 sycl::queue 指针。',
     m: 'cudaStream_t  ->  sycl::queue *' },
   { c: 'b', t: '设备内存：cudaMalloc -> USM',
-    b: 'USM 指针就是普通指针，kernel 直接解引用；<br>两边缓冲区对齐都是 128 字节。',
-    m: 'sycl::malloc_device / free' },
+    b: '两边都有 RAII 的 *_pool_alloc；<br>USM 分配走 sycl::malloc_device，对齐都是 128 字节。',
+    m: 'ggml_sycl_malloc_device / free_device' },
   { c: 'c', t: '事件：cudaEvent_t -> dpct::event_ptr',
     b: 'ggml_tensor_extra_gpu 里 events 的角色不变：<br>多设备之间的同步。',
     m: 'dpct::event_ptr events[dev][stream]' },
@@ -344,29 +345,34 @@ els.forEach(e => host.appendChild(e));
 els.forEach(e => e.style.opacity = '.32');
 
 const msg = wrap.querySelector('#msg');
-const texts = [
-  '代码区是 <span class="v">ggml_backend_sycl_context</span>：它只做三件事 —— '
-    + '记住设备号、持有队列、管内存池。',
-  '<span class="k">执行流</span>：<span class="v">qptrs[device][stream]</span> 是个惰性缓存，'
-    + '第一次用才去取 <span class="v">dpct::get_device(device).default_queue()</span>。',
-  '<span class="k">内存</span>：CUDA 侧 mmq 会 <span class="v">cudaMemsetAsync</span> 清 padding；'
-    + 'SYCL 侧对应 <span class="v">ggml_sycl_pool_alloc</span> + USM 分配，对齐同样是 128。',
-  '<span class="k">事件</span>：<span class="v">ggml_tensor_extra_gpu</span> 里 events 的用途不变，'
-    + '类型从 cudaEvent_t 换成 dpct::event_ptr。',
-  '<span class="k">数学库</span>：cuBLAS 的位置被 oneDNN（dnnl::matmul）与 oneMKL 顶上；'
-    + '非量化兜底 GEMM 走 <span class="v">ggml_sycl_op_mul_mat_sycl</span>。',
-  '所以：<span class="k">算子层（switch、量化类型、tile 结构）可以照搬，数据面必须重写。</span>'
-    + '这就是"结构同构 + 局部替换"的完整含义。'
+const steps = [
+  { card: -1, t: '代码区是 <span class="v">ggml_backend_sycl_context</span>：它只做三件事 —— '
+    + '记住设备号、持有队列、管内存池。' },
+  { card: 0, t: '<span class="k">执行流</span>：<span class="v">qptrs[device][stream]</span> 是个惰性缓存，'
+    + '第一次用才去取 <span class="v">dpct::get_device(device).default_queue()</span>。' },
+  { card: 1, t: '<span class="k">内存</span>：设备分配走 <span class="v">ggml_sycl_malloc_device</span>（内部 '
+    + '<span class="v">sycl::malloc_device</span>），RAII 包装是 '
+    + '<span class="v">ggml_sycl_pool_alloc</span>；对齐同样是 128。' },
+  { card: 2, t: '<span class="k">事件</span>：<span class="v">ggml_tensor_extra_gpu</span> 里 events 的用途不变，'
+    + '类型从 cudaEvent_t 换成 dpct::event_ptr。' },
+  { card: 3, t: '<span class="k">数学库</span>：cuBLAS 的位置被 oneDNN（dnnl::matmul）与 oneMKL 顶上；'
+    + '非量化兜底 GEMM 走 <span class="v">ggml_sycl_op_mul_mat_sycl</span>。' },
+  { card: -1, t: '注意：<span class="k">惰性建流这一点 CUDA 侧也一样</span>'
+    + '（common.cuh:1528 同为 if (nullptr) 才建）；差别在动作 —— CUDA 用 '
+    + '<span class="v">cudaStreamCreateWithFlags</span> 新建一条流，SYCL 借设备的默认队列。' },
+  { card: -1, t: '所以：<span class="k">算子层（switch、量化类型、tile 结构）可以照搬，数据面必须重写。</span>'
+    + '这就是"结构同构 + 局部替换"的完整含义。' }
 ];
-defs.forEach((_, i) => tl.at(700 + i * 3200, () => {
-  els.forEach((e, k) => { e.style.opacity = k === i ? '1' : '.32'; });
-  msg.innerHTML = texts[i];
+steps.forEach((s, i) => tl.at(700 + i * 2900, () => {
+  els.forEach((e, k) => {
+    e.style.opacity = (s.card < 0) ? '.55' : (k === s.card ? '1' : '.32');
+  });
+  msg.innerHTML = s.t;
 }));
-tl.at(13800, () => {
+tl.at(19600, () => {
   els.forEach(e => { e.style.opacity = '1'; });
-  msg.innerHTML = texts[4];
+  msg.innerHTML = steps[6].t;
 });
-tl.at(17600, () => { msg.innerHTML = texts[5]; });
 '''
 )
 
@@ -546,7 +552,7 @@ L.scene(
     kicker='L6-05 · 收束',
     title='把 SYCL 后端压成一张表',
     sub='同一个算子，两边各在哪；记住这张表，L6-06 起的其它 GPU 后端都是同一套问法。',
-    caption='下一课 L6-06：Vulkan 后端的主机端 —— 那里没有 C++ kernel，算子要编译成计算着色器。',
+    caption='下一课 L6-06：Vulkan 后端的主机端；它的 kernel 在 L6-07 里用 GLSL 计算着色器写。',
     src='ggml/src/ggml-sycl/fattn.cpp', parts=[(97, 103)], duration=21000,
     mark_src=[99, 101, 102],
     visual='''
@@ -594,8 +600,8 @@ const texts = [
   '代码区这一段说明两边<b>不是</b>完全一样：SYCL 多了 ONEDNN(150) 与 MKL(300)，'
     + 'CUDA 多了 MMA_F16(400)；共有的 NONE/VEC/TILE 取值相同。',
   '一句话：<span class="k">SYCL 后端 = CUDA 后端的算子层 + SYCL 的数据面 + 厂商库分支</span>。',
-  '下一课 L6-06 换一个完全不同的后端：Vulkan 的主机端 —— 算子不再编译成 C++，'
-    + '而是编译成 GLSL 计算着色器。'
+  '下一课 L6-06 换一个完全不同的后端：Vulkan 的主机端 —— 那里没有 C++ kernel，'
+    + '算子在 L6-07 里要写成 GLSL 计算着色器。'
 ];
 tl.at(600, () => { msg.innerHTML = texts[0]; });
 rows.forEach((r, i) => tl.at(2600 + i * 2400, () => {
@@ -677,19 +683,33 @@ L.section(
     '设备号、名字、以及"设备 × 流"的二维数组。SYCL 侧的元素是 `queue_ptr`'
     '（`typedef sycl::queue *queue_ptr`，common.hpp:116），CUDA 侧是 `cudaStream_t`。\n\n'
     '队列是**惰性**取的：`stream(device, stream)` 第一次被调用时才去拿 '
-    '`dpct::get_device(device).default_queue()`。CUDA 侧同位置的 `streams` 数组在上下文构造时就填好。',
+    '`dpct::get_device(device).default_queue()`。CUDA 侧同样惰性'
+    '（common.cuh:1528-1534），但动作不同 —— 它用 `cudaStreamCreateWithFlags` **新建**一条流，'
+    '而 SYCL 侧是**借**设备已有的默认队列。这一点也解释了 SYCL 侧为什么不需要释放流。',
     src='ggml/src/ggml-sycl/common.hpp', parts=[(336, 358)], lang='cpp')
 
 L.section(
     '七、★ CUDA 侧的同一段：字段逐个对上',
     '把两段并排读：`device` / `name` 相同；CUDA 多一个 `copy_event`；'
-    '执行流数组的维度宏不同名但同值（`GGML_CUDA_MAX_STREAMS` = `GGML_SYCL_MAX_STREAMS` = 8）；'
+    '执行流数组的维度宏不同名但同值（`GGML_CUDA_MAX_STREAMS`，common.cuh:188；'
+    '`GGML_SYCL_MAX_STREAMS`，presets.hpp:16 —— 都是 8）；'
     'CUDA 侧把 cuBLAS 句柄与 workspace 也塞进上下文，SYCL 侧则把它们放在 '
     '`ggml_sycl_pool` 与 `gemm.hpp` 的 `DnnlGemmWrapper` 里。',
     src='ggml/src/ggml-cuda/common.cuh', parts=[(1455, 1465)], lang='c')
 
 L.section(
-    '八、量化矩阵乘：三个入口的形参表',
+    '八、设备内存：USM 分配器',
+    '"USM 取代 cudaMalloc"这句话要落到具体函数上。SYCL 侧的设备分配只有一条路：'
+    '`ggml_sycl_malloc_device(size, q, type)`（common.cpp:97）。它先试 Level Zero 的 '
+    '`zeMemAllocDevice`（源码注释说明这是为了绕开 xe 驱动在多卡推理时的 DMA-buf 暂存），'
+    '失败或未编译该扩展时回落到 `sycl::malloc_device(size, q)`。\n\n'
+    'USM 指针是**普通指针**，所以 SYCL 侧的 kernel 形参（如 mmq 的 '
+    '`src0_dd_i` / `dst_dd_i`）与 CUDA 侧一模一样，不需要 buffer 对象参与。'
+    '这是"算子层可以照搬"的底层原因。',
+    src='ggml/src/ggml-sycl/common.cpp', parts=[(95, 134)], lang='cpp')
+
+L.section(
+    '九、量化矩阵乘：三个入口的形参表',
     '三个 SYCL 入口（dmmv / mmvq / mmq）收下的是**同一个形状**的参数：'
     '切分后的行区间 `row_low` / `row_high`、激活量化结果 `src1_ddq_i`、'
     '以及输出缓冲 `dst_dd_i`。这是 `ggml_sycl_op_mul_mat` 这个模板回调签名。\n\n'
@@ -698,14 +718,14 @@ L.section(
     src='ggml/src/ggml-sycl/mmvq.hpp', parts=[(19, 23)], lang='cpp')
 
 L.section(
-    '九、mmq 的类型分派',
+    '十、mmq 的类型分派',
     '`ggml_sycl_op_mul_mat_q` 的第一件事是算 `nrows_dst`（主设备拿全量行、'
     '其它设备拿自己那段），然后按 `src0->type` 分派到 per-type kernel。'
     '每个 kernel 的形参都是"权重 / 激活 / 输出 / ncols / nrows / ncols_dst / 行步长 / stream"。',
     src='ggml/src/ggml-sycl/mmq.cpp', parts=[(2987, 3000)], lang='cpp')
 
 L.section(
-    '十、★ 图执行：录制重放',
+    '十一、★ 图执行：录制重放',
     '`ggml_backend_sycl_graph_compute` 的结构与 CUDA 侧同形：'
     '先判兼容性，再决定走"录制重放"还是"逐节点执行"。SYCL 侧多两个前置条件：'
     '设备必须支持 `ext_oneapi_limited_graph`，且 `finalize(updatable)` 之后还要设备支持 '
@@ -713,14 +733,14 @@ L.section(
     src='ggml/src/ggml-sycl/ggml-sycl.cpp', parts=[(6202, 6222)], lang='cpp')
 
 L.section(
-    '十一、CUDA 侧的同一段',
+    '十二、CUDA 侧的同一段',
     'CUDA 侧做的是同一件事，只是 API 换了名字：`cudaStreamBeginCapture` 开始录制、'
     '`cudaGraphInstantiate` 固化、`cudaGraphExecUpdate` 更新、`cudaGraphLaunch` 重放。'
     '注意它多了一个"warmup"概念（至少两次调用且属性不变才启用图），SYCL 侧没有这一步。',
-    src='ggml/src/ggml-cuda/ggml-cuda.cu', parts=[(4421, 4476)], lang='c')
+    src='ggml/src/ggml-cuda/ggml-cuda.cu', parts=[(4421, 4478)], lang='c')
 
 L.section(
-    '十二、FlashAttention 的内核选择',
+    '十三、FlashAttention 的内核选择',
     '两边的内核选择都是"枚举 + switch"。共有取值的编号相同'
     '（NONE=0 / VEC=100 / TILE=200），各自扩展的部分不同：'
     'SYCL 加 ONEDNN=150 与 MKL=300，CUDA 加 MMA_F16=400。'

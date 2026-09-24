@@ -175,15 +175,16 @@ const texts = [
   'SIMD 版本同样要拆：一条载入里<span class="k">有用的位是散开的</span>，得先做位运算再乘加。',
   '<span class="k">这就是 repack 要解决的问题</span>：把"必须现场拆"改成"存的时候就已经排好"。'
 ];
+const CUM = [@@M0@@, @@M1@@, @@M2@@, @@M3@@, @@M4@@];
 opEls.forEach((e, i) => tl.at(700 + i * 2600, () => {
   opEls.forEach((x, k) => { x.style.opacity = k === i ? '1' : '.30'; });
   msg.innerHTML = texts[i];
-  U.markLines(document, @@M0@@);
+  U.markLines(document, CUM[i + 1]);
 }));
 tl.at(11600, () => {
   opEls.forEach(e => e.style.opacity = '1');
   msg.innerHTML = texts[4];
-  U.markLines(document, @@M1@@);
+  U.markLines(document, CUM[4]);
 });
 '''
 
@@ -197,8 +198,11 @@ L.scene(
     src=QC, parts=[(225, 259)], duration=18000,
     mark_src=[225, 236, 237, 247, 248, 250, 251],
     notes_src=NS2,
-    visual=fill(V2, M0=hl([(225, 259)], NS2, 236, 237, 247, 248),
-                M1=hl([(225, 259)], NS2, 250, 251))
+    visual=fill(V2, M0=hl([(225, 259)], NS2, 225, 236, 237),
+                M1=hl([(225, 259)], NS2, 225, 236, 237, 247, 250),
+                M2=hl([(225, 259)], NS2, 225, 236, 237, 247, 248, 250, 251),
+                M3=hl([(225, 259)], NS2, 225, 236, 237, 247, 248, 250, 251),
+                M4=hl([(225, 259)], NS2, 225, 236, 237, 247, 248, 250, 251))
 )
 
 # ------------------------------------------------------------------ 第 3 幕
@@ -251,15 +255,16 @@ const texts = [
   '<span class="v">block_q8_0x4 / x8 / x16</span> = <span class="v">block&lt;8, N&gt;</span>：激活侧用 K = 8 的同一族模板。',
   'static_assert 把等式钉在编译期：<span class="v">4 x 2 + 32 x 2 = 72 = 4 x 18</span> —— <span class="k">字节数一个不多一个不少</span>，只是排列变了。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, @@M0@@); });
-tl.at(3400, () => { msg.innerHTML = texts[1]; U.markLines(document, @@M1@@); });
-tl.at(6400, () => { msg.innerHTML = texts[2]; U.markLines(document, @@M2@@); });
-tl.at(9800, () => { msg.innerHTML = texts[3]; U.markLines(document, @@M3@@); });
-tl.at(13200, () => { msg.innerHTML = texts[4]; U.markLines(document, @@M4@@); });
+const A = [@@M0@@, @@M1@@, @@M2@@, @@M3@@, @@M4@@, @@M5@@];
+tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, A[0]); });
+tl.at(3400, () => { msg.innerHTML = texts[1]; U.markLines(document, A[1]); });
+tl.at(6400, () => { msg.innerHTML = texts[2]; U.markLines(document, A[2]); });
+tl.at(9800, () => { msg.innerHTML = texts[3]; U.markLines(document, A[3]); });
+tl.at(13200, () => { msg.innerHTML = texts[4]; U.markLines(document, A[4]); });
 tl.at(16500, () => {
   rows.forEach(r => { r.className = 'on'; });
   msg.innerHTML = texts[5];
-  U.markLines(document, @@M5@@);
+  U.markLines(document, A[5]);
 });
 '''
 
@@ -274,9 +279,12 @@ L.scene(
             '这里的 7 条 static_assert 与 7 个别名说明"N 行合成一块、字节数不变"。',
     src=RH, parts=PRH, duration=20000,
     mark_src=[33, 34, 35, 41, 42, 43, 44, 45, 46],
-    visual=fill(V3, M0=hl(PRH, {}, 41, 42), M1=hl(PRH, {}, 33),
-                M2=hl(PRH, {}, 34, 35), M3=hl(PRH, {}, 41, 42, 43),
-                M4=hl(PRH, {}, 44, 45, 46), M5=hl(PRH, {}, 33, 34, 35))
+    visual=fill(V3, M0=hl(PRH, {}, 41, 42),
+                M1=hl(PRH, {}, 41, 42, 33),
+                M2=hl(PRH, {}, 41, 42, 33, 34, 35),
+                M3=hl(PRH, {}, 41, 42, 43, 33, 34, 35),
+                M4=hl(PRH, {}, 41, 42, 43, 44, 45, 46, 33, 34, 35),
+                M5=hl(PRH, {}, 33, 34, 35, 41, 42, 43, 44, 45, 46))
 )
 
 # ------------------------------------------------------------------ 第 4 幕
@@ -303,7 +311,7 @@ for (let r = 0; r < 4; r++) {
   }
   row.appendChild(strip); srcHost.appendChild(row); srcCells.push(cs);
 }
-dstHost.appendChild(U.el('div', { class: 'cm', text: '输出：block_q4_0x4.qs[64] —— 第 i 个 4 字节块来自第 i%4 行（d[4] 另行集中搬）', style: 'margin-bottom:3px' }));
+dstHost.appendChild(U.el('div', { class: 'cm', text: '输出：block_q4_0x4.qs[64] —— 动画按 x4 分支（4 字节一组，共 16 次）：第 i 个 4 字节块来自第 i%4 行（d[4] 另行集中搬）', style: 'margin-bottom:3px' }));
 const dstStrip = U.el('div', { style: 'display:flex;height:20px;border:1px solid var(--border);border-radius:4px;overflow:hidden' });
 const dstCells = [];
 for (let i = 0; i < 16; i++) {
@@ -314,14 +322,15 @@ dstHost.appendChild(dstStrip);
 
 const msg = wrap.querySelector('#msg');
 const texts = [
-  '输入侧每行 16 字节，输出侧 64 字节：<span class="v">end = QK4_0 x 2 / blck_size_interleave = 16</span> 次循环。',
-  '第 i 次循环搬第 <span class="k">i%4</span> 行的第 <span class="k">(i/4)</span> 个 4 字节，放到输出的第 <span class="k">i</span> 个 4 字节位置。',
-  '搬运的同时 <span class="v">elems ^= 0x88888888</span>：把无符号 4-bit 码变成 4-bit 补码。',
-  '于是内核拿到 nibble 后 <span class="v">&lt;&lt; 4</span> / <span class="v">&amp; 0xF0</span> 就是有符号值，<span class="k">不需要再减 8</span>（对比第 2 幕的标量基线）。',
-  'x8 变体是同一个模式，只是粒度从 4 字节变成 8 字节：<span class="v">xor_mask = 0x8888888888888888</span>。'
+  '循环骨架：<span class="v">src_id = i % 4</span>、<span class="v">src_offset = (i / 4) * blck_size_interleave</span>、<span class="v">dst_offset = i * blck_size_interleave</span>。',
+  'x4 分支（4 字节一组）：<span class="v">end = QK4_0 * 2 / 4 = 16</span> 次，用 <span class="v">uint32_t</span> 与掩码 <span class="v">0x88888888</span>。',
+  'x8 分支（8 字节一组）：<span class="v">end = QK4_0 * 2 / 8 = 8</span> 次，用 <span class="v">uint64_t</span> 与掩码 <span class="v">0x8888888888888888</span>。',
+  '两处 <span class="v">elems ^= xor_mask</span> 是同一个技巧：把无符号 4-bit 码变成 4-bit 补码 —— 内核 <span class="v">&lt;&lt; 4</span> / <span class="v">&amp; 0xF0</span> 就直接拿到有符号值，<span class="k">省掉减 8</span>。',
+  '开头还有一处：<span class="v">out.d[i] = in[i].d</span> —— 4 行的 scale 先集中搬到块首。'
 ];
-tl.at(600, () => { msg.innerHTML = texts[0]; U.markLines(document, @@M0@@); });
-tl.at(3800, () => { msg.innerHTML = texts[1]; U.markLines(document, @@M1@@); });
+const S4M = [@@M0@@, @@M1@@, @@M2@@, @@M3@@, @@M4@@];
+tl.at(600, () => { msg.innerHTML = texts[0]; U.markLines(document, S4M[0]); });
+tl.at(3800, () => { msg.innerHTML = texts[1]; U.markLines(document, S4M[1]); });
 for (let i = 0; i < 16; i++) {
   tl.at(7000 + i * 480, () => {
     const r = i % 4, c = Math.floor(i / 4);
@@ -331,9 +340,9 @@ for (let i = 0; i < 16; i++) {
     dstCells[i].textContent = r + ',' + c;
   });
 }
-tl.at(15600, () => { msg.innerHTML = texts[2]; U.markLines(document, @@M2@@); });
-tl.at(18400, () => { msg.innerHTML = texts[3]; U.markLines(document, @@M3@@); });
-tl.at(20400, () => { msg.innerHTML = texts[4]; U.markLines(document, @@M4@@); });
+tl.at(15600, () => { msg.innerHTML = texts[2]; U.markLines(document, S4M[2]); });
+tl.at(18400, () => { msg.innerHTML = texts[3]; U.markLines(document, S4M[3]); });
+tl.at(20400, () => { msg.innerHTML = texts[4]; U.markLines(document, S4M[4]); });
 '''
 
 NS4 = {3102: 'xor 0x88：Q4_0 存的是无符号 4-bit 码（0..15），异或后变成 4-bit 补码 —— 内核里 << 4 / & 0xF0 直接得到有符号值，省掉减 8'}
@@ -344,14 +353,19 @@ L.scene(
     sub='src_id = i % 4、src_offset = (i/4) x 4、dst_offset = i x 4 —— 每次只搬 4 字节，轮到下一行。',
     caption='同一个函数用 blck_size_interleave = 4 或 8 决定每次搬几个字节；x8 变体走 8 字节一组。',
     src=RC, parts=[(3083, 3122)], duration=22000,
-    mark_src=[3083, 3086, 3087, 3094, 3095, 3096, 3097, 3101, 3102, 3103, 3106, 3107, 3114],
+    mark_src=[3083, 3086, 3087, 3092, 3093, 3094, 3095, 3096, 3097, 3099, 3101, 3102, 3103,
+              3105, 3106, 3107, 3112, 3113, 3114],
     notes_src=NS4,
     visual=fill(V4,
                 M0=hl([(3083, 3122)], NS4, 3083, 3094, 3095, 3096, 3097),
-                M1=hl([(3083, 3122)], NS4, 3094, 3095, 3096, 3097),
-                M2=hl([(3083, 3122)], NS4, 3101, 3102, 3103),
-                M3=hl([(3083, 3122)], NS4, 3106, 3107, 3114),
-                M4=hl([(3083, 3122)], NS4, 3086, 3087))
+                M1=hl([(3083, 3122)], NS4, 3083, 3094, 3095, 3096, 3097,
+                      3105, 3106, 3107, 3112, 3113, 3114),
+                M2=hl([(3083, 3122)], NS4, 3083, 3094, 3095, 3096, 3097,
+                      3105, 3106, 3107, 3112, 3113, 3114, 3092, 3093, 3099, 3101),
+                M3=hl([(3083, 3122)], NS4, 3083, 3094, 3095, 3096, 3097, 3105, 3106, 3107,
+                      3112, 3113, 3114, 3092, 3093, 3099, 3101, 3102),
+                M4=hl([(3083, 3122)], NS4, 3083, 3086, 3087, 3092, 3093, 3094, 3095, 3096,
+                      3097, 3099, 3101, 3102, 3103, 3105, 3106, 3107, 3112, 3113, 3114))
 )
 
 # ------------------------------------------------------------------ 第 5 幕
@@ -374,8 +388,8 @@ els.forEach(e => e.style.opacity = '.35');
 
 const t = U.table(['走哪条路', '触发条件', '激活布局', '依据'],
   [['gemm', 'src1 行数 > 3', 'block_q8_0x4（4 行交错）', 'repack.cpp:1810'],
-   ['gemv', '残留的 1..3 行', 'block_q8_0（每行独立）', 'repack.cpp:773'],
-   ['from_float', '单行量化', 'quantize_row_q8_0（标量 ABI）', 'repack.cpp:4700-4705']],
+   ['gemv', '残留的 1..3 行', 'block_q8_0（每行独立）', 'repack.cpp:777'],
+   ['from_float', '单行量化', 'quantize_row_q8_0（标量 ABI）', 'repack.cpp:4702-4705']],
   { monoCols: [0, 2, 3] });
 wrap.querySelector('#tbl').appendChild(t.el);
 const rows = t.body.querySelectorAll('tr');
@@ -388,14 +402,15 @@ const texts = [
   '交错公式与权重侧同构：<span class="v">src_id = (j % 16) / 4</span>、<span class="v">src_offset = (j / 16) * 4 + j % 4</span>。',
   '只有 <span class="v">ne11</span> 是 4 的倍数时才能整批交错；余下 1..3 行退回 <span class="v">from_float</span>，由 gemv 消费。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; els[0].style.opacity = '1'; });
-tl.at(4000, () => { msg.innerHTML = texts[1]; els[1].style.opacity = '1'; U.markLines(document, @@M0@@); });
-tl.at(7600, () => { msg.innerHTML = texts[2]; U.markLines(document, @@M1@@); });
-tl.at(11200, () => { msg.innerHTML = texts[3]; U.markLines(document, @@M2@@); });
+const A = [@@M0@@, @@M1@@, @@M2@@, @@M3@@];
+tl.at(700, () => { msg.innerHTML = texts[0]; els[0].style.opacity = '1'; U.markLines(document, A[0]); });
+tl.at(4000, () => { msg.innerHTML = texts[1]; els[1].style.opacity = '1'; U.markLines(document, A[1]); });
+tl.at(7600, () => { msg.innerHTML = texts[2]; U.markLines(document, A[2]); });
+tl.at(11200, () => { msg.innerHTML = texts[3]; U.markLines(document, A[2]); });
 tl.at(14800, () => {
   msg.innerHTML = texts[4];
   rows.forEach(r => { r.className = 'on'; });
-  U.markLines(document, @@M3@@);
+  U.markLines(document, A[3]);
 });
 '''
 
@@ -406,15 +421,17 @@ L.scene(
     title='交错是<span class="hl-c">双边</span>的：激活也要按 4 行一组量化',
     sub='权重在加载时重排一次；激活每次前向都要重排 —— 两侧必须用同一个交错粒度才配得上。',
     caption='gemm 内核把 vy 直接当 block_q8_0x4 读（repack.cpp:1810）并断言 nr % 4 == 0（1792）；'
-            '单行残留走 gemv，读的是普通 block_q8_0（773）。两者的分工在 forward_mul_mat_one_chunk（4637-4647）。',
+            '单行残留走 gemv，读的是普通 block_q8_0（777）。两者的分工在 forward_mul_mat_one_chunk（4637-4647）。',
     src=RC, parts=[(135, 171)], duration=20000,
     mark_src=[135, 136, 140, 143, 147, 148, 152, 159, 162, 163, 164, 165, 167, 168],
     notes_src=NS5,
     visual=fill(V5,
                 M0=hl([(135, 171)], NS5, 135, 140, 143),
-                M1=hl([(135, 171)], NS5, 147, 148, 152, 159),
-                M2=hl([(135, 171)], NS5, 162, 163, 164, 165, 167, 168),
-                M3=hl([(135, 171)], NS5, 136))
+                M1=hl([(135, 171)], NS5, 135, 140, 143, 147, 148, 152, 159),
+                M2=hl([(135, 171)], NS5, 135, 140, 143, 147, 148, 152, 159,
+                      162, 163, 164, 165, 167, 168, 136),
+                M3=hl([(135, 171)], NS5, 135, 136, 140, 143, 147, 148, 152, 159,
+                      162, 163, 164, 165, 167, 168))
 )
 
 # ------------------------------------------------------------------ 第 6 幕
@@ -465,9 +482,10 @@ const texts = [
   '<span class="v">&gt;&gt; 4</span> 是收尾：v0 被 <span class="v">&lt;&lt; 4</span> 放大过 16 倍，两个乘积一起右移还原。',
   '所以"加速"不是玄学：<span class="k">载入宽度 = 行数 x 行内字节</span>，交错让行数也进了向量。'
 ];
-tl.at(600, () => { msg.innerHTML = texts[0]; U.markLines(document, @@M0@@); });
-tl.at(3400, () => { msg.innerHTML = texts[1]; U.markLines(document, @@M1@@); });
-tl.at(6200, () => { msg.innerHTML = texts[2]; U.markLines(document, @@M2@@); });
+const A = [@@M0@@, @@M1@@, @@M2@@, @@M3@@, @@M4@@];
+tl.at(600, () => { msg.innerHTML = texts[0]; U.markLines(document, A[0]); });
+tl.at(3400, () => { msg.innerHTML = texts[1]; U.markLines(document, A[1]); });
+tl.at(6200, () => { msg.innerHTML = texts[2]; U.markLines(document, A[1]); });
 [0, 1, 2, 3].forEach(j => tl.at(9000 + j * 1900, () => {
   msg.innerHTML = texts[3];
   for (let m = 0; m < 4; m++) {
@@ -475,7 +493,7 @@ tl.at(6200, () => { msg.innerHTML = texts[2]; U.markLines(document, @@M2@@); });
     cells[m][j].style.borderColor = 'var(--a)';
     cells[m][j].style.color = 'var(--text)';
   }
-  U.markLines(document, @@M3@@);
+  U.markLines(document, A[2]);
 }));
 tl.at(17600, () => {
   for (let m = 0; m < 4; m++) for (let j = 0; j < 4; j++) {
@@ -485,15 +503,15 @@ tl.at(17600, () => {
     cells[m][j].style.color = 'var(--b)';
   }
   msg.innerHTML = texts[4];
-  U.markLines(document, @@M4@@);
+  U.markLines(document, A[3]);
 });
-tl.at(20800, () => { msg.innerHTML = texts[5]; U.markLines(document, @@M5@@); });
-tl.at(22600, () => { msg.innerHTML = texts[6]; U.markLines(document, @@M6@@); });
+tl.at(20800, () => { msg.innerHTML = texts[5]; U.markLines(document, A[3]); });
+tl.at(22600, () => { msg.innerHTML = texts[6]; U.markLines(document, A[4]); });
 '''
 
 NS6 = {1822: '<< 4 把低 nibble 挪到高位、保住它的符号位；& 0xF0 原地取高 nibble —— 两者都已是"值-8"的补码',
-       1827: 'sumf[m][j] = 第 m 个 token 与第 j 行权重的部分和；4 x 4 = 16 个一起出来',
-       1831: '紧接着是写回段：把 sumf[4][4] 按 (y*4+m) 行、x*4+j 列写进 s（repack.cpp:1832-1835）'}
+       1827: 'sumf[m][j] = 第 m 个 token 与第 j 行权重的部分和；4 x 4 = 16 个一起出来；'
+             '紧接着是写回段（本幕未引用，见 repack.cpp:1832-1835）'}
 
 L.scene(
     kicker='L5-04 · 收益',
@@ -501,17 +519,18 @@ L.scene(
     sub='k 走列、j 走行、i 走行内字节（本例 N = G = 4）—— 一条向量载入就同时拿到多行的同一批列。',
     caption='这是 generic 实现（可读版，第 j 行权重配第 m 个 token，一次出 16 个部分和）；'
             'x86 / ARM 上的真身是 AVX2 / NEON-i8mm 版本，见 L5-05。',
-    src=RC, parts=[(1785, 1831)], duration=24000,
+    src=RC, parts=[(1785, 1827)], duration=24000,
     mark_src=[1805, 1810, 1812, 1816, 1817, 1818, 1819, 1820, 1821, 1822, 1823, 1824, 1825, 1827],
     notes_src=NS6,
     visual=fill(V6,
-                M0=hl([(1785, 1831)], NS6, 1805, 1810, 1812),
-                M1=hl([(1785, 1831)], NS6, 1812, 1816, 1817, 1818, 1819, 1820),
-                M2=hl([(1785, 1831)], NS6, 1810, 1816, 1820),
-                M3=hl([(1785, 1831)], NS6, 1821, 1822, 1823),
-                M4=hl([(1785, 1831)], NS6, 1827),
-                M5=hl([(1785, 1831)], NS6, 1824, 1825),
-                M6=hl([(1785, 1831)], NS6, 1816, 1817, 1818))
+                M0=hl([(1785, 1827)], NS6, 1805, 1810, 1812),
+                M1=hl([(1785, 1827)], NS6, 1805, 1810, 1812, 1816, 1817, 1818, 1819, 1820),
+                M2=hl([(1785, 1827)], NS6, 1805, 1810, 1812, 1816, 1817, 1818, 1819,
+                      1820, 1821, 1822, 1823),
+                M3=hl([(1785, 1827)], NS6, 1805, 1810, 1812, 1816, 1817, 1818, 1819,
+                      1820, 1821, 1822, 1823, 1827),
+                M4=hl([(1785, 1827)], NS6, 1805, 1810, 1812, 1816, 1817, 1818, 1819, 1820,
+                      1821, 1822, 1823, 1824, 1825, 1827))
 )
 
 # ------------------------------------------------------------------ 第 7 幕
@@ -545,15 +564,16 @@ const msg = wrap.querySelector('#msg');
 const texts = [
   '默认路径是 <span class="v">ggml_compute_forward_mul_mat</span>：逐行按 <span class="v">nb[]</span> 扫普通块。',
   'repack 想插队就得有钩子：<span class="k">traits.h 定义两个纯虚基类</span>。',
-  '<span class="v">extra_buffer_type</span> 是认领层：<span class="v">get_tensor_traits</span> 直接返回 <span class="v">op-&gt;src[0]-&gt;extra</span>，也就是建张量时就选好的变体指针（repack.cpp:5225-5232）。',
+  '<span class="v">extra_buffer_type</span> 是认领层：<span class="v">get_tensor_traits</span> 直接返回 <span class="v">op-&gt;src[0]-&gt;extra</span>，也就是建张量时就选好的变体指针（repack.cpp:5227-5234）。',
   '<span class="v">tensor_traits</span> 是执行层：<span class="v">work_size</span> 报激活量化的临时区大小，<span class="v">compute_forward</span> 才是真正的 MUL_MAT 实现。',
   '调用点 <span class="v">ggml-cpu.c:1752</span>：<span class="k">谁认领成功就 return true</span>，默认实现根本不会执行。'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; els[0].style.opacity = '1'; U.markLines(document, @@M0@@); });
-tl.at(4000, () => { msg.innerHTML = texts[1]; els[0].style.opacity = '1'; els[1].style.opacity = '.32'; U.markLines(document, @@M1@@); });
-tl.at(7400, () => { msg.innerHTML = texts[2]; els[0].style.opacity = '1'; els[1].style.opacity = '.32'; U.markLines(document, @@M2@@); });
-tl.at(10800, () => { msg.innerHTML = texts[3]; els[0].style.opacity = '.32'; els[1].style.opacity = '1'; U.markLines(document, @@M3@@); });
-tl.at(14300, () => { msg.innerHTML = texts[4]; els[0].style.opacity = '1'; els[1].style.opacity = '1'; U.markLines(document, @@M4@@); });
+const A7 = [@@M0@@, @@M1@@, @@M2@@, @@M3@@];
+tl.at(700, () => { msg.innerHTML = texts[0]; els[0].style.opacity = '1'; U.markLines(document, A7[0]); });
+tl.at(4000, () => { msg.innerHTML = texts[1]; els[0].style.opacity = '1'; els[1].style.opacity = '.32'; U.markLines(document, A7[1]); });
+tl.at(7400, () => { msg.innerHTML = texts[2]; els[0].style.opacity = '1'; els[1].style.opacity = '.32'; U.markLines(document, A7[2]); });
+tl.at(10800, () => { msg.innerHTML = texts[3]; els[0].style.opacity = '.32'; els[1].style.opacity = '1'; U.markLines(document, A7[3]); });
+tl.at(14300, () => { msg.innerHTML = texts[4]; els[0].style.opacity = '1'; els[1].style.opacity = '1'; U.markLines(document, A7[3]); });
 '''
 
 L.scene(
@@ -564,9 +584,10 @@ L.scene(
     src=TH, parts=[(18, 33)], duration=18000,
     mark_src=[19, 20, 23, 24, 27, 30, 31],
     visual=fill(V7,
-                M0=hl([(18, 33)], {}, 19, 20), M1=hl([(18, 33)], {}, 19, 20, 27),
-                M2=hl([(18, 33)], {}, 27, 30, 31), M3=hl([(18, 33)], {}, 19, 20, 23, 24),
-                M4=hl([(18, 33)], {}, 19, 20, 23, 24, 27, 30, 31))
+                M0=hl([(18, 33)], {}, 19, 20),
+                M1=hl([(18, 33)], {}, 19, 20, 27),
+                M2=hl([(18, 33)], {}, 19, 20, 27, 30, 31),
+                M3=hl([(18, 33)], {}, 19, 20, 23, 24, 27, 30, 31))
 )
 
 # ------------------------------------------------------------------ 第 8 幕
@@ -597,12 +618,13 @@ const texts = [
   '每个分支都还有形状门槛：<span class="v">ne[1] % N == 0</span>。不满足就往下走，最后 <span class="v">return nullptr</span>。'
 ];
 function on(i) { rows.forEach((r, k) => { r.className = k === i ? 'on' : ''; }); }
-tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, @@M0@@); });
-tl.at(4000, () => { msg.innerHTML = texts[1]; on(0); U.markLines(document, @@M1@@); });
-tl.at(7400, () => { msg.innerHTML = texts[2]; on(1); U.markLines(document, @@M2@@); });
-tl.at(10800, () => { msg.innerHTML = texts[3]; on(2); on(3); U.markLines(document, @@M3@@); });
-tl.at(14800, () => { msg.innerHTML = texts[4]; on(4); U.markLines(document, @@M4@@); });
-tl.at(19000, () => { msg.innerHTML = texts[5]; on(5); U.markLines(document, @@M5@@); });
+const A8 = [@@M0@@, @@M1@@, @@M2@@, @@M3@@, @@M4@@, @@M5@@];
+tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, A8[0]); });
+tl.at(4000, () => { msg.innerHTML = texts[1]; on(0); U.markLines(document, A8[1]); });
+tl.at(7400, () => { msg.innerHTML = texts[2]; on(1); U.markLines(document, A8[2]); });
+tl.at(10800, () => { msg.innerHTML = texts[3]; on(2); on(3); U.markLines(document, A8[3]); });
+tl.at(14800, () => { msg.innerHTML = texts[4]; on(4); U.markLines(document, A8[4]); });
+tl.at(19000, () => { msg.innerHTML = texts[5]; on(5); U.markLines(document, A8[5]); });
 '''
 
 NS8 = {4975: 'SVE 分支还要求向量长度正好等于 QK8_0（32 字节）—— 内核粒度要和寄存器宽度对齐'}
@@ -613,16 +635,18 @@ L.scene(
     sub='AVX2/SVE -> 8x8，NEON+i8mm -> 4x8，NEON+dotprod -> 4x4，VXE -> 4x4，RVV 256-bit -> 16x1；都不满足返回 nullptr。',
     caption='实例声明在同函数上方 repack.cpp:4927-4935 与 4966-4972：tensor_traits<block_q4_0, INTER_SIZE, NB_COLS, GGML_TYPE_Q8_0>，'
             '名字 = <NB_COLS>x<INTER_SIZE>。其余量化类型的分支从 5006 行起。',
-    src=RC, parts=[(4973, 5005)], duration=22000,
-    mark_src=[4973, 4975, 4977, 4980, 4982, 4985, 4987, 4990, 4992, 4995, 4999],
+    src=RC, parts=[(4974, 5005)], duration=22000,
+    mark_src=[4974, 4975, 4977, 4980, 4982, 4985, 4987, 4990, 4992, 4995, 4999],
     notes_src=NS8,
     visual=fill(V8,
-                M0=hl([(4973, 5005)], NS8, 4973),
-                M1=hl([(4973, 5005)], NS8, 4975, 4977),
-                M2=hl([(4973, 5005)], NS8, 4980, 4982),
-                M3=hl([(4973, 5005)], NS8, 4985, 4987),
-                M4=hl([(4973, 5005)], NS8, 4990, 4992, 4995, 4999),
-                M5=hl([(4973, 5005)], NS8, 4973))
+                M0=hl([(4974, 5005)], NS8, 4974),
+                M1=hl([(4974, 5005)], NS8, 4974, 4975, 4977),
+                M2=hl([(4974, 5005)], NS8, 4974, 4975, 4977, 4980, 4982),
+                M3=hl([(4974, 5005)], NS8, 4974, 4975, 4977, 4980, 4982, 4985, 4987),
+                M4=hl([(4974, 5005)], NS8, 4974, 4975, 4977, 4980, 4982, 4985, 4987,
+                      4990, 4992, 4995, 4999),
+                M5=hl([(4974, 5005)], NS8, 4974, 4975, 4977, 4980, 4982, 4985, 4987,
+                      4990, 4992, 4995, 4999))
 )
 
 # ------------------------------------------------------------------ 第 9 幕
@@ -633,7 +657,7 @@ wrap.innerHTML = `<div id="tbl"></div><div id="ex"></div><div class="formula" id
 root.appendChild(wrap);
 
 const t = U.table(['量化类型', '选中的变体', '依据（repack.cpp）'],
-  [['Q4_0', '8x8（AVX2 / SVE）· 4x8（NEON+i8mm）· 4x4（NEON+dotprod / VXE）· 16x1（RVV）', '4973-5005'],
+  [['Q4_0', '8x8（AVX2 / SVE）· 4x8（NEON+i8mm）· 4x4（NEON+dotprod / VXE）· 16x1（RVV）', '4974-5005'],
    ['Q4_K', '8x8（AVX2 或 NEON+i8mm）· 8x4（NEON+dotprod）· 16x1（RVV）', '5006-5032'],
    ['Q2_K', '8x8（AVX512）· 16x1（RVV）', '5033-5049'],
    ['Q5_K / Q6_K', '8x8 或 8x4（只有 NEON 两条路）', '5050-5071'],
@@ -651,7 +675,7 @@ wrap.querySelector('#ex').appendChild(W.exercise(
   '于是走 <span class="mono">tensor_traits&lt;block_q4_0, 8, 8, GGML_TYPE_Q8_0&gt;</span>（NB_COLS = 8、INTER_SIZE = 8）。<br>' +
   '若 <span class="mono">ne[1] = 7</span>：形状门槛不成立（7 % 8 != 0），函数一路走到最后' +
   '<span class="mono">return nullptr</span>（repack.cpp:5140）—— 这个张量拿不到 repack 变体，' +
-  'supports_op 也不会认领它（5197），于是走默认的 MUL_MAT。<br>' +
+  'supports_op 也不会认领它（5196），于是走默认的 MUL_MAT。<br>' +
   '注意重排不改字节数：<span class="mono">block_q4_0x8 = 8 x 18 = 144</span> 字节。'));
 
 const msg = wrap.querySelector('#msg');
@@ -662,15 +686,16 @@ const texts = [
   '<span class="v">compute_forward</span> 返回 <span class="v">true</span> 表示"这个 op 我算完了"，默认实现不再执行。',
   '一句话：<span class="k">权重重排一次、激活重排每次；交错让"行"变成向量载入的一个维度。</span>'
 ];
-tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, @@M0@@); });
-rows.forEach((r, i) => tl.at(3000 + i * 2100, () => {
+const A9 = [@@M0@@, @@M1@@, @@M2@@];
+tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, A9[0]); });
+rows.forEach((r, i) => tl.at(3000 + i * 1900, () => {
   rows.forEach((x, k) => { x.className = k === i ? 'on' : ''; });
   msg.innerHTML = texts[1];
-  U.markLines(document, @@M0@@);
+  U.markLines(document, A9[0]);
 }));
-tl.at(15000, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[2]; U.markLines(document, @@M1@@); });
-tl.at(17500, () => { msg.innerHTML = texts[3]; U.markLines(document, @@M1@@); });
-tl.at(19800, () => { msg.innerHTML = texts[4]; U.markLines(document, @@M2@@); });
+tl.at(15000, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[2]; U.markLines(document, A9[1]); });
+tl.at(17500, () => { msg.innerHTML = texts[3]; U.markLines(document, A9[1]); });
+tl.at(19800, () => { msg.innerHTML = texts[4]; U.markLines(document, A9[2]); });
 '''
 
 L.scene(
@@ -680,8 +705,10 @@ L.scene(
     caption='下一课 L5-05：这些变体在各架构上的真实实现（AVX2 / NEON-i8mm / RVV / AMX / KleidiAI）。',
     src=TC, parts=[(12, 23)], duration=22000,
     mark_src=[12, 13, 15, 16, 17, 18, 22],
-    visual=fill(V9, M0=hl([(12, 23)], {}, 12, 13, 15, 16),
-                M1=hl([(12, 23)], {}, 17, 18), M2=hl([(12, 23)], {}, 22))
+    visual=fill(V9,
+                M0=hl([(12, 23)], {}, 12, 13, 15, 16),
+                M1=hl([(12, 23)], {}, 12, 13, 15, 16, 17, 18),
+                M2=hl([(12, 23)], {}, 12, 13, 15, 16, 17, 18, 22))
 )
 
 # ------------------------------------------------------------------ source.md
@@ -751,7 +778,7 @@ L.section(
     '- `>> 4` 是收尾：`v0` 被 `<< 4` 放大过，两个乘积一起右移还原。\n\n'
     '这也是各架构内核（AVX2 / NEON-i8mm / RVV）能共用同一套布局的原因：'
     '布局把"行"变成了向量载入的一个维度。',
-    src=RC, parts=[(1785, 1831)], lang='c')
+    src=RC, parts=[(1785, 1827)], lang='c')
 
 L.section(
     '七、钩子协议：traits.h',
@@ -769,7 +796,7 @@ L.section(
     'NEON+i8mm 且 `ne[1] % 4 == 0` -> `q4_0_4x8_q8_0`；NEON+dotprod -> `q4_0_4x4_q8_0`；'
     'VXE -> `q4_0_4x4_q8_0`；RVV（`__riscv_vlenb() * 8 == 256`）-> `q4_0_16x1_q8_0`。'
     '都不满足则 `return nullptr`（5140），张量就留在普通缓冲里。',
-    src=RC, parts=[(4973, 5005)], lang='c')
+    src=RC, parts=[(4974, 5005)], lang='c')
 
 L.section(
     '九、认领顺序：traits.cpp',
@@ -836,7 +863,7 @@ L.conclusion(
     '`return` 出去的那个实例就是本次运行的 kernel 变体；都不满足则 `return nullptr`，'
     '张量留在普通缓冲走默认 `MUL_MAT`。\n\n'
     '| 类型 | 变体（触发 ISA） | 依据行 |\n|---|---|---|\n'
-    '| Q4_0 | 8x8（AVX2/SVE+i8mm）· 4x8（NEON+i8mm）· 4x4（NEON+dotprod / VXE）· 16x1（RVV 256）| 4973-5005 |\n'
+    '| Q4_0 | 8x8（AVX2/SVE+i8mm）· 4x8（NEON+i8mm）· 4x4（NEON+dotprod / VXE）· 16x1（RVV 256）| 4974-5005 |\n'
     '| Q4_K | 8x8（AVX2 或 NEON+i8mm）· 8x4（NEON+dotprod）· 16x1（RVV）| 5006-5032 |\n'
     '| Q2_K | 8x8（AVX512）· 16x1（RVV）| 5033-5049 |\n'
     '| Q5_K / Q6_K | 8x8 或 8x4（只有 NEON 两条路）| 5050-5071 |\n'

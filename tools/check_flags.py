@@ -173,15 +173,25 @@ def strip_verbatim(text, is_js):
             return (s.replace('\\', '\\\\')
                      .replace('`', '\\`')
                      .replace('${', '\\${'))
+        # ★ 先在【原始 content】上一次找齐所有区间，再从后往前统一挖空。
+        #   不能边找边 replace：当一幕的 code 是另一幕的子串时（L8-02 的
+        #   第 1 幕是第 8 幕的子片段），先替换短的会把长的从中间挖断，
+        #   长的从此匹配不上 → 误判为"定位失败"。
+        #   由 L6-07 子代理用脚本复现并定位（全仓库只有 L8-02 踩到）。
+        spans = []
         for s in data.get('scenes', []):
-            if s.get('code'):
-                esc = _js_escape(s['code'])
-                if esc in content:
-                    content = content.replace(esc, '\n')
-                else:
-                    return None, (f"第 {s['i'] + 1} 幕的逐字引用无法从 lesson.js 定位"
-                                  f"（转义形式也不匹配）—— 拒绝静默降级")
-        return content, None
+            if not s.get('code'):
+                continue
+            esc = _js_escape(s['code'])
+            i = content.find(esc)
+            if i < 0:
+                return None, (f"第 {s['i'] + 1} 幕的逐字引用无法从 lesson.js 定位"
+                              f"（转义形式也不匹配）—— 拒绝静默降级")
+            spans.append((i, i + len(esc)))
+        buf = list(content)
+        for a, b in sorted(spans, reverse=True):
+            buf[a:b] = '\n'
+        return ''.join(buf), None
     # markdown: 抠掉带 <!-- src: --> 声明的围栏代码块
     lines = text.split('\n')
     out, i = [], 0

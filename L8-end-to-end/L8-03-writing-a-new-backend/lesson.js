@@ -320,7 +320,7 @@ static ggml_guid_t ggml_backend_blas_guid(void) {
        ['ne0 / ne1 / ne10 都 >= min_batch = 32', '429', 'false：小矩阵交回 CPU'],
        ['src0 是 F32，或它有 to_float 可反量化', '430', 'false'],
        ['op 参数不是 GGML_HINT_SRC0_IS_HADAMARD', '422', 'false：默认走 CPU 快路径'],
-       ['OUT_PROD 另有 6 条判据（矩阵、连续、类型）', '433-440', 'false'],
+       ['OUT_PROD 的一组判据（类型 / 矩阵 / 连续）', '433-440', 'false'],
        ['以上都不匹配', '442-443', 'default: return false']],
       { monoCols: [1] });
     wrap.querySelector('#tbl').appendChild(t.el);
@@ -497,7 +497,7 @@ GGML_BACKEND_DL_IMPL(ggml_backend_blas_reg)
     A.innerHTML = '<div class="cm" style="margin-bottom:4px">静态构建（GGML_BACKEND_DL=OFF）</div>';
     [['reg.cpp:65-66', 'GGML_USE_BLAS -> #include "ggml-blas.h"'],
      ['reg.cpp:160', 'register_backend(ggml_backend_blas_reg())'],
-     ['CMakeLists.txt:589', 'ggml_add_backend(BLAS) 打开 GGML_USE_BLAS']].forEach(r => {
+     ['CMakeLists.txt:589', 'ggml_add_backend(BLAS) -> 静态构建下定义 GGML_USE_BLAS']].forEach(r => {
       const e = U.el('div', { class: 'formula', style: 'padding:4px 8px;font-size:9.5px' });
       e.innerHTML = '<span class="m">' + U.esc(r[0]) + '</span> ' + U.esc(r[1]);
       A.appendChild(e);
@@ -586,19 +586,19 @@ GGML_BACKEND_DL_IMPL(ggml_backend_blas_reg)
     root.appendChild(wrap);
 
     const t = U.table(
-      ['虚表', '(a) 必须实现', '(b) 可留空', '依据'],
+      ['虚表', '(a) 必须实现', '(b) 可留空', 'impl.h 行'],
       [['ggml_backend_device_i', '9：自我介绍 5（get_name / get_description / get_memory / get_type / get_props）+ init_backend + get_buffer_type + supports_op + supports_buft',
-        '6：get_host_buffer_type / buffer_from_host_ptr / offload_op / event_new / event_free / event_synchronize', 'impl.h 176-218'],
+        '6：get_host_buffer_type / buffer_from_host_ptr / offload_op / event_new / event_free / event_synchronize', '176-218'],
        ['ggml_backend_i', '3：get_name / free / graph_compute',
-        '13：异步 5 / synchronize / graph_plan 4 / event 2 / graph_optimize', 'impl.h 121-156'],
+        '13：异步 5 / synchronize / graph_plan 4 / event 2 / graph_optimize', '121-156'],
        ['ggml_backend_buffer_type_i', '3：get_name / alloc_buffer / get_alignment',
-        '3：get_max_size / get_alloc_size / is_host（都有默认行为）', 'impl.h 17-29'],
+        '3：get_max_size / get_alloc_size / is_host（都有默认行为）', '17-29'],
        ['ggml_backend_buffer_i', '5：get_base / memset_tensor / set_tensor / get_tensor / clear',
-        '6：free_buffer / init_tensor / set_tensor_2d / get_tensor_2d / cpy_tensor / reset', 'impl.h 46-67'],
+        '6：free_buffer / init_tensor / set_tensor_2d / get_tensor_2d / cpy_tensor / reset', '46-67'],
        ['ggml_backend_reg_i', '3：get_name / get_device_count / get_device',
-        '1：get_proc_address', 'impl.h 230-240'],
+        '1：get_proc_address', '230-240'],
        ['合计', '23 个必需项（三张主虚表 15 + 数据面 5 + 注册面 3）',
-        '29 个可留空 —— BLAS 更进一步：连内存层 8 个必需项也借了 CPU 的', 'L3-01 第 8 幕']],
+        '29 个可留空 —— BLAS 更进一步：连内存层 8 个必需项也借了 CPU 的', 'L3-01']],
       { monoCols: [] });
     wrap.querySelector('#tbl').appendChild(t.el);
     t.el.style.fontSize = '9px';

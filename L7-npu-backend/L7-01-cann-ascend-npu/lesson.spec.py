@@ -206,13 +206,14 @@ L.scene(
     title='从 <span class="hl-c">dst-&gt;op</span> 到分派函数：一个 switch 的三种形态',
     sub='graph_compute 拿到一张图，逐个节点走 compute_forward。整个后端的"路由表"就是这一个 switch。',
     caption='回顾 L1-02：enum ggml_op 是算子的身份。这里正是按身份分派 —— 身份决定走哪条翻译路径。',
-    src=SRC_MAIN, parts=[(1773, 1790), (1803, 1810), (1918, 1923)], duration=21000,
-    mark_src=[1774, 1789, 1804, 1806, 1918, 1919],
+    src=SRC_MAIN, parts=[(1773, 1818)], duration=21000,
+    mark_src=[1774, 1789, 1798, 1804, 1806, 1814, 1817],
     notes_src={1774: '唯一的判断依据：dst->op',
                1789: '形态一：把 aclnn 函数当模板参数传进去（二元算子）',
+               1798: 'GGML_OP_MUL 走的是同一个模板，只换了 aclnn 函数',
                1804: 'UNARY 是二级分派：先看是不是 GGML_OP_UNARY，再看是哪个一元算子',
                1806: '形态二：宏 —— GGML_CANN_CALL_OP_UNARY(Abs) 展开成 aclnnAbs',
-               1919: '形态三：专用函数 —— 大算子（矩阵乘、注意力）各有一个 ggml_cann_* 包装'},
+               1814: '同一个宏换个名字就是另一个算子：aclnnGelu'},
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `<div class="row wrap" id="cards" style="gap:8px"></div>
@@ -233,7 +234,7 @@ const t = U.table(
   [['模板参数', 'ggml_cann_binary_op<aclnn_add>(ctx, dst)', '1789'],
    ['模板参数', 'ggml_cann_binary_op<aclnn_mul>(ctx, dst)', '1798'],
    ['宏', 'GGML_CANN_CALL_OP_UNARY(Abs)', '1806'],
-   ['宏', 'GGML_CANN_CALL_OP_UNARY(Sqrt)', '1933'],
+   ['宏', 'GGML_CANN_CALL_OP_UNARY(Gelu)', '1814'],
    ['专用函数', 'ggml_cann_mul_mat(ctx, dst)', '1919'],
    ['专用函数', 'ggml_cann_flash_attn_ext(ctx, dst)', '2002']],
   { monoCols: [1, 2] });
@@ -320,7 +321,7 @@ tl.at(21000, () => { msg.innerHTML = texts[5]; });
 L.scene(
     kicker='L7-01 · 数据面',
     title='ggml_tensor -&gt; <span class="hl-d">aclTensor</span>：两处约定差异',
-    sub='ggml 的 ne[0] 是最内层、nb 以字节计；CANN 的最后一维是最内层、stride 以元素计。转换函数把三件事抹平。',
+    sub='ggml 的 nb 以字节计、ne[0] 在最前；CANN 的 stride 以元素计、最内层维在最后。转换函数把这两处抹平。',
     caption='回想 L1-01：nb[0] = ggml_type_size(type)，而这里要除以 ggml_element_size —— L1-01 的约定在这里第二次被用到。',
     src=SRC_TEN, parts=[(53, 92)], duration=19000,
     mark_src=[53, 63, 65, 67, 80, 86, 87, 89],
@@ -337,7 +338,7 @@ root.appendChild(wrap);
 const defs = [
   { c: 'a', t: '步长单位', b: 'ggml: nb[i] 是<b>字节</b><br>CANN: stride[i] 是<b>元素个数</b>' },
   { c: 'b', t: '维度顺序', b: 'ggml: ne[0] 最内层<br>CANN: 最后一维最内层' },
-  { c: 'd', t: '数据指针', b: 'tensor-&gt;data 直接交给<br>aclCreateTensor，<b>零拷贝</b>' }
+  { c: 'd', t: '结果 · 零拷贝', b: 'tensor-&gt;data 原样交给<br>aclCreateTensor，<b>不复制数据</b>' }
 ];
 const host = wrap.querySelector('#cards');
 const els = defs.map(d => { const e = U.card(d, { style: 'width:220px' }); host.appendChild(e); return e; });
@@ -454,13 +455,12 @@ L.scene(
     title='★ <span class="hl-a">supports_op</span>：厂商库没有的算子，后端只能说不',
     sub='这张 switch 判断的不是"能不能算"，而是"ACL 里有没有对应的算子、这个数据类型库收不收"。',
     caption='L4-02 讲调度器怎么按 supports_op 把图切给不同后端 —— 这里看到切分的输入从哪来。',
-    src=SRC_MAIN, parts=[(2440, 2460), (2705, 2706)], duration=20000,
-    mark_src=[2440, 2442, 2444, 2446, 2449, 2451, 2452, 2456, 2457, 2458, 2705, 2706],
+    src=SRC_MAIN, parts=[(2440, 2460)], duration=20000,
+    mark_src=[2440, 2442, 2444, 2446, 2449, 2451, 2452, 2456, 2457, 2458],
     notes_src={2440: '第一个问题：这个 op 是什么（对应哪个 aclnn 算子）',
                2442: '第二个问题：权重是什么类型 —— 决定调哪个 aclnn 算子',
                2449: 'Q8_0 / Q4_0 能接，但 310P 上例外，所以整个 case 被 #ifdef 掉',
-               2456: '量化类型还有额外条件：必须连续 —— 否则 aclnn 的假设不成立',
-               2706: '兜底：本文件 switch 没列到的 op，一律 false'},
+               2456: '量化类型还有额外条件：必须连续 —— 否则 aclnn 的假设不成立'},
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:10px;width:100%' });
 wrap.innerHTML = `<div class="row" style="gap:9px">
@@ -601,14 +601,15 @@ L.section(
     src=SRC_MAIN, parts=[(1803, 1826)], lang='c')
 
 L.section(
-    '五、专用函数形态：MUL_MAT 与 MUL_MAT_ID',
-    '`GGML_OP_MUL_MAT` 的 case 只有两行：调用 `ggml_cann_mul_mat`。所有关于维度、量化类型、'
-    '内存排布的判断都在 `aclnn_ops.cpp` 里 —— **分派层保持极薄**。',
-    src=SRC_MAIN, parts=[(1915, 1923)], lang='c')
+    '五、专用函数形态：MUL_MAT 与 FLASH_ATTN_EXT',
+    '第 4 幕的动画代码只引到 `GGML_OP_UNARY` 为止，第三种形态（专用函数）在这里补齐。'
+    '`GGML_OP_MUL_MAT` 的 case 只有两行：调用 `ggml_cann_mul_mat`。'
+    '所有关于维度、量化类型、内存排布的判断都在 `aclnn_ops.cpp` 里 —— **分派层保持极薄**。',
+    src=SRC_MAIN, parts=[(1915, 1923), (2001, 2003)], lang='c')
 
 L.section(
-    '六、ggml_cann_create_tensor：三处约定差异',
-    '转换函数要处理三件事：步长单位（字节 -> 元素）、维度顺序（reverse）、存储长度（现算）。'
+    '六、ggml_cann_create_tensor：两处约定差异 + 存储长度',
+    '转换函数要处理两处约定差异：步长单位（字节 -> 元素）与维度顺序（reverse）；'
     '它还有两个可选参数 `ne` / `nb`：不传就按张量自己的形状，传了就是**客户形状**（广播用）。',
     src=SRC_TEN, parts=[(53, 92)], lang='c')
 

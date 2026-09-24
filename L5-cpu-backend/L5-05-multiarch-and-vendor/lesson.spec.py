@@ -609,9 +609,9 @@ const side = wrap.querySelector('#side');
 side.innerHTML =
   '<div class="card" style="border-left-color:var(--f)">' +
   '<div class="ct" style="color:var(--f)">核型号从哪来？</div>' +
-  '<div class="cb">ime_env.cpp 读 <span class="m">/proc/cpuinfo</span> 得到每个核的 arch_id，' +
-  '与 <span class="m">spine_core_arch_id</span> 枚举（x60/x100/x200/a60/a100/a200）比对，' +
-  '再用 sched_setaffinity 把线程绑到首选核。</div></div>' +
+  '<div class="cb">ime_env.cpp 读 <span class="m">/proc/cpuinfo</span> 的 processor/marchid 对，' +
+  '映射成 <span class="m">spine_core_arch_id</span> 枚举（x60/x100/x200/a60/a100/a200），' +
+  '再由 ime.cpp 用 <span class="m">pthread_setaffinity_np</span> 把线程绑到首选核（1711 行）。</div></div>' +
   '<div class="card" style="border-left-color:var(--b)">' +
   '<div class="ct" style="color:var(--b)">"面板 + RVV 前处理"</div>' +
   '<div class="cb">权重在 repack 时变成 <span class="m">nrow_block_*</span> 布局（ime_kernels.h），' +
@@ -924,14 +924,6 @@ L.section(
     src=IQPH, parts=[(8, 27)], lang='c')
 
 L.section(
-    '十七、llamafile：小矩阵的第三套 SGEMM',
-    '`llamafile_sgemm` 是 Mozilla tinyBLAS 的入口：**先按 A/B 类型 switch，再按 ISA 分派**，'
-    '同一类型组合在不同架构下实例化不同模板。它只在 `n >= 2`（提示处理）时接管，'
-    '小矩阵形状不合适就返回 false 让默认路径接手。\n\n'
-    '本课引用其头文件签名与实现文件里的分派骨架，完整模板体（4165 行）留作课外阅读。',
-    src=LSGH, parts=[(19, 21)], lang='c')
-
-L.section(
     '十七、iqp.cpp：判据长什么样',
     'IQP 的判据不是形状白名单，而是**一批同时成立的条件**：类型在 8 种 grid IQ 里、'
     '`vec_dot_type` 必须是 Q8_K（这条路径假设 src1 会转成 q8_K）、运行时必须真有 AVX2、'
@@ -940,7 +932,15 @@ L.section(
     src=IQP, parts=[(1053, 1113)], lang='c')
 
 L.section(
-    '十八、llamafile：按类型 switch，再按 ISA 分派',
+    '十八、llamafile：小矩阵的第三套 SGEMM',
+    '`llamafile_sgemm` 是 Mozilla tinyBLAS 的入口：**先按 A/B 类型 switch，再按 ISA 分派**，'
+    '同一类型组合在不同架构下实例化不同模板。它只在 `n >= 2`（提示处理）时接管，'
+    '小矩阵形状不合适就返回 false 让默认路径接手。\n\n'
+    '本课引用其头文件签名与实现文件里的分派骨架，完整模板体（4165 行）留作课外阅读。',
+    src=LSGH, parts=[(19, 21)], lang='c')
+
+L.section(
+    '十九、llamafile：按类型 switch、再按 ISA 分派',
     '下面这段是 `llamafile_sgemm` 的骨架（以 Atype = Q8_0 为例）：**外层 switch 查类型组合，'
     '每个 case 内部再用 `#if defined(ISA)` 选模板实例**。'
     '三种 ISA 各有一个 tinyBLAS 实现（AVX / ARM DOTPROD / PowerPC MMA），'
@@ -948,21 +948,23 @@ L.section(
     src=LSG, parts=[(4041, 4076)], lang='c++')
 
 L.section(
-    '十九、llamafile：只在提示处理（n >= 2）时接管',
+    '二十、llamafile：只在提示处理（n >= 2）时接管',
     '入口处先做两件事：`Ctype` 必须是 F32，且（非 MMA 平台）`n >= 2` —— '
     '也就是只在「一次算多列」的提示处理阶段才值得用它；解码阶段（n = 1）直接返回 false。'
     '这一行注释就是它的适用场景说明。',
     src=LSG, parts=[(3818, 3825)], lang='c++')
 
 L.section(
-    '二十、SpacemiT：核型号探测与绑核',
+    '二十一、SpacemiT：核型号探测与绑核',
     'SpacemiT 的路径要先知道「这颗 SoC 上哪些核是 x100/a100」：'
-    '`ime_env.cpp` 读 `/proc/cpuinfo` 拿每个核的 arch_id，必要时用环境变量在 QEMU 下注入，'
-    '再用 `sched_setaffinity` 把线程绑到首选核；共享内存/大页/TCM 的选择也在这里定。',
+    '`ime_env.cpp` 逐行读 `/proc/cpuinfo`，把 `processor` 与 `marchid` 配成对，'
+    '再映射成 `spine_core_arch_id` 枚举（x60/x100/x200/a60/a100/a200）；'
+    '`/proc/cpuinfo` 读不到时（例如 QEMU）改用环境变量注入。绑核发生在 ime.cpp：'
+    '用 `pthread_setaffinity_np` 把线程钉在首选核上（1711 行）；共享内存/大页/TCM 的选择也在这里定。',
     src=SME, parts=[(259, 266)], lang='c++')
 
 L.section(
-    '二十一、SpacemiT 的内存池与屏障',
+    '二十二、SpacemiT 的内存池与屏障',
     '`spine_mem_pool` 提供三种后端：`posix_memalign`、透明大页（`madvise(MADV_HUGEPAGE)`）、'
     '1G 大页（`/dev/hugetlb_1g` + ioctl + mmap），另有按核分配的 TCM（紧耦合内存，'
     '通过可 dlopen 的 `spine_tcm` 库头文件方式加载）。跨核同步不用 pthread，而是自己的自旋屏障。',

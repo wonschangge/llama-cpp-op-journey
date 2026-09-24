@@ -6,6 +6,7 @@ ggml/src/ggml-cpu/ggml-cpu.c
 src/models/llama.cpp
 src/llama-context.cpp
 ggml/src/ggml-cpu/ggml-cpu.cpp
+ggml/src/ggml-cpu/arch/x86/quants.c
 ggml/src/ggml-cuda/ggml-cuda.cu
 -->
 
@@ -329,7 +330,37 @@ static void ggml_compute_forward_mul_mat_one_chunk(
     enum ggml_type const vec_dot_type = type_traits_cpu[type].vec_dot_type;
 ```
 
-## 八、同一跳在 CUDA 侧（对照）
+## 八、链路的终点：x86 上的 ggml_vec_dot_q4_0_q8_0
+
+`vec_dot` 的函数指针最终落到某个具体内核。以 x86 为例，`ggml/src/ggml-cpu/arch/x86/quants.c:701` 的 `ggml_vec_dot_q4_0_q8_0` 就是 Q4_0 权重（`block_q4_0`）与 Q8_0 激活（`block_q8_0`）相乘的那一段：`nb = n / QK8_0` 个块，每块用 `x[ib].d * y[ib].d` 做 scale，AVX2 分支用 `_mm256_setzero_ps()` 起累加器（718-720）。
+
+**这一课到此处闭合**：`ggml_mul_mat` 这一行代码，最终变成了这里的 SIMD 指令。
+
+<!-- src: ggml/src/ggml-cpu/arch/x86/quants.c -->
+```c
+void ggml_vec_dot_q4_0_q8_0(int n, float * GGML_RESTRICT s, size_t bs, const void * GGML_RESTRICT vx, size_t bx, const void * GGML_RESTRICT vy, size_t by, int nrc) {
+    const int qk = QK8_0;
+    const int nb = n / qk;
+
+    assert(n % qk == 0);
+    assert(nrc == 1);
+    UNUSED(nrc);
+    UNUSED(bx);
+    UNUSED(by);
+    UNUSED(bs);
+
+    const block_q4_0 * GGML_RESTRICT x = vx;
+    const block_q8_0 * GGML_RESTRICT y = vy;
+
+    int ib = 0;
+    float sumf = 0;
+
+#if defined(__AVX2__)
+    // Initialize accumulator with zeros
+    __m256 acc = _mm256_setzero_ps();
+```
+
+## 九、同一跳在 CUDA 侧（对照）
 
 同一个 `iface.graph_compute` 槽，在 CUDA 后端里填的是 `ggml_backend_cuda_graph_compute`（`ggml/src/ggml-cuda/ggml-cuda.cu:4421`，接口表见 4853）。它内部的 `ggml_cuda_compute_forward`（2067）同样是一个 `switch (dst->op)`，`GGML_OP_MUL_MAT` 的 case 在第 2259 行，指向 `ggml_cuda_mul_mat`（1823）。
 
@@ -376,13 +407,13 @@ static void ggml_cuda_mul_mat(ggml_backend_cuda_context & ctx, const ggml_tensor
     /* .event_record            = */ ggml_backend_cuda_event_record,
 ```
 
-## 九、完整调用链表（每一步的判据）
+## 十、完整调用链表（每一步的判据）
 
 把这一课压成一张表。左列是跳，中间是位置，右列是"谁决定下一步走哪"。
 
 | # | 跳（函数） | 文件:行号 | 判据 |
 |---|---|---|---|
-| 0 | 模型 build → `build_attn` | `src/models/llama.cpp:169` | 层里有 `wo` → 走注意力块 |
+| 0 | 模型 build → `build_attn` | `src/models/llama.cpp:169` | 层循环（126）里的自注意力块（138） |
 | 1 | `build_attn` → `build_lora_mm(wo, cur)` | `src/llama-graph.cpp:2804` | `wo` 非空 |
 | 2 | `build_lora_mm` → `ggml_mul_mat(w, cur)` | `src/llama-graph.cpp:1518` | 只是加一个节点 |
 | 3 | 构造器：断言 + `ne[]` + `op/src` | `ggml/src/ggml.c:3333 / 3348 / 3351` | `ggml_can_mul_mat` 三条 ne 判据 |
@@ -404,4 +435,4 @@ static void ggml_cuda_mul_mat(ggml_backend_cuda_context & ctx, const ggml_tensor
 
 - 本课覆盖 **9 个源文件**，全部计入覆盖率。其中 `src/llama-graph.cpp` 是计划里本课的主文件；按"这条链路"追加了 3 个：`ggml/src/ggml.c`（`ggml_mul_mat` 构造器 + `ggml_build_forward_expand`/拓扑序）、`ggml/src/ggml-backend.cpp`（切分、归属与调度执行）、`ggml/src/ggml-cpu/ggml-cpu.c`（CPU 分派与 `vec_dot` 选择）。
 - 另外 5 个文件是这条链路的相邻跳，本课只取"这一跳"的几行：`src/models/llama.cpp`（`build_attn` 的调用点与最终 expand）、`src/llama-context.cpp`（decode 与 graph_compute）、`ggml/src/ggml-cpu/ggml-cpu.cpp`（CPU 接口表与入口）、`ggml/src/ggml-cuda/ggml-cuda.cu`（同一跳的 CUDA 实现，作对照）、`ggml/src/ggml-cpu/arch/x86/quants.c`（x86 版 `ggml_vec_dot_q4_0_q8_0`）。这些文件各自的专课会逐字展开：L2-06 / L2-07 / L5-01 / L6-01 / L5-03。
-- 说明：`ggml/src/ggml-cpu/arch/<arch>/quants.c` 的同名函数由 CMake 按架构选一份编译（`ggml/src/ggml-cpu/CMakeLists.txt` 的 `GGML_CPU_SOURCES`），本课引用的是 x86 那一份；换架构时 `type_traits_cpu[]` 里的绑定名不变，实现文件会换。
+- `ggml/src/ggml-cpu/arch/<arch>/quants.c` 的同名函数由 CMake 按架构选一份编译（`ggml/src/ggml-cpu/CMakeLists.txt` 的 `GGML_CPU_SOURCES`），本课引用的是 x86 那一份；换架构时 `type_traits_cpu[]` 里的绑定名不变，实现文件会换。

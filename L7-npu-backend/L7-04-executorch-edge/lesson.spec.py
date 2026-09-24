@@ -591,24 +591,24 @@ root.appendChild(wrap);
 const t = U.table(
   ['数据面问题', 'ET（本课 L7-04）', 'CUDA（L6-01）', 'CANN / OpenVINO（L7-01 / L7-03）'],
   [['过边界传什么',
-    'struct ggml_tensor 按值<br>ggml-et-ops.cpp:282',
-    '裸指针 + 标量 + 元素数<br>scale.cu:5 / 37-50',
+    { html: 'struct ggml_tensor 按值<br>ggml-et-ops.cpp:282' },
+    { html: '裸指针 + 标量 + 元素数<br>scale.cu:5 / 37-50' },
     '厂商描述符：aclCreateTensor（acl_tensor.cpp:89）；ov::Tensor(..., tensor->data)（ggml-decoder.cpp:1392）'],
    ['设备侧看到的元数据',
-    'ne / nb / type / data 全在<br>scale_f32.c:32-40',
+    { html: 'ne / nb / type / data 全在<br>scale_f32.c:32-40' },
     '只有入参里的维度与指针',
     '厂商自己的 shape / stride 表示（acl_tensor.cpp:87-90）'],
    ['量化块布局',
-    '设备侧直接 include ggml-common.h<br>quants.h:10-11',
+    { html: '设备侧直接 include ggml-common.h<br>quants.h:10-11' },
     '复用 ggml 的 block_* 定义',
     '建图/映射时转成厂商格式（L7-01 / L7-03 展开）'],
    ['设备内存谁分配',
-    'runtime->mallocDevice<br>ggml-et.cpp:404',
+    { html: 'runtime->mallocDevice<br>ggml-et.cpp:404' },
     'cudaMalloc（显存池）',
     '厂商 device 内存（L7-01 / L7-03 展开）'],
    ['host 内存能当设备内存吗',
-    '不能：is_host=false（439）<br>host_buffer=false（1649）',
-    '能：pinned host buft（1309-1317）<br>caps.host_buffer 默认 true（5099）',
+    { html: '不能：is_host=false（439）<br>host_buffer=false（1649）' },
+    { html: '能：pinned host buft（1309-1317）<br>caps.host_buffer 默认 true（5099）' },
     '不共享，靠拷贝（L7-05 讲虚拟化下更甚）'],
    ['缓冲区之间能直接拷吗',
     '不能：cpy_tensor 恒 false（339）',
@@ -923,6 +923,47 @@ L.section(
     '每个内核在自己的 `.c` 里定义参数结构体，宿主侧在 `ggml-et-ops.h` 里再写一遍'
     '（第十五、十六节点出了这个约定的两端）。',
     lang='text')
+
+L.section(
+    '二十、uberkernel 的 host/device 共享 ABI',
+    '第十一节里那两个设备地址（指令数组、参数块）指向的内存，格式就是这 17 行：'
+    '`ggml_et_uberkernel_inst` 是一条指令（内核编号 + 标志 + 参数在参数块里的偏移与长度），'
+    '`ggml_et_uberkernel_params` 是整批指令的头。\n\n'
+    '这个头文件被**两端同时 include**：宿主侧经 `ggml-et-common.h:4` 传递到 '
+    '`ggml-et-kernels.cpp:344-349`（构造 `ggml_et_uberkernel_params`），'
+    '设备侧由 `uberkernel.c:1` 直接 include。它是本课"共享表示"最纯粹的例子 —— '
+    '连"指令流"这种通常属于编译器内部的东西，在这里也是一份两边都认的结构体。',
+    src=UKH, parts=[(1, 17)], lang='c')
+
+L.section(
+    '二十一、设备侧共享头：6 个文件的分工',
+    '上一节按行数把 68 个文件分成四族；这一节把"设备侧共享头"这一族再拆开 —— '
+    '它们都是**两端共用同一套语义**的体现（行数为 `wc -l` 实测）：\n\n'
+    '| 文件 | 行数 | 分工（取自文件自己的头部注释） |\n'
+    '|---|---|---|\n'
+    '| `ggml_tensor.h` | 44 | 内核参数结构体（与宿主同名）+ 连续性判定；第十五节逐字引用 |\n'
+    '| `quants.h` | 72 | 反量化助手 + 复用 `ggml-common.h` 的块定义；第十六节逐字引用 |\n'
+    '| `platform.h` | 545 | 裸机 HAL：hart 与线程数、屏障/信号量、tensor engine 等待、L1/L2 scratchpad 寻址 |\n'
+    '| `math_fp.h` | 299 | 硬件未实现指令的替代实现（FP16 转换、三角、除法）| \n'
+    '| `block_ops.h` | 997 | 向量块运算库（建立在 `math_fp.h` + `quants.h` 之上）| \n'
+    '| `tensor.h` | 897 | ET-SoC 张量指令的 CSR 封装：`tensor_load` / `tensor_store` / `tensor_fma` 等 |\n\n'
+    '值得留意的是 `platform.h` 里的两个常数：`SOC_MINIONS_PER_SHIRE 32`、'
+    '`NUM_HARTS_PER_MINION 2`（`platform.h:17-18`）—— 它们决定了第六节里'
+    '"线程数 = popcount(shire_mask) x 32 x 2"这条公式。',
+    lang='text')
+
+L.section(
+    '二十二、宿主侧的参数结构体与 CPU 对拍实现',
+    '`ggml-et-ops.h` 里每个算子家族都有自己的参数结构体 —— 一共 **37 个**'
+    '（`grep -c "^struct ggml_et_.*_params {"` 实测）。注意字段写的是 `ggml_tensor` 而不是指针：'
+    '**结构体按值**，这正是第五幕那条机制在头文件里的样子。设备侧 `ggml_tensor.h` 里是同一批结构体的'
+    '另一份声明（多了 `struct` 关键字），两端靠字段一致对齐。\n\n'
+    '同一族的 `ggml-et-cpu-compare.cpp`（502 行）是第十七节那套对拍设施的**实现**：'
+    '它 `ggml_backend_cpu_init()`（104）建一个临时的 CPU 后端，把输入拷到 CPU 侧（84-92），'
+    '在 ET 内核跑完后再 `ggml_backend_graph_compute(ctx->cpu_backend, ctx->cpu_graph)`（360）'
+    '算一遍参考结果，最后取回 ET 的输出比较（376）。一个没有图级编译器的后端，'
+    '只能这样用"另一个后端"来当参照。',
+    src=OPSH, parts=[(48, 62)], lang='cpp')
 
 L.footnote_add('本课覆盖声明是 `tools/plan_matrix.py --files` 里 L7-04 的**全部 68 个文件**：'
                '`ggml/include/ggml-et.h`（1）+ `ggml/src/ggml-et/*.{cpp,h}`（11）+ '

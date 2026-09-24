@@ -657,7 +657,7 @@ enum ApirCommandType {
   kicker: "L7-05 · 收束",
   title: "墙的两侧，各管一段",
   sub: "客户机侧实现 ggml 的契约并把调用翻译成命令；宿主侧把命令翻译回 ggml 的调用。",
-  caption: "下一课 L7-06 讲小后端合集，其中 RPC 后端也是\"把远端当设备\"，可以对照两者的取舍。",
+  caption: "下一课 L7-06 是小后端合集（RPC 也是\"把远端当设备\"）。对照 L7-02 Hexagon：计划里那一课的要点是 host 与 DSP 的边界，而这里隔的是虚拟化边界。",
   src: "ggml/include/ggml-virtgpu.h",
   mark: [9],
   lineNo: 1,

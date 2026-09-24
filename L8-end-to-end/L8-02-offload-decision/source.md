@@ -16,7 +16,7 @@ src/llama-context.cpp
 
 ## 一、入口：一个整数变成一条分界线
 
-`n_gpu_layers` 在整个加载期只被读一次（`llama-model.cpp:1438`），随即化成 `i_gpu_start`。注意右边的 `+ 1`：**槽位总数是 `n_layer_all + 1`，多出来的那一个是输出层**。CPU 判据写在 `get_layer_buft_list` 里：`il < i_gpu_start` 就走 CPU 分支。
+`n_gpu_layers` 在 `load_tensors()` 里先被读成一个局部量（`llama-model.cpp:1438`），随即化成 `i_gpu_start`。注意右边的 `+ 1`：**槽位总数是 `n_layer_all + 1`，多出来的那一个是输出层**。CPU 判据写在 `get_layer_buft_list` 里：`il < i_gpu_start` 就走 CPU 分支。
 
 <!-- src: src/llama-model.cpp -->
 ```c
@@ -41,7 +41,7 @@ src/llama-context.cpp
 
 - **输入层永远在 CPU**（1536-1537 行硬编码，源码注释给了理由：几乎没有好处）；
 - **输出层不是特例**：它走的是同一个 `get_layer_buft_list(n_layer_all)`；
-- **多卡时的层分配**用 `std::upper_bound(splits, ..., float(il - i_gpu_start)/act_gpu_layers)`，而 `splits` 是各卡空闲显存归一化后的前缀和（1507-1519 行）—— 这一条 L3-02 已经展开过。
+- **多卡时的层分配**用 `std::upper_bound(splits, ..., float(il - i_gpu_start)/act_gpu_layers)`，而 `splits` 是各卡空闲显存归一化后的前缀和（1511-1519 行）—— 这一条 L3-02 已经展开过。
 
 回顾 L2-05：那一课引用过 `1521-1546` 这一段，讲的是"层怎么被分配给设备"；本课往下追的是"这个分配结果怎么影响图的形状"。
 

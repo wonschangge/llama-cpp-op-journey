@@ -109,8 +109,8 @@ L.scene(
     kicker='L8-01 · 第 0 跳',
     title='起点：<span class="hl-b">模型 build 函数</span>调用 build_attn',
     sub='第 169 行把这一层的 wo 权重交出去；第 246 行才把整条链拉进图。',
-    caption='回顾 L2-06：src/models/llama.cpp 的 graph<>() 是整张图的装配线。',
-    src=SRC_MODEL, parts=[(169, 172), (246, 246)], duration=17000,
+    caption='回顾 L2-06：src/models/llama.cpp 的 graph<embed> 构造函数是整张图的装配线。',
+    src=SRC_MODEL, parts=[(126, 126), (137, 138), (169, 172), (246, 246)], duration=17000,
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `
@@ -122,9 +122,9 @@ wrap.innerHTML = `
 root.appendChild(wrap);
 
 const stack = wrap.querySelector('#stack');
-stack.innerHTML = '<div class="cm" style="margin-bottom:2px">模型侧：llama_model_llama::graph&lt;embed&gt;()</div>';
+stack.innerHTML = '<div class="cm" style="margin-bottom:2px">模型侧：llama_model_llama::graph&lt;embed&gt; 构造函数（第 99 行起）</div>';
 const frames = [
-  { n: 'for (int il = 0; il < n_layer; ++il)', c: 'a', d: '逐层装配（第 132 行起）' },
+  { n: 'for (int il = 0; il < n_layer; ++il)', c: 'a', d: '逐层装配（第 126 行起）' },
   { n: 'cur = build_attn(inp_attn, ...)', c: 'b', d: '把 wo / wo_b / wo_s 与 Q/K/V 交出去（169）' },
   { n: 'cur = build_lora_mm(wo, cur, wo_s)', c: 'c', d: 'build_attn 内部：输出投影（2804）' },
   { n: 'ggml_mul_mat(ctx0, w, cur)', c: 'd', d: '图上多一个 MUL_MAT 节点（1518）' }
@@ -510,9 +510,9 @@ tl.at(14000, () => { msg.innerHTML = texts[3]; });
 
 L.scene(
     kicker='L8-01 · ★ 洞察',
-    title='CPU 侧：<span class="hl-d">switch (tensor-&gt;op)</span> → mul_mat → vec_dot',
+    title='★ CPU 侧：<span class="hl-a">switch (tensor->op)</span> → mul_mat → vec_dot',
     sub='大 switch 的判据是 op；vec_dot 的判据是 src0->type。两个字段，两次分派。',
-    caption='回顾 L5-01（CPU 分派）与 L5-03（向量化内核）：本幕把这两课接回链路，并给出完整调用链表。',
+    caption='回顾 L5-01（CPU 分派）、L5-03（向量化内核）与 L6-01（CUDA 同一跳）：本幕把这几课接回链路，并给出完整调用链表。',
     src=SRC_CPUC, parts=[(1744, 1756), (1869, 1872), (240, 249), (1165, 1183)], duration=26000,
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:7px;width:100%' });
@@ -522,7 +522,7 @@ root.appendChild(wrap);
 
 const t = U.table(
   ['跳（函数）', '文件:行号', '判据：谁决定下一步'],
-  [['模型 build → build_attn', 'src/models/llama.cpp:169', '层里有 wo 权重 → 走注意力块'],
+  [['模型 build → build_attn', 'src/models/llama.cpp:169', '每层的自注意力块（138 起）里无条件调用'],
    ['build_attn → build_lora_mm(wo, cur)', 'src/llama-graph.cpp:2804', 'wo 非空 → 做输出投影'],
    ['build_lora_mm → ggml_mul_mat(w, cur)', 'src/llama-graph.cpp:1518', '这一次调用只是加节点'],
    ['构造器：断言 + ne[] + op/src', 'ggml/src/ggml.c:3333 / 3348', 'can_mul_mat 的三条 ne 判据'],
@@ -531,9 +531,9 @@ const t = U.table(
    ['sched_alloc_graph → split_graph', 'ggml/src/ggml-backend.cpp:1992 → 1066', '切分在分配之前（2000）'],
    ['backend_id_from_cur（归属）', 'ggml/src/ggml-backend.cpp:921', 'src[0] 的 buffer = WEIGHTS（967）'],
    ['compute_splits → iface.graph_compute', 'ggml/src/ggml-backend.cpp:1799 → 461', 'split-&gt;backend_id（1658）'],
-   ['cpu_graph_compute → ggml_graph_compute', 'ggml/src/ggml-cpu/ggml-cpu.cpp:170 → ggml-cpu.c:3399', 'CPU 接口表第 206 行填的就是它'],
+   ['cpu_graph_compute → ggml_graph_compute', 'ggml/src/ggml-cpu/ggml-cpu.cpp:170 → ggml-cpu/ggml-cpu.c:3399', 'CPU 接口表第 206 行填的就是它'],
    ['compute_forward → mul_mat → one_chunk', 'ggml/src/ggml-cpu/ggml-cpu.c:1744 → 1869 → 1255', 'switch (tensor-&gt;op)'],
-   ['vec_dot 内核', 'ggml-cpu.c:1182 → arch/x86/quants.c:701', 'type_traits_cpu[src0-&gt;type].vec_dot'],
+   ['vec_dot 内核', 'ggml/src/ggml-cpu/ggml-cpu.c:1182 → arch/x86/quants.c:701', 'type_traits_cpu[src0-&gt;type].vec_dot'],
    ['（对照）CUDA 同一跳', 'ggml/src/ggml-cuda/ggml-cuda.cu:2259 → 1823', '同一个 iface 槽，填的是 CUDA 实现']],
   { monoCols: [1] });
 t.el.style.fontSize = '9.5px';
@@ -736,7 +736,7 @@ L.section(
     '十、完整调用链表（每一步的判据）',
     '把这一课压成一张表。左列是跳，中间是位置，右列是"谁决定下一步走哪"。\n\n'
     '| # | 跳（函数） | 文件:行号 | 判据 |\n|---|---|---|---|\n'
-    '| 0 | 模型 build → `build_attn` | `src/models/llama.cpp:169` | 层里有 `wo` → 走注意力块 |\n'
+    '| 0 | 模型 build → `build_attn` | `src/models/llama.cpp:169` | 层循环（126）里的自注意力块（138） |\n'
     '| 1 | `build_attn` → `build_lora_mm(wo, cur)` | `src/llama-graph.cpp:2804` | `wo` 非空 |\n'
     '| 2 | `build_lora_mm` → `ggml_mul_mat(w, cur)` | `src/llama-graph.cpp:1518` | 只是加一个节点 |\n'
     '| 3 | 构造器：断言 + `ne[]` + `op/src` | `ggml/src/ggml.c:3333 / 3348 / 3351` | `ggml_can_mul_mat` 三条 ne 判据 |\n'
@@ -767,7 +767,7 @@ L.footnote_add(
     '`ggml/src/ggml-cpu/arch/x86/quants.c`（x86 版 `ggml_vec_dot_q4_0_q8_0`）。'
     '这些文件各自的专课会逐字展开：L2-06 / L2-07 / L5-01 / L6-01 / L5-03。')
 L.footnote_add(
-    '说明：`ggml/src/ggml-cpu/arch/<arch>/quants.c` 的同名函数由 CMake 按架构选一份编译'
+    '`ggml/src/ggml-cpu/arch/<arch>/quants.c` 的同名函数由 CMake 按架构选一份编译'
     '（`ggml/src/ggml-cpu/CMakeLists.txt` 的 `GGML_CPU_SOURCES`），本课引用的是 x86 那一份；'
     '换架构时 `type_traits_cpu[]` 里的绑定名不变，实现文件会换。')
 

@@ -20,7 +20,7 @@
 | `ggml/src/ggml-backend-meta.cpp` | 2518 |
 
 > **说明**：本课逐字引用 3 个文件：`ggml/src/ggml-backend-reg.cpp`、`ggml/src/ggml-backend-meta.cpp`（计划里本课的 2 个），外加 `src/llama.cpp` —— 只为一处：设备顺序的消费侧（第 6 幕 / 第九节）。该文件本就由 L2-01 覆盖，本课是重复声明（门禁口径：至少被一课声明）。
-> **说明**：按行号指路、未引用原文因而**不计入本课覆盖率**的文件：`ggml/src/CMakeLists.txt:428-439`（谁定义 GGML_USE_*）、`common/arg.cpp:1116-1180`（设备名解析与 RPC 注册）、`ggml/src/ggml-cuda/ggml-cuda.cu:5798` 与 `ggml/include/ggml-cuda.h:11/14/17`（CUDA/ROCm/MUSA 设备名）、`ggml/src/ggml-cpu/ggml-cpu.cpp:353-357`（CPU 设备名）、`ggml/src/ggml-metal/ggml-metal.cpp:307`、`ggml/src/ggml-rpc/ggml-rpc.cpp:2273-2276`（RPC 设备数来自 context）、`ggml/src/ggml-cann/ggml-cann.cpp:2807-2810`（CANN 设备是 GPU 型）、`src/llama-model.cpp:1488-1542`（splits 与 dev_layer，L2-05 已逐字引用）。
+> **说明**：按行号指路、未引用原文因而**不计入本课覆盖率**的文件：`ggml/src/CMakeLists.txt:428-439`（谁定义 GGML_USE_*）、`common/arg.cpp:1116-1180`（设备名解析与 RPC 注册）、`ggml/src/ggml-cuda/ggml-cuda.cu:5798` 与 `ggml/include/ggml-cuda.h:11/14/17`（CUDA/ROCm/MUSA 设备名）、`ggml/src/ggml-cpu/ggml-cpu.cpp:353-357`（CPU 设备名）、`ggml/src/ggml-metal/ggml-metal.cpp:307`、`ggml/src/ggml-rpc/ggml-rpc.cpp:2273-2276` 与 `:2311`（RPC 设备数来自 context，初始为 NULL）、`ggml/src/ggml-hip/CMakeLists.txt:83` 与 `ggml/src/ggml-musa/CMakeLists.txt:65`（HIP/MUSA 构建复用 GGML_USE_CUDA）、`ggml/src/ggml-cann/ggml-cann.cpp:2807-2810`（CANN 设备是 GPU 型）、`src/llama-model.cpp:1488-1542`（splits 与 dev_layer，L2-05 已逐字引用）。
 > **说明**：第 3、5 幕的“本机实测”来自作者自建的临时 harness（直接调用 `ggml_backend_register()` 注册两个假后端，再读 `ggml_backend_dev_count()` / `ggml_backend_dev_get(i)`），跑在本仓库 `build/` 下已有的 CPU-only 构建上；该 harness 不属于本课件仓库，也不计入覆盖率。
 
 ## 场景（10 幕）
@@ -63,7 +63,7 @@
 ## 验收点
 
 - [x] 保真门禁：19 处引用 —— 19 个引用块 / 27 个连续段逐字命中
-- [x] 覆盖度门禁：本课声明 3 项，无空课、无幻影；全局覆盖 1048/1290
+- [x] 覆盖度门禁：本课声明 3 项，无空课、无幻影；全局覆盖 1290/1290
 - [x] 参数门禁：真值集 381 长 / 76 短选项，扫描 3 文件 9 处引用，0 处非法
 - [x] 语法检查：0 错误 / 0 警告
 - [x] 渲染门禁：10 幕 —— 1 页面 x 2 分辨率，0 错误 / 0 溢出

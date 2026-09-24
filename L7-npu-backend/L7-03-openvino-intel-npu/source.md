@@ -316,7 +316,7 @@ static ggml_openvino_op_support ggml_backend_openvino_device_supports_op_impl(gg
 
 1. **编译配置**：只有 `NPU` 会填 `NPU_COMPILER_DYNAMIC_QUANTIZATION` 与一整组 `NPUW_*` key；
 2. **内存通道**：只有 `GPU` 会建 OpenCL context/queue 并把 remote context 交给 OV；
-3. **支持判据**：`supports_op` 的例外表里大量出现 `ggml_openvino_get_device_name() == "GPU"` `== "NPU"` 的比较 —— 同一个 op 在不同设备上的答案可以不同。
+3. **支持判据**：`supports_op` 的例外表里大量出现 `ggml_openvino_get_device_name() == "GPU"` `== "NPU"` 的比较 —— 全文件 13 处，其中 12 处就在 `is_op_supported_case()` 那一段里，所以同一个 op 在不同设备上的答案可以不同。
 
 另外 `is_npu` 直接决定执行路径：`utils.cpp:1470` 用 `ggml_openvino_is_npu()` 在 **static（NPU 形状固定）** 与 **dynamic** 两条路径之间二选一；`ggml-openvino.cpp:837` 里 stateful 执行也被显式禁用在 NPU 上。
 

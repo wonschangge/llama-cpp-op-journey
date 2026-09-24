@@ -132,9 +132,9 @@ GGML_BACKEND_API ggml_backend_t ggml_backend_cann_init(int32_t device);
                     break;
 ```
 
-## 五、专用函数形态：MUL_MAT 与 MUL_MAT_ID
+## 五、专用函数形态：MUL_MAT 与 FLASH_ATTN_EXT
 
-`GGML_OP_MUL_MAT` 的 case 只有两行：调用 `ggml_cann_mul_mat`。所有关于维度、量化类型、内存排布的判断都在 `aclnn_ops.cpp` 里 —— **分派层保持极薄**。
+第 4 幕的动画代码只引到 `GGML_OP_UNARY` 为止，第三种形态（专用函数）在这里补齐。`GGML_OP_MUL_MAT` 的 case 只有两行：调用 `ggml_cann_mul_mat`。所有关于维度、量化类型、内存排布的判断都在 `aclnn_ops.cpp` 里 —— **分派层保持极薄**。
 
 <!-- src: ggml/src/ggml-cann/ggml-cann.cpp -->
 ```c
@@ -147,11 +147,15 @@ GGML_BACKEND_API ggml_backend_t ggml_backend_cann_init(int32_t device);
         case GGML_OP_MUL_MAT_ID:
             ggml_cann_mul_mat_id(ctx, dst);
             break;
+//>> ---- ggml/src/ggml-cann/ggml-cann.cpp:2001-2003 ----
+        case GGML_OP_FLASH_ATTN_EXT:
+            ggml_cann_flash_attn_ext(ctx, dst);
+            break;
 ```
 
-## 六、ggml_cann_create_tensor：三处约定差异
+## 六、ggml_cann_create_tensor：两处约定差异 + 存储长度
 
-转换函数要处理三件事：步长单位（字节 -> 元素）、维度顺序（reverse）、存储长度（现算）。它还有两个可选参数 `ne` / `nb`：不传就按张量自己的形状，传了就是**客户形状**（广播用）。
+转换函数要处理两处约定差异：步长单位（字节 -> 元素）与维度顺序（reverse）；它还有两个可选参数 `ne` / `nb`：不传就按张量自己的形状，传了就是**客户形状**（广播用）。
 
 <!-- src: ggml/src/ggml-cann/acl_tensor.cpp -->
 ```c

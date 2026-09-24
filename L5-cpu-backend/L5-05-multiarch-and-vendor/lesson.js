@@ -695,9 +695,9 @@ static ggml::cpu::tensor_traits * get_tensor_traits(ggml_backend_buffer_t, struc
     side.innerHTML =
       '<div class="card" style="border-left-color:var(--f)">' +
       '<div class="ct" style="color:var(--f)">核型号从哪来？</div>' +
-      '<div class="cb">ime_env.cpp 读 <span class="m">/proc/cpuinfo</span> 得到每个核的 arch_id，' +
-      '与 <span class="m">spine_core_arch_id</span> 枚举（x60/x100/x200/a60/a100/a200）比对，' +
-      '再用 sched_setaffinity 把线程绑到首选核。</div></div>' +
+      '<div class="cb">ime_env.cpp 读 <span class="m">/proc/cpuinfo</span> 的 processor/marchid 对，' +
+      '映射成 <span class="m">spine_core_arch_id</span> 枚举（x60/x100/x200/a60/a100/a200），' +
+      '再由 ime.cpp 用 <span class="m">pthread_setaffinity_np</span> 把线程绑到首选核（1711 行）。</div></div>' +
       '<div class="card" style="border-left-color:var(--b)">' +
       '<div class="ct" style="color:var(--b)">"面板 + RVV 前处理"</div>' +
       '<div class="cb">权重在 repack 时变成 <span class="m">nrow_block_*</span> 布局（ime_kernels.h），' +

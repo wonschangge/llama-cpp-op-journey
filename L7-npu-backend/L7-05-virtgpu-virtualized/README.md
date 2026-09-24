@@ -105,6 +105,8 @@
 
 对照 L3-01：客户机侧实现的仍然是同一套 `ggml_backend_*_i` 契约；对照 L4-03：`buffer` 这个概念没有变，变的只是"buffer 在哪、谁能碰它"。
 
+再对照计划里的 L7-02（Hexagon）：那一课的要点是 host 侧与 DSP 侧的边界，"跨"发生在同一台机器内部；这里跨的是虚拟化特权边界，所以客户机连设备内存的地址都拿不到，只剩偏移与句柄。
+
 ### 同步 = 一个 atomic 计数器
 
 `execbuffer` 的 `fence_fd`、`num_in_syncobjs`、`num_out_syncobjs` 全为 0，context 初始化也显式关掉了 fence 事件。回复靠轮询共享回复窗口的第一个 4 字节（`atomic_uint` + acquire 语义），没到就睡 15µs 再看。

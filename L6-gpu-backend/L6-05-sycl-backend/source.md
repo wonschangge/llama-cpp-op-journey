@@ -309,7 +309,7 @@ DECL_FATTN_VEC_CASE(256, GGML_TYPE_F16, GGML_TYPE_Q4_0);
 
 `ggml_backend_sycl_context` 与 `ggml_backend_cuda_context` 的字段是同一张表：设备号、名字、以及"设备 × 流"的二维数组。SYCL 侧的元素是 `queue_ptr`（`typedef sycl::queue *queue_ptr`，common.hpp:116），CUDA 侧是 `cudaStream_t`。
 
-队列是**惰性**取的：`stream(device, stream)` 第一次被调用时才去拿 `dpct::get_device(device).default_queue()`。CUDA 侧同位置的 `streams` 数组在上下文构造时就填好。
+队列是**惰性**取的：`stream(device, stream)` 第一次被调用时才去拿 `dpct::get_device(device).default_queue()`。CUDA 侧同样惰性（common.cuh:1528-1534），但动作不同 —— 它用 `cudaStreamCreateWithFlags` **新建**一条流，而 SYCL 侧是**借**设备已有的默认队列。这一点也解释了 SYCL 侧为什么不需要释放流。
 
 <!-- src: ggml/src/ggml-sycl/common.hpp -->
 ```cpp
@@ -340,7 +340,7 @@ struct ggml_backend_sycl_context {
 
 ## 七、★ CUDA 侧的同一段：字段逐个对上
 
-把两段并排读：`device` / `name` 相同；CUDA 多一个 `copy_event`；执行流数组的维度宏不同名但同值（`GGML_CUDA_MAX_STREAMS` = `GGML_SYCL_MAX_STREAMS` = 8）；CUDA 侧把 cuBLAS 句柄与 workspace 也塞进上下文，SYCL 侧则把它们放在 `ggml_sycl_pool` 与 `gemm.hpp` 的 `DnnlGemmWrapper` 里。
+把两段并排读：`device` / `name` 相同；CUDA 多一个 `copy_event`；执行流数组的维度宏不同名但同值（`GGML_CUDA_MAX_STREAMS`，common.cuh:188；`GGML_SYCL_MAX_STREAMS`，presets.hpp:16 —— 都是 8）；CUDA 侧把 cuBLAS 句柄与 workspace 也塞进上下文，SYCL 侧则把它们放在 `ggml_sycl_pool` 与 `gemm.hpp` 的 `DnnlGemmWrapper` 里。
 
 <!-- src: ggml/src/ggml-cuda/common.cuh -->
 ```c
@@ -357,7 +357,57 @@ struct ggml_backend_cuda_context {
     int curr_stream_no = 0;
 ```
 
-## 八、量化矩阵乘：三个入口的形参表
+## 八、设备内存：USM 分配器
+
+"USM 取代 cudaMalloc"这句话要落到具体函数上。SYCL 侧的设备分配只有一条路：`ggml_sycl_malloc_device(size, q, type)`（common.cpp:97）。它先试 Level Zero 的 `zeMemAllocDevice`（源码注释说明这是为了绕开 xe 驱动在多卡推理时的 DMA-buf 暂存），失败或未编译该扩展时回落到 `sycl::malloc_device(size, q)`。
+
+USM 指针是**普通指针**，所以 SYCL 侧的 kernel 形参（如 mmq 的 `src0_dd_i` / `dst_dd_i`）与 CUDA 侧一模一样，不需要 buffer 对象参与。这是"算子层可以照搬"的底层原因。
+
+<!-- src: ggml/src/ggml-sycl/common.cpp -->
+```cpp
+// Use Level Zero zeMemAllocDevice to avoid sycl::malloc_device triggering
+// DMA-buf/TTM system RAM staging in the xe kernel driver during multi-GPU inference.
+void * ggml_sycl_malloc_device(size_t size, sycl::queue &q, ggml_sycl_mem_type type) {
+#ifdef GGML_SYCL_SUPPORT_LEVEL_ZERO_API
+    if (ggml_sycl_use_level_zero_device_alloc(q)) {
+        void *ptr = nullptr;
+        auto ze_ctx = sycl::get_native<sycl::backend::ext_oneapi_level_zero>(q.get_context());
+        auto ze_dev = sycl::get_native<sycl::backend::ext_oneapi_level_zero>(q.get_device());
+#ifdef ZE_RELAXED_ALLOCATION_LIMITS_EXP_NAME
+        ze_relaxed_allocation_limits_exp_desc_t relaxed_desc = {
+            ZE_STRUCTURE_TYPE_RELAXED_ALLOCATION_LIMITS_EXP_DESC,
+            nullptr,
+            ZE_RELAXED_ALLOCATION_LIMITS_EXP_FLAG_MAX_SIZE,
+        };
+        ze_device_mem_alloc_desc_t alloc_desc = {
+            ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC,
+            &relaxed_desc,
+            0,
+            0,
+        };
+#else
+        ze_device_mem_alloc_desc_t alloc_desc = {ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC, nullptr, 0, 0};
+#endif
+        ze_result_t r = zeMemAllocDevice(ze_ctx, &alloc_desc, size, 64, ze_dev, &ptr);
+        if (r == ZE_RESULT_SUCCESS && ptr) {
+            ggml_sycl_memtrace_add(type, ptr, size);
+            return ptr;
+        }
+        ggml_sycl_memtrace_fail(type, size);
+        return nullptr;
+    }
+#endif
+    void * ptr = sycl::malloc_device(size, q);
+    if (ptr == nullptr) {
+        ggml_sycl_memtrace_fail(type, size);
+        return nullptr;
+    }
+    ggml_sycl_memtrace_add(type, ptr, size);
+    return ptr;
+}
+```
+
+## 九、量化矩阵乘：三个入口的形参表
 
 三个 SYCL 入口（dmmv / mmvq / mmq）收下的是**同一个形状**的参数：切分后的行区间 `row_low` / `row_high`、激活量化结果 `src1_ddq_i`、以及输出缓冲 `dst_dd_i`。这是 `ggml_sycl_op_mul_mat` 这个模板回调签名。
 
@@ -372,7 +422,7 @@ void ggml_sycl_op_mul_mat_vec_q(
     float *dst_dd_i, const int64_t row_low, const int64_t row_high,
 ```
 
-## 九、mmq 的类型分派
+## 十、mmq 的类型分派
 
 `ggml_sycl_op_mul_mat_q` 的第一件事是算 `nrows_dst`（主设备拿全量行、其它设备拿自己那段），然后按 `src0->type` 分派到 per-type kernel。每个 kernel 的形参都是"权重 / 激活 / 输出 / ncols / nrows / ncols_dst / 行步长 / stream"。
 
@@ -394,7 +444,7 @@ void ggml_sycl_op_mul_mat_vec_q(
         case GGML_TYPE_Q8_0:
 ```
 
-## 十、★ 图执行：录制重放
+## 十一、★ 图执行：录制重放
 
 `ggml_backend_sycl_graph_compute` 的结构与 CUDA 侧同形：先判兼容性，再决定走"录制重放"还是"逐节点执行"。SYCL 侧多两个前置条件：设备必须支持 `ext_oneapi_limited_graph`，且 `finalize(updatable)` 之后还要设备支持 `ext_oneapi_graph` 才能 `update`。
 
@@ -423,7 +473,7 @@ static ggml_status ggml_backend_sycl_graph_compute(ggml_backend_t backend, ggml_
         model_sycl_graph.end_recording();
 ```
 
-## 十一、CUDA 侧的同一段
+## 十二、CUDA 侧的同一段
 
 CUDA 侧做的是同一件事，只是 API 换了名字：`cudaStreamBeginCapture` 开始录制、`cudaGraphInstantiate` 固化、`cudaGraphExecUpdate` 更新、`cudaGraphLaunch` 重放。注意它多了一个"warmup"概念（至少两次调用且属性不变才启用图），SYCL 侧没有这一步。
 
@@ -485,9 +535,11 @@ static enum ggml_status ggml_backend_cuda_graph_compute(ggml_backend_t backend, 
 
     ggml_cuda_graph_evaluate_and_capture(cuda_ctx, cgraph, use_cuda_graph, cuda_graph_update_required, graph_key);
 
+    return GGML_STATUS_SUCCESS;
+}
 ```
 
-## 十二、FlashAttention 的内核选择
+## 十三、FlashAttention 的内核选择
 
 两边的内核选择都是"枚举 + switch"。共有取值的编号相同（NONE=0 / VEC=100 / TILE=200），各自扩展的部分不同：SYCL 加 ONEDNN=150 与 MKL=300，CUDA 加 MMA_F16=400。SYCL 侧的 `ggml_sycl_flash_attn_ext`（fattn.cpp:276）按这个枚举分派。
 

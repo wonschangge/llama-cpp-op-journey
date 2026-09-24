@@ -224,8 +224,8 @@ GGML_BACKEND_API ggml_backend_t ggml_backend_cann_init(int32_t device);
   sub: "graph_compute 拿到一张图，逐个节点走 compute_forward。整个后端的\"路由表\"就是这一个 switch。",
   caption: "回顾 L1-02：enum ggml_op 是算子的身份。这里正是按身份分派 —— 身份决定走哪条翻译路径。",
   src: "ggml/src/ggml-cann/ggml-cann.cpp",
-  mark: [1, 17, 22, 25, 31, 32],
-  lineNo: 0,
+  mark: [1, 17, 27, 34, 37, 46, 50],
+  lineNo: 1773,
   code: `static bool ggml_cann_compute_forward(ggml_backend_cann_context & ctx, struct ggml_tensor * dst) {
     switch (dst->op) {
 //>> 唯一的判断依据：dst->op
@@ -246,24 +246,38 @@ GGML_BACKEND_API ggml_backend_t ggml_backend_cann_init(int32_t device);
             ggml_cann_binary_op<aclnn_add>(ctx, dst);
 //>> 形态一：把 aclnn 函数当模板参数传进去（二元算子）
             break;
-//>> ---- ggml/src/ggml-cann/ggml-cann.cpp:1803-1810 ----
+        case GGML_OP_SUB:
+            ggml_cann_binary_op<aclnn_sub>(ctx, dst);
+            break;
+        case GGML_OP_ACC:
+            ggml_cann_acc(ctx, dst);
+            break;
+        case GGML_OP_MUL:
+            ggml_cann_binary_op<aclnn_mul>(ctx, dst);
+//>> GGML_OP_MUL 走的是同一个模板，只换了 aclnn 函数
+            break;
+        case GGML_OP_DIV:
+            ggml_cann_binary_op<aclnn_div>(ctx, dst);
+            break;
         case GGML_OP_UNARY:
             switch (ggml_get_unary_op(dst)) {
-//>> 唯一的判断依据：dst->op
+//>> UNARY 是二级分派：先看是不是 GGML_OP_UNARY，再看是哪个一元算子
                 case GGML_UNARY_OP_ABS:
                     GGML_CANN_CALL_OP_UNARY(Abs);
+//>> 形态二：宏 —— GGML_CANN_CALL_OP_UNARY(Abs) 展开成 aclnnAbs
                     break;
                 case GGML_UNARY_OP_NEG:
                     GGML_CANN_CALL_OP_UNARY(Neg);
                     break;
-//>> ---- ggml/src/ggml-cann/ggml-cann.cpp:1918-1923 ----
-        case GGML_OP_MUL_MAT:
-            ggml_cann_mul_mat(ctx, dst);
-//>> 唯一的判断依据：dst->op
-            break;
-        case GGML_OP_MUL_MAT_ID:
-            ggml_cann_mul_mat_id(ctx, dst);
-            break;`,
+                case GGML_UNARY_OP_GELU:
+                case GGML_UNARY_OP_GELU_ERF:
+                    // aclnnGelu internally uses the erf-based approximation.
+                    GGML_CANN_CALL_OP_UNARY(Gelu);
+//>> 同一个宏换个名字就是另一个算子：aclnnGelu
+                    break;
+                case GGML_UNARY_OP_SILU:
+                    GGML_CANN_CALL_OP_UNARY(Silu);
+                    break;`,
   duration: 21000,
   build(root, tl) {
     const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
@@ -285,7 +299,7 @@ GGML_BACKEND_API ggml_backend_t ggml_backend_cann_init(int32_t device);
       [['模板参数', 'ggml_cann_binary_op<aclnn_add>(ctx, dst)', '1789'],
        ['模板参数', 'ggml_cann_binary_op<aclnn_mul>(ctx, dst)', '1798'],
        ['宏', 'GGML_CANN_CALL_OP_UNARY(Abs)', '1806'],
-       ['宏', 'GGML_CANN_CALL_OP_UNARY(Sqrt)', '1933'],
+       ['宏', 'GGML_CANN_CALL_OP_UNARY(Gelu)', '1814'],
        ['专用函数', 'ggml_cann_mul_mat(ctx, dst)', '1919'],
        ['专用函数', 'ggml_cann_flash_attn_ext(ctx, dst)', '2002']],
       { monoCols: [1, 2] });
@@ -403,7 +417,7 @@ GGML_BACKEND_API ggml_backend_t ggml_backend_cann_init(int32_t device);
 {
   kicker: "L7-01 · 数据面",
   title: "ggml_tensor -&gt; <span class=\"hl-d\">aclTensor</span>：两处约定差异",
-  sub: "ggml 的 ne[0] 是最内层、nb 以字节计；CANN 的最后一维是最内层、stride 以元素计。转换函数把三件事抹平。",
+  sub: "ggml 的 nb 以字节计、ne[0] 在最前；CANN 的 stride 以元素计、最内层维在最后。转换函数把这两处抹平。",
   caption: "回想 L1-01：nb[0] = ggml_type_size(type)，而这里要除以 ggml_element_size —— L1-01 的约定在这里第二次被用到。",
   src: "ggml/src/ggml-cann/acl_tensor.cpp",
   mark: [0, 10, 12, 14, 28, 35, 37, 39],
@@ -462,7 +476,7 @@ GGML_BACKEND_API ggml_backend_t ggml_backend_cann_init(int32_t device);
     const defs = [
       { c: 'a', t: '步长单位', b: 'ggml: nb[i] 是<b>字节</b><br>CANN: stride[i] 是<b>元素个数</b>' },
       { c: 'b', t: '维度顺序', b: 'ggml: ne[0] 最内层<br>CANN: 最后一维最内层' },
-      { c: 'd', t: '数据指针', b: 'tensor-&gt;data 直接交给<br>aclCreateTensor，<b>零拷贝</b>' }
+      { c: 'd', t: '结果 · 零拷贝', b: 'tensor-&gt;data 原样交给<br>aclCreateTensor，<b>不复制数据</b>' }
     ];
     const host = wrap.querySelector('#cards');
     const els = defs.map(d => { const e = U.card(d, { style: 'width:220px' }); host.appendChild(e); return e; });
@@ -617,8 +631,8 @@ GGML_BACKEND_API ggml_backend_t ggml_backend_cann_init(int32_t device);
   sub: "这张 switch 判断的不是\"能不能算\"，而是\"ACL 里有没有对应的算子、这个数据类型库收不收\"。",
   caption: "L4-02 讲调度器怎么按 supports_op 把图切给不同后端 —— 这里看到切分的输入从哪来。",
   src: "ggml/src/ggml-cann/ggml-cann.cpp",
-  mark: [0, 3, 6, 8, 11, 14, 15, 19, 21, 22, 26, 28],
-  lineNo: 0,
+  mark: [0, 3, 6, 8, 11, 14, 15, 19, 21, 22],
+  lineNo: 2440,
   code: `        case GGML_OP_MUL_MAT:
 //>> 第一个问题：这个 op 是什么（对应哪个 aclnn 算子）
             {
@@ -643,11 +657,7 @@ GGML_BACKEND_API ggml_backend_t ggml_backend_cann_init(int32_t device);
                     default:
                         return false;
                 }
-            }
-//>> ---- ggml/src/ggml-cann/ggml-cann.cpp:2705-2706 ----
-        default:
-//>> 第一个问题：这个 op 是什么（对应哪个 aclnn 算子）
-            return false;`,
+            }`,
   duration: 20000,
   build(root, tl) {
     const wrap = U.el('div', { class: 'col', style: 'gap:10px;width:100%' });

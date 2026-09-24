@@ -572,7 +572,7 @@ L.scene(
     kicker='L7-05 · 收束',
     title='墙的两侧，各管一段',
     sub='客户机侧实现 ggml 的契约并把调用翻译成命令；宿主侧把命令翻译回 ggml 的调用。',
-    caption='下一课 L7-06 讲小后端合集，其中 RPC 后端也是"把远端当设备"，可以对照两者的取舍。',
+    caption='下一课 L7-06 是小后端合集（RPC 也是"把远端当设备"）。对照 L7-02 Hexagon：计划里那一课的要点是 host 与 DSP 的边界，而这里隔的是虚拟化边界。',
     src=SRC_HDR, parts=[(1, 14)], duration=20000,
     mark_src=[10],
     notes_src={10: '客户机侧对外暴露的全部 API 就这一行：注册一个 backend。其余全在墙后面'},
@@ -843,7 +843,10 @@ L.conclusion(
     '       buffer->iface.set_tensor(...)  -> 真后端 -> 设备内存  (:71)\n'
     '```\n\n'
     '对照 L3-01：客户机侧实现的仍然是同一套 `ggml_backend_*_i` 契约；'
-    '对照 L4-03：`buffer` 这个概念没有变，变的只是"buffer 在哪、谁能碰它"。')
+    '对照 L4-03：`buffer` 这个概念没有变，变的只是"buffer 在哪、谁能碰它"。\n\n'
+    '再对照计划里的 L7-02（Hexagon）：那一课的要点是 host 侧与 DSP 侧的边界，'
+    '"跨"发生在同一台机器内部；这里跨的是虚拟化特权边界，'
+    '所以客户机连设备内存的地址都拿不到，只剩偏移与句柄。')
 
 L.conclusion(
     '同步 = 一个 atomic 计数器',

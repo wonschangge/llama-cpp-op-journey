@@ -70,7 +70,7 @@
 
 | 类型 | 变体（触发 ISA） | 依据行 |
 |---|---|---|
-| Q4_0 | 8x8（AVX2/SVE+i8mm）· 4x8（NEON+i8mm）· 4x4（NEON+dotprod / VXE）· 16x1（RVV 256）| 4973-5005 |
+| Q4_0 | 8x8（AVX2/SVE+i8mm）· 4x8（NEON+i8mm）· 4x4（NEON+dotprod / VXE）· 16x1（RVV 256）| 4974-5005 |
 | Q4_K | 8x8（AVX2 或 NEON+i8mm）· 8x4（NEON+dotprod）· 16x1（RVV）| 5006-5032 |
 | Q2_K | 8x8（AVX512）· 16x1（RVV）| 5033-5049 |
 | Q5_K / Q6_K | 8x8 或 8x4（只有 NEON 两条路）| 5050-5071 |

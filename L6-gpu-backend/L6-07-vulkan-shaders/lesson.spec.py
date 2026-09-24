@@ -103,7 +103,7 @@ L.prereqs('`L6-06`（Vulkan 主机端：pipeline、descriptor set、shader 生�
 
 L.goal(
     '说出一个 `.comp` 从生成到被 pipeline 使用经过哪几步（对应验收点）；',
-    '解释为什么 `strings_to_spv` 这一层是"变体工厂"——同一个 `.comp` 会被编译成很多个 SPIR-V；',
+    '解释为什么 `string_to_spv` 这一层是"变体工厂"——同一个 `.comp` 会被编译成很多个 SPIR-V；',
     '指出 GLSL 侧的 `block_q4_0` 与 CPU 侧 `ggml-common.h` 里的 `block_q4_0` 是两份独立的定义，'
     '并说出这对"新增一个量化类型"意味着什么；',
     '说出 `mul_mm.comp` / `mul_mmq.comp` / `mul_mat_vec_*.comp` 三个族各自负责什么形状的 `GGML_OP_MUL_MAT`；',
@@ -515,7 +515,7 @@ tl.at(16400, () => {
 L.scene(
     kicker='L6-07 · 矩阵乘族（23 个）',
     title='<span class="hl-b">mul_mmq.comp</span>：B 侧先量化成 <span class="hl-a">q8_1</span>，再整数点积',
-    sub='三个矩阵乘族分工不同：大 M 走 mul_mm，小 M 走 mul_mat_vec，整数点积走 mul_mmq。',
+    sub='三个矩阵乘族分工不同：mul_mm 按 M/N 分块，mul_mat_vec 的表按列数索引，mul_mmq 走整数点积。',
     caption='B 侧的 q8_1 由 quantize_q8_1.comp 现场算出，再喂给 mul_mmq —— 权重始终是量化态，只有激活被压成 int8。',
     src=VKSH + '/mul_mmq.comp', parts=[(26, 41)], duration=18000,
     mark_src=[26, 28, 30, 33, 35, 36, 39, 40],

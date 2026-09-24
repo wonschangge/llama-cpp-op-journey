@@ -689,19 +689,6 @@ size_t ggml_cpu_iqp_scratch_size(const struct ggml_tensor * dst);
 void ggml_compute_forward_mul_mat_iqp(const struct ggml_compute_params * params, struct ggml_tensor * dst);
 ```
 
-## 十七、llamafile：小矩阵的第三套 SGEMM
-
-`llamafile_sgemm` 是 Mozilla tinyBLAS 的入口：**先按 A/B 类型 switch，再按 ISA 分派**，同一类型组合在不同架构下实例化不同模板。它只在 `n >= 2`（提示处理）时接管，小矩阵形状不合适就返回 false 让默认路径接手。
-
-本课引用其头文件签名与实现文件里的分派骨架，完整模板体（4165 行）留作课外阅读。
-
-<!-- src: ggml/src/ggml-cpu/llamafile/sgemm.h -->
-```c
-bool llamafile_sgemm(const struct ggml_compute_params * params, int64_t, int64_t, int64_t,
-                     const void *, int64_t, const void *, int64_t, void *, int64_t,
-                     int, int, int);
-```
-
 ## 十七、iqp.cpp：判据长什么样
 
 IQP 的判据不是形状白名单，而是**一批同时成立的条件**：类型在 8 种 grid IQ 里、`vec_dot_type` 必须是 Q8_K（这条路径假设 src1 会转成 q8_K）、运行时必须真有 AVX2、`src1` 必须是 F32、`ne[0]` 要能整除 QK_K、`ne[1]` 要能整除 8、`src0` 连续、`dst` 是 F32 连续。外加一个**逃生开关**：环境变量 `GGML_NO_IQ_PANEL` 一旦设置，这条路径整体关闭（用于 A/B 对比）。
@@ -771,7 +758,20 @@ bool ggml_cpu_iqp_supports_mul_mat(const struct ggml_tensor * dst) {
 }
 ```
 
-## 十八、llamafile：按类型 switch，再按 ISA 分派
+## 十八、llamafile：小矩阵的第三套 SGEMM
+
+`llamafile_sgemm` 是 Mozilla tinyBLAS 的入口：**先按 A/B 类型 switch，再按 ISA 分派**，同一类型组合在不同架构下实例化不同模板。它只在 `n >= 2`（提示处理）时接管，小矩阵形状不合适就返回 false 让默认路径接手。
+
+本课引用其头文件签名与实现文件里的分派骨架，完整模板体（4165 行）留作课外阅读。
+
+<!-- src: ggml/src/ggml-cpu/llamafile/sgemm.h -->
+```c
+bool llamafile_sgemm(const struct ggml_compute_params * params, int64_t, int64_t, int64_t,
+                     const void *, int64_t, const void *, int64_t, void *, int64_t,
+                     int, int, int);
+```
+
+## 十九、llamafile：按类型 switch、再按 ISA 分派
 
 下面这段是 `llamafile_sgemm` 的骨架（以 Atype = Q8_0 为例）：**外层 switch 查类型组合，每个 case 内部再用 `#if defined(ISA)` 选模板实例**。三种 ISA 各有一个 tinyBLAS 实现（AVX / ARM DOTPROD / PowerPC MMA），都不匹配就 `return false`，让上层回到默认路径。
 
@@ -815,7 +815,7 @@ bool ggml_cpu_iqp_supports_mul_mat(const struct ggml_tensor * dst) {
     }
 ```
 
-## 十九、llamafile：只在提示处理（n >= 2）时接管
+## 二十、llamafile：只在提示处理（n >= 2）时接管
 
 入口处先做两件事：`Ctype` 必须是 F32，且（非 MMA 平台）`n >= 2` —— 也就是只在「一次算多列」的提示处理阶段才值得用它；解码阶段（n = 1）直接返回 false。这一行注释就是它的适用场景说明。
 
@@ -831,9 +831,9 @@ bool ggml_cpu_iqp_supports_mul_mat(const struct ggml_tensor * dst) {
         return false;
 ```
 
-## 二十、SpacemiT：核型号探测与绑核
+## 二十一、SpacemiT：核型号探测与绑核
 
-SpacemiT 的路径要先知道「这颗 SoC 上哪些核是 x100/a100」：`ime_env.cpp` 读 `/proc/cpuinfo` 拿每个核的 arch_id，必要时用环境变量在 QEMU 下注入，再用 `sched_setaffinity` 把线程绑到首选核；共享内存/大页/TCM 的选择也在这里定。
+SpacemiT 的路径要先知道「这颗 SoC 上哪些核是 x100/a100」：`ime_env.cpp` 逐行读 `/proc/cpuinfo`，把 `processor` 与 `marchid` 配成对，再映射成 `spine_core_arch_id` 枚举（x60/x100/x200/a60/a100/a200）；`/proc/cpuinfo` 读不到时（例如 QEMU）改用环境变量注入。绑核发生在 ime.cpp：用 `pthread_setaffinity_np` 把线程钉在首选核上（1711 行）；共享内存/大页/TCM 的选择也在这里定。
 
 <!-- src: ggml/src/ggml-cpu/spacemit/ime_env.cpp -->
 ```c++
@@ -847,7 +847,7 @@ SpacemiT 的路径要先知道「这颗 SoC 上哪些核是 x100/a100」：`ime_
     auto   user_disable_tcm      = spine_disable_tcm_str != nullptr && strcmp(spine_disable_tcm_str, "0") != 0;
 ```
 
-## 二十一、SpacemiT 的内存池与屏障
+## 二十二、SpacemiT 的内存池与屏障
 
 `spine_mem_pool` 提供三种后端：`posix_memalign`、透明大页（`madvise(MADV_HUGEPAGE)`）、1G 大页（`/dev/hugetlb_1g` + ioctl + mmap），另有按核分配的 TCM（紧耦合内存，通过可 dlopen 的 `spine_tcm` 库头文件方式加载）。跨核同步不用 pthread，而是自己的自旋屏障。
 

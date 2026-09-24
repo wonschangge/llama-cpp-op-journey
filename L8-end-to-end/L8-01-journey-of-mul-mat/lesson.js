@@ -71,11 +71,16 @@ const SCENES = [
   kicker: "L8-01 · 第 0 跳",
   title: "起点：<span class=\"hl-b\">模型 build 函数</span>调用 build_attn",
   sub: "第 169 行把这一层的 wo 权重交出去；第 246 行才把整条链拉进图。",
-  caption: "回顾 L2-06：src/models/llama.cpp 的 graph<>() 是整张图的装配线。",
+  caption: "回顾 L2-06：src/models/llama.cpp 的 graph<embed> 构造函数是整张图的装配线。",
   src: "src/models/llama.cpp",
   mark: [],
   lineNo: 0,
-  code: `            cur = build_attn(inp_attn,
+  code: `    for (int il = 0; il < n_layer; ++il) {
+//>> ---- src/models/llama.cpp:137-138 ----
+        // self-attention
+        {
+//>> ---- src/models/llama.cpp:169-172 ----
+            cur = build_attn(inp_attn,
                     model.layers[il].wo, model.layers[il].wo_b, model.layers[il].wo_s,
                     Qcur, Kcur, Vcur, nullptr, nullptr, nullptr, kq_scale, il);
             cb(cur, "attn_out", il);
@@ -93,9 +98,9 @@ const SCENES = [
     root.appendChild(wrap);
 
     const stack = wrap.querySelector('#stack');
-    stack.innerHTML = '<div class="cm" style="margin-bottom:2px">模型侧：llama_model_llama::graph&lt;embed&gt;()</div>';
+    stack.innerHTML = '<div class="cm" style="margin-bottom:2px">模型侧：llama_model_llama::graph&lt;embed&gt; 构造函数（第 99 行起）</div>';
     const frames = [
-      { n: 'for (int il = 0; il < n_layer; ++il)', c: 'a', d: '逐层装配（第 132 行起）' },
+      { n: 'for (int il = 0; il < n_layer; ++il)', c: 'a', d: '逐层装配（第 126 行起）' },
       { n: 'cur = build_attn(inp_attn, ...)', c: 'b', d: '把 wo / wo_b / wo_s 与 Q/K/V 交出去（169）' },
       { n: 'cur = build_lora_mm(wo, cur, wo_s)', c: 'c', d: 'build_attn 内部：输出投影（2804）' },
       { n: 'ggml_mul_mat(ctx0, w, cur)', c: 'd', d: '图上多一个 MUL_MAT 节点（1518）' }
@@ -648,12 +653,12 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
   }
 },
 
-/* ------------------------------------------------------ 9 CPU 侧：<span class="hl-d">switch (tensor-&gt;op)</span> → mul_mat → vec_dot */
+/* ------------------------------------------------------ 9 ★ CPU 侧：<span class="hl-a">switch (tensor->op)</span> → mul_mat → vec_dot */
 {
   kicker: "L8-01 · ★ 洞察",
-  title: "CPU 侧：<span class=\"hl-d\">switch (tensor-&gt;op)</span> → mul_mat → vec_dot",
+  title: "★ CPU 侧：<span class=\"hl-a\">switch (tensor->op)</span> → mul_mat → vec_dot",
   sub: "大 switch 的判据是 op；vec_dot 的判据是 src0->type。两个字段，两次分派。",
-  caption: "回顾 L5-01（CPU 分派）与 L5-03（向量化内核）：本幕把这两课接回链路，并给出完整调用链表。",
+  caption: "回顾 L5-01（CPU 分派）、L5-03（向量化内核）与 L6-01（CUDA 同一跳）：本幕把这几课接回链路，并给出完整调用链表。",
   src: "ggml/src/ggml-cpu/ggml-cpu.c",
   mark: [],
   lineNo: 0,
@@ -715,7 +720,7 @@ static void ggml_compute_forward_mul_mat_one_chunk(
 
     const t = U.table(
       ['跳（函数）', '文件:行号', '判据：谁决定下一步'],
-      [['模型 build → build_attn', 'src/models/llama.cpp:169', '层里有 wo 权重 → 走注意力块'],
+      [['模型 build → build_attn', 'src/models/llama.cpp:169', '每层的自注意力块（138 起）里无条件调用'],
        ['build_attn → build_lora_mm(wo, cur)', 'src/llama-graph.cpp:2804', 'wo 非空 → 做输出投影'],
        ['build_lora_mm → ggml_mul_mat(w, cur)', 'src/llama-graph.cpp:1518', '这一次调用只是加节点'],
        ['构造器：断言 + ne[] + op/src', 'ggml/src/ggml.c:3333 / 3348', 'can_mul_mat 的三条 ne 判据'],
@@ -724,9 +729,9 @@ static void ggml_compute_forward_mul_mat_one_chunk(
        ['sched_alloc_graph → split_graph', 'ggml/src/ggml-backend.cpp:1992 → 1066', '切分在分配之前（2000）'],
        ['backend_id_from_cur（归属）', 'ggml/src/ggml-backend.cpp:921', 'src[0] 的 buffer = WEIGHTS（967）'],
        ['compute_splits → iface.graph_compute', 'ggml/src/ggml-backend.cpp:1799 → 461', 'split-&gt;backend_id（1658）'],
-       ['cpu_graph_compute → ggml_graph_compute', 'ggml/src/ggml-cpu/ggml-cpu.cpp:170 → ggml-cpu.c:3399', 'CPU 接口表第 206 行填的就是它'],
+       ['cpu_graph_compute → ggml_graph_compute', 'ggml/src/ggml-cpu/ggml-cpu.cpp:170 → ggml-cpu/ggml-cpu.c:3399', 'CPU 接口表第 206 行填的就是它'],
        ['compute_forward → mul_mat → one_chunk', 'ggml/src/ggml-cpu/ggml-cpu.c:1744 → 1869 → 1255', 'switch (tensor-&gt;op)'],
-       ['vec_dot 内核', 'ggml-cpu.c:1182 → arch/x86/quants.c:701', 'type_traits_cpu[src0-&gt;type].vec_dot'],
+       ['vec_dot 内核', 'ggml/src/ggml-cpu/ggml-cpu.c:1182 → arch/x86/quants.c:701', 'type_traits_cpu[src0-&gt;type].vec_dot'],
        ['（对照）CUDA 同一跳', 'ggml/src/ggml-cuda/ggml-cuda.cu:2259 → 1823', '同一个 iface 槽，填的是 CUDA 实现']],
       { monoCols: [1] });
     t.el.style.fontSize = '9.5px';

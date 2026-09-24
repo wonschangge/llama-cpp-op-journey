@@ -13,7 +13,7 @@ const SCENES = [
 {
   kicker: "L7 · NPU 与加速器后端",
   title: "OpenVINO 后端：<span class=\"hl-a\">翻译图</span>，而不是写 kernel",
-  sub: "公共头只有 23 行有效内容、11 个 C 函数。真正的实现是 81 个 C++ 文件构成的\"前端\"。",
+  sub: "公共头只有 23 行有效内容、10 个 C 函数。真正的实现是 81 个 C++ 文件构成的\"前端\"。",
   caption: "L7-01 CANN 走的是同一路线（映射到厂商算子），L7-02 Hexagon 则把整图丢给远端 DSP；三课对照着看。",
   src: "ggml/include/ggml-openvino.h",
   mark: [0, 4, 9, 19, 22, 25],
@@ -50,6 +50,19 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   duration: 21000,
   build(root, tl) {
     const LN = {"11": 0, "12": 2, "13": 3, "14": 4, "15": 6, "16": 7, "17": 8, "18": 9, "19": 11, "20": 12, "21": 13, "22": 14, "23": 15, "24": 16, "25": 17, "26": 18, "27": 19, "28": 21, "29": 22, "30": 24, "31": 25, "32": 27, "33": 28};
+
+    const hl = (ids) => {
+      const ms = document.querySelectorAll('mark.ln-mark');
+      let first = null;
+      for (let i = 0; i < ms.length; i++) {
+        const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+        ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+        ms[i].style.display = 'inline-block';
+        if (on && !first) first = ms[i];
+      }
+      if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+    };
+
     const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
     wrap.innerHTML = `
       <div class="flow" style="justify-content:center">
@@ -92,7 +105,7 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
     tl.at(700, () => {
       bars.forEach((b, i) => { b.fill.style.width = (12 + i * 17) + '%'; b.val.textContent = groups[i].n; });
       msg.innerHTML = texts[0];
-      U.markLines(document, [LN[11], LN[14]]);
+      hl([LN[11], LN[14]]);
     });
     groups.forEach((g, i) => tl.at(3400 + i * 3000, () => {
       bars.forEach((b, k) => { b.el.style.opacity = k === i ? '1' : '.32'; });
@@ -101,7 +114,7 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
     tl.at(18400, () => {
       bars.forEach(b => { b.el.style.opacity = '1'; });
       msg.innerHTML = texts[6];
-      U.markLines(document, [LN[11], LN[14], LN[18], LN[27], LN[29], LN[31]]);
+      hl([LN[11], LN[14], LN[18], LN[27], LN[29], LN[31]]);
     });
   }
 },
@@ -135,6 +148,19 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   duration: 19000,
   build(root, tl) {
     const LN = {"297": 0, "298": 2, "299": 4, "300": 6, "301": 7, "302": 8, "303": 9, "304": 11, "305": 13, "306": 14, "307": 15};
+
+    const hl = (ids) => {
+      const ms = document.querySelectorAll('mark.ln-mark');
+      let first = null;
+      for (let i = 0; i < ms.length; i++) {
+        const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+        ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+        ms[i].style.display = 'inline-block';
+        if (on && !first) first = ms[i];
+      }
+      if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+    };
+
     const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
     wrap.innerHTML = `
       <div class="row center" id="lane" style="gap:6px"></div>
@@ -169,12 +195,12 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
         '所以这不是"算子一一对应"，而是<b>两张图之间的映射</b>。',
       '一句话：<span class="k">ggml 的 op 枚举 = OpenVINO 后端的"函数指针表索引"</span>。表的缺失项 = 不支持。'
     ];
-    tl.at(700, () => { els.forEach((e, k) => { e.style.opacity = k === 0 ? '1' : '.26'; }); msg.innerHTML = texts[0]; U.markLines(document, [LN[297]]); });
-    tl.at(3800, () => { els.forEach((e, k) => { e.style.opacity = k <= 1 ? '1' : '.26'; }); msg.innerHTML = texts[1]; U.markLines(document, [LN[298], LN[299]]); });
-    tl.at(7300, () => { els.forEach((e, k) => { e.style.opacity = k <= 2 ? '1' : '.26'; }); msg.innerHTML = texts[2]; U.markLines(document, [LN[303], LN[304]]); });
-    tl.at(11000, () => { els.forEach((e, k) => { e.style.opacity = k <= 3 ? '1' : '.26'; }); msg.innerHTML = texts[3]; U.markLines(document, [LN[306], LN[307]]); });
-    tl.at(14700, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; U.markLines(document, [LN[307]]); });
-    tl.at(17600, () => { msg.innerHTML = texts[5]; U.markLines(document, [LN[297], LN[298], LN[303], LN[304], LN[307]]); });
+    tl.at(700, () => { els.forEach((e, k) => { e.style.opacity = k === 0 ? '1' : '.26'; }); msg.innerHTML = texts[0]; hl([LN[297]]); });
+    tl.at(3800, () => { els.forEach((e, k) => { e.style.opacity = k <= 1 ? '1' : '.26'; }); msg.innerHTML = texts[1]; hl([LN[298], LN[299]]); });
+    tl.at(7300, () => { els.forEach((e, k) => { e.style.opacity = k <= 2 ? '1' : '.26'; }); msg.innerHTML = texts[2]; hl([LN[303], LN[304]]); });
+    tl.at(11000, () => { els.forEach((e, k) => { e.style.opacity = k <= 3 ? '1' : '.26'; }); msg.innerHTML = texts[3]; hl([LN[306], LN[307]]); });
+    tl.at(14700, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; hl([LN[307]]); });
+    tl.at(17600, () => { msg.innerHTML = texts[5]; hl([LN[297], LN[298], LN[303], LN[304], LN[307]]); });
   }
 },
 
@@ -236,6 +262,19 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   duration: 24000,
   build(root, tl) {
     const LN = {"23": 0, "24": 2, "25": 3, "26": 4, "27": 6, "28": 8, "29": 9, "30": 10, "31": 11, "32": 12, "33": 13, "34": 14, "35": 15, "36": 17, "37": 19, "38": 20, "39": 21, "40": 23, "41": 24, "42": 25, "43": 26, "44": 27, "45": 28, "46": 29, "47": 30, "48": 31, "49": 32, "50": 33, "51": 34, "52": 35, "53": 37, "54": 38, "55": 39, "56": 40, "57": 41, "58": 42, "59": 43, "60": 44};
+
+    const hl = (ids) => {
+      const ms = document.querySelectorAll('mark.ln-mark');
+      let first = null;
+      for (let i = 0; i < ms.length; i++) {
+        const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+        ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+        ms[i].style.display = 'inline-block';
+        if (on && !first) first = ms[i];
+      }
+      if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+    };
+
     const wrap = U.el('div', { class: 'col', style: 'gap:8px;width:100%' });
     wrap.innerHTML = `<div id="tbl"></div><div class="formula" id="msg"></div>`;
     root.appendChild(wrap);
@@ -276,30 +315,30 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
     tl.at(3000, () => {
       [0, 1, 2, 3, 4].forEach(k => { rows[k].className = 'on'; });
       msg.innerHTML = texts[1];
-      U.markLines(document, [LN[35], LN[27], LN[50], LN[54], LN[52]]);
+      hl([LN[35], LN[27], LN[50], LN[54], LN[52]]);
     });
     tl.at(8000, () => {
       rows.forEach(r => { r.className = ''; });
       [5].forEach(k => { rows[k].className = 'on'; });
       msg.innerHTML = texts[2];
-      U.markLines(document, [LN[40]]);
+      hl([LN[40]]);
     });
     tl.at(12000, () => {
       rows.forEach(r => { r.className = ''; });
       [6, 7].forEach(k => { rows[k].className = 'on'; });
       msg.innerHTML = texts[3];
-      U.markLines(document, [LN[41]]);
+      hl([LN[41]]);
     });
     tl.at(16400, () => {
       rows.forEach(r => { r.className = ''; });
       [8, 9, 10, 11, 12, 13, 14, 15].forEach(k => { rows[k].className = 'on'; });
       msg.innerHTML = texts[4];
-      U.markLines(document, [LN[36], LN[48], LN[33], LN[49], LN[34]]);
+      hl([LN[36], LN[48], LN[33], LN[49], LN[34]]);
     });
     tl.at(20600, () => {
       rows.forEach(r => { r.className = ''; });
       msg.innerHTML = texts[5];
-      U.markLines(document, [LN[23], LN[60]]);
+      hl([LN[23], LN[60]]);
     });
   }
 },
@@ -369,6 +408,19 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   duration: 24000,
   build(root, tl) {
     const LN = {"1449": 0, "1450": 2, "1451": 3, "1452": 4, "1453": 6, "1454": 7, "1455": 8, "1456": 9, "1457": 10, "1458": 11, "1459": 12, "1460": 13, "1461": 14, "1462": 16, "1463": 17, "1464": 18, "1465": 19, "1466": 20, "1467": 21, "1468": 22, "1469": 23, "1470": 24, "1471": 26, "1472": 28, "1473": 29, "1474": 30, "1475": 31, "1476": 33, "1477": 34, "1478": 35, "1479": 36, "1480": 37, "1481": 38, "1482": 39, "1483": 40, "1484": 41, "1485": 42, "1486": 43, "1487": 44, "1488": 45, "1489": 47, "1490": 48, "1491": 50, "1492": 51, "1493": 52};
+
+    const hl = (ids) => {
+      const ms = document.querySelectorAll('mark.ln-mark');
+      let first = null;
+      for (let i = 0; i < ms.length; i++) {
+        const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+        ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+        ms[i].style.display = 'inline-block';
+        if (on && !first) first = ms[i];
+      }
+      if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+    };
+
     const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
     wrap.innerHTML = `
       <div class="row center" id="gate" style="gap:7px"></div>
@@ -401,11 +453,11 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
       '因此 <b>改 op_table.cpp 一行 = 改变后端的算力边界</b>；' +
         '13 种类型的白名单同理（下一幕）。'
     ];
-    tl.at(700, () => { els.forEach((e, k) => { e.style.opacity = k === 0 ? '1' : '.28'; }); msg.innerHTML = texts[0]; U.markLines(document, [LN[1449]]); });
-    tl.at(5600, () => { els.forEach((e, k) => { e.style.opacity = k <= 1 ? '1' : '.28'; }); msg.innerHTML = texts[1]; U.markLines(document, [LN[1461], LN[1462], LN[1470], LN[1471], LN[1476]]); });
-    tl.at(11200, () => { els.forEach((e, k) => { e.style.opacity = k <= 2 ? '1' : '.28'; }); msg.innerHTML = texts[2]; U.markLines(document, [LN[1474], LN[1475], LN[1483]]); });
-    tl.at(16600, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[3]; U.markLines(document, [LN[1452], LN[1453], LN[1454]]); });
-    tl.at(21200, () => { msg.innerHTML = texts[4]; U.markLines(document, [LN[1490]]); });
+    tl.at(700, () => { els.forEach((e, k) => { e.style.opacity = k === 0 ? '1' : '.28'; }); msg.innerHTML = texts[0]; hl([LN[1449]]); });
+    tl.at(5600, () => { els.forEach((e, k) => { e.style.opacity = k <= 1 ? '1' : '.28'; }); msg.innerHTML = texts[1]; hl([LN[1461], LN[1462], LN[1470], LN[1471], LN[1476]]); });
+    tl.at(11200, () => { els.forEach((e, k) => { e.style.opacity = k <= 2 ? '1' : '.28'; }); msg.innerHTML = texts[2]; hl([LN[1474], LN[1475], LN[1483]]); });
+    tl.at(16600, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[3]; hl([LN[1452], LN[1453], LN[1454]]); });
+    tl.at(21200, () => { msg.innerHTML = texts[4]; hl([LN[1490]]); });
   }
 },
 
@@ -490,6 +542,19 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   duration: 26000,
   build(root, tl) {
     const LN = {"1495": 0, "1496": 2, "1497": 3, "1498": 5, "1499": 6, "1500": 7, "1501": 8, "1502": 10, "1503": 11, "1504": 12, "1505": 13, "1506": 14, "1507": 15, "1508": 17, "1509": 18, "1510": 19, "1511": 20, "1512": 21, "1513": 22, "1514": 23, "1515": 25, "1516": 26, "1517": 27, "1518": 28, "1519": 29, "1520": 30, "1521": 31, "1522": 33, "1523": 34, "1524": 35, "1525": 36, "1526": 37, "1527": 38, "1528": 39, "1529": 40, "1530": 41, "1531": 42, "1532": 43, "1533": 45, "1534": 46, "1535": 47, "1536": 48, "1537": 49, "1538": 50, "1539": 51, "1540": 52, "1541": 54, "1542": 55, "1543": 56, "1544": 58, "1545": 59, "1546": 61, "1547": 62, "1548": 63, "1549": 64, "1550": 65, "1551": 67, "1552": 68};
+
+    const hl = (ids) => {
+      const ms = document.querySelectorAll('mark.ln-mark');
+      let first = null;
+      for (let i = 0; i < ms.length; i++) {
+        const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+        ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+        ms[i].style.display = 'inline-block';
+        if (on && !first) first = ms[i];
+      }
+      if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+    };
+
     const wrap = U.el('div', { class: 'col', style: 'gap:8px;width:100%' });
     wrap.innerHTML = `
       <div class="row" style="gap:8px">
@@ -501,10 +566,15 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
 
     const cut = wrap.querySelector('#cut');
     cut.innerHTML = '<div class="cm" style="margin-bottom:3px">一段子图（拓扑序）</div>';
-    const seq = ['MUL_MAT', 'RMS_NORM', 'ROPE', 'SOFT_MAX', 'FLASH_ATTN_EXT', 'GET_ROWS', 'ADD'];
-    const cells = seq.map(n => {
+    const seq = [
+      { n: 'MUL_MAT', ok: true }, { n: 'RMS_NORM', ok: true }, { n: 'SOFT_MAX', ok: true },
+      { n: 'MUL_MAT(3D 量化权重)', ok: false },
+      { n: 'FLASH_ATTN_EXT', ok: true }, { n: 'GET_ROWS', ok: true }, { n: 'ADD', ok: true }
+    ];
+    const cells = seq.map(s => {
       const e = U.el('div', { class: 'formula', style: 'padding:3px 7px;font-size:9.5px' });
-      e.innerHTML = '<span style="color:var(--b)">&#10003;</span> ' + U.esc(n);
+      e.innerHTML = (s.ok ? '<span style="color:var(--b)">&#10003;</span> '
+                          : '<span style="color:var(--a)">&#10007;</span> ') + U.esc(s.n);
       cut.appendChild(e);
       return e;
     });
@@ -524,7 +594,7 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
 
     const msg = wrap.querySelector('#msg');
     const texts = [
-      '把三道门槛叠在一段子图上：<b>任何一格被否决，调度器就在那里断一刀</b>（L4-02 幕 6）。',
+      '把三道门槛叠在一段子图上。<b>任何一格被否决，调度器就在那里断一刀</b>（L4-02 幕 6）。',
       '第一道是布尔查表：<span class="v">supported_ops / supported_unary_ops / supported_glu_ops</span>。' +
         '<span class="k">有翻译器</span>才谈得上后面两道。',
       '第二道遍历 <span class="v">op-&gt;type</span> 和每个非空 <span class="v">src[i]-&gt;type</span>。' +
@@ -532,20 +602,25 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
       '第三道是形状：<span class="v">ggml_is_quantized(src-&gt;type) &amp;&amp; src-&gt;ne[2] != 1</span> 一律否决。' +
         '量化的 3D 专家权重是唯一例外（MUL_MAT_ID）。',
       '所以"什么形状的子图交给 OpenVINO"的答案是：<span class="k">全部节点都过三道门槛的、最长的连续区间</span>。<br>' +
-        '一格不过，那一段就整段留在别的后端上 —— 最后还有设备级例外表兜底。'
+        '中间那个 MUL_MAT 被拒，它就落到别的后端；它前面的 RMS_NORM 与后面的 SOFT_MAX 于是分属两段。'
     ];
     tl.at(700, () => {
       msg.innerHTML = texts[0];
       cells.forEach((c, i) => { c.style.opacity = i === 0 ? '1' : '.35'; });
-      U.markLines(document, [LN[1495], LN[1496]]);
+      hl([LN[1495], LN[1496]]);
     });
-    tl.at(4400, () => { msg.innerHTML = texts[1]; U.markLines(document, [LN[1497], LN[1507], LN[1521], LN[1522], LN[1523]]); });
-    tl.at(9600, () => { msg.innerHTML = texts[2]; U.markLines(document, [LN[1532], LN[1533], LN[1540], LN[1541]]); });
-    tl.at(15200, () => { msg.innerHTML = texts[3]; U.markLines(document, [LN[1543], LN[1544], LN[1545], LN[1546]]); });
+    tl.at(4400, () => { msg.innerHTML = texts[1]; hl([LN[1497], LN[1507], LN[1521], LN[1522], LN[1523]]); });
+    tl.at(9600, () => { msg.innerHTML = texts[2]; hl([LN[1532], LN[1533], LN[1540], LN[1541]]); });
+    tl.at(15200, () => {
+      msg.innerHTML = texts[3];
+      cells[3].style.opacity = '1';
+      cells[3].style.background = 'rgba(247,120,186,.20)';
+      hl([LN[1543], LN[1544], LN[1545], LN[1546]]);
+    });
     tl.at(20000, () => {
       cells.forEach(c => { c.style.opacity = '1'; });
       msg.innerHTML = texts[4];
-      U.markLines(document, [LN[1550], LN[1551]]);
+      hl([LN[1550], LN[1551]]);
     });
   }
 },
@@ -555,7 +630,7 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   kicker: "L7-03 · 设备选择",
   title: "一个后端，三种设备：<span class=\"hl-c\">NPU</span> / <span class=\"hl-c\">GPU</span> / <span class=\"hl-c\">CPU</span>",
   sub: "设备名从 GGML_OPENVINO_DEVICE 读，默认 CPU；不可用就回退 CPU。设备一旦定下，编译配置与判据分支都跟着变。",
-  caption: "设备名不只是\"选硬件\"：它直接进入 supports_op 的例外判断（如 GPU 上的 BF16 TRANSPOSE / REPEAT、NPU 上的 BF16 输入）。",
+  caption: "设备名不只是\"选硬件\"：它直接进入 supports_op 的例外判断 —— NPU 上拒绝 BF16 输入（1286 行）、GPU 上拒绝 BF16 的 REPEAT（1405 行）。",
   src: "ggml/src/ggml-openvino/ggml-openvino-extra.cpp",
   mark: [0, 2, 4, 6, 7, 9, 13, 15, 17, 18, 36],
   lineNo: 74,
@@ -600,6 +675,19 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   duration: 22000,
   build(root, tl) {
     const LN = {"74": 0, "75": 2, "76": 4, "77": 6, "78": 7, "79": 8, "80": 9, "81": 11, "82": 12, "83": 13, "84": 15, "85": 17, "86": 18, "87": 19, "88": 20, "89": 21, "90": 22, "91": 23, "92": 24, "93": 25, "94": 26, "95": 27, "96": 28, "97": 29, "98": 30, "99": 31, "100": 32, "101": 33, "102": 34, "103": 35, "104": 36};
+
+    const hl = (ids) => {
+      const ms = document.querySelectorAll('mark.ln-mark');
+      let first = null;
+      for (let i = 0; i < ms.length; i++) {
+        const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+        ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+        ms[i].style.display = 'inline-block';
+        if (on && !first) first = ms[i];
+      }
+      if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+    };
+
     const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
     wrap.innerHTML = `<div class="row wrap" id="dev" style="gap:8px"></div>
       <div class="formula" id="msg"></div>`;
@@ -624,11 +712,11 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
       '★ 设备名会渗透进 <span class="k">supports_op</span>：同一张图在 GPU 上可能比在 NPU 上多几个节点被接受。<br>' +
         '所以"支持什么"是 <b>(op, type, shape, device)</b> 四元组的函数，不是 op 的函数。'
     ];
-    tl.at(700, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[0]; U.markLines(document, [LN[74], LN[75]]); });
-    tl.at(4600, () => { els.forEach((e, i) => { e.style.opacity = i === 0 ? '1' : '.30'; }); msg.innerHTML = texts[1]; U.markLines(document, [LN[83], LN[84], LN[85], LN[86]]); });
-    tl.at(9800, () => { els.forEach((e, i) => { e.style.opacity = i === 1 ? '1' : '.30'; }); msg.innerHTML = texts[2]; U.markLines(document, [LN[104]]); });
-    tl.at(14600, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[3]; U.markLines(document, [LN[75], LN[76], LN[77], LN[78]]); });
-    tl.at(19000, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; U.markLines(document, [LN[80]]); });
+    tl.at(700, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[0]; hl([LN[74], LN[75]]); });
+    tl.at(4600, () => { els.forEach((e, i) => { e.style.opacity = i === 0 ? '1' : '.30'; }); msg.innerHTML = texts[1]; hl([LN[83], LN[84], LN[85], LN[86]]); });
+    tl.at(9800, () => { els.forEach((e, i) => { e.style.opacity = i === 1 ? '1' : '.30'; }); msg.innerHTML = texts[2]; hl([LN[104]]); });
+    tl.at(14600, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[3]; hl([LN[75], LN[76], LN[77], LN[78]]); });
+    tl.at(19000, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; hl([LN[80]]); });
   }
 },
 
@@ -671,6 +759,19 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   duration: 20000,
   build(root, tl) {
     const LN = {"640": 0, "641": 2, "642": 3, "643": 4, "644": 5, "645": 6, "646": 8, "647": 9, "648": 10, "649": 11, "650": 12, "651": 13, "652": 14, "653": 16, "654": 17, "655": 19, "656": 21, "657": 23, "658": 24, "659": 25, "660": 26};
+
+    const hl = (ids) => {
+      const ms = document.querySelectorAll('mark.ln-mark');
+      let first = null;
+      for (let i = 0; i < ms.length; i++) {
+        const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+        ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+        ms[i].style.display = 'inline-block';
+        if (on && !first) first = ms[i];
+      }
+      if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+    };
+
     const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
     wrap.innerHTML = `
       <div class="flow" style="justify-content:center" id="flow2"></div>
@@ -709,12 +810,12 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
       '<span class="v">is_naive</span> 另有一条捷径：节点数 &lt; 20 且没被切过，就一次性翻译整图（naive_compute）。',
       '★ 结论：OpenVINO 后端的"回退"是 <b>缺席</b>，不是分支。这跟写 kernel 的后端（L5/L6）完全相反。'
     ];
-    tl.at(700, () => { els.forEach((e, i) => { e.style.opacity = i === 0 ? '1' : '.30'; }); msg.innerHTML = texts[0]; U.markLines(document, [LN[640]]); });
-    tl.at(3800, () => { msg.innerHTML = texts[1]; U.markLines(document, [LN[652]]); });
-    tl.at(7200, () => { els.forEach((e, i) => { e.style.opacity = i === 1 ? '1' : '.30'; }); msg.innerHTML = texts[2]; U.markLines(document, [LN[640]]); });
-    tl.at(10600, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[3]; U.markLines(document, [LN[645], LN[646], LN[649]]); });
-    tl.at(14200, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; U.markLines(document, [LN[654], LN[655], LN[656]]); });
-    tl.at(17600, () => { msg.innerHTML = texts[5]; U.markLines(document, [LN[640], LN[652], LN[654]]); });
+    tl.at(700, () => { els.forEach((e, i) => { e.style.opacity = i === 0 ? '1' : '.30'; }); msg.innerHTML = texts[0]; hl([LN[640]]); });
+    tl.at(3800, () => { msg.innerHTML = texts[1]; hl([LN[652]]); });
+    tl.at(7200, () => { els.forEach((e, i) => { e.style.opacity = i === 1 ? '1' : '.30'; }); msg.innerHTML = texts[2]; hl([LN[640]]); });
+    tl.at(10600, () => { els.forEach((e, i) => { e.style.opacity = i === 2 ? '1' : '.30'; }); msg.innerHTML = texts[3]; hl([LN[645], LN[646], LN[649]]); });
+    tl.at(14200, () => { els.forEach(e => { e.style.opacity = '1'; }); msg.innerHTML = texts[4]; hl([LN[654], LN[655], LN[656]]); });
+    tl.at(17600, () => { msg.innerHTML = texts[5]; hl([LN[640], LN[652], LN[654]]); });
   }
 },
 
@@ -753,6 +854,19 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   duration: 20000,
   build(root, tl) {
     const LN = {"57": 0, "58": 2, "59": 3, "60": 5, "61": 6, "62": 7, "63": 9, "64": 10, "65": 11, "66": 13, "67": 14, "68": 15, "69": 17, "70": 18, "71": 19, "72": 21, "73": 22};
+
+    const hl = (ids) => {
+      const ms = document.querySelectorAll('mark.ln-mark');
+      let first = null;
+      for (let i = 0; i < ms.length; i++) {
+        const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+        ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+        ms[i].style.display = 'inline-block';
+        if (on && !first) first = ms[i];
+      }
+      if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+    };
+
     const wrap = U.el('div', { class: 'col', style: 'gap:10px;width:100%' });
     wrap.innerHTML = `
       <div class="row center" id="row1" style="gap:6px"></div>
@@ -778,7 +892,7 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
     const flat = [];
     [['v1::Multiply', 'b'], ['v1::ReduceMean', 'c'], ['v1::Add', 'd'],
      ['v0::Sqrt', 'e'], ['v1::Divide', 'f'], ['v1::Multiply', 'g']].forEach((p, i) => {
-      if (i) r2.appendChild(U.arrow('+'));
+      if (i) r2.appendChild(U.arrow('->'));
       flat.push(mk(r2, p[0], p[1]));
     });
     const cnt = mk(r2, '= 6 个 ov 节点', 'a');
@@ -796,12 +910,12 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
       '反过来也成立：<span class="k">flash_attn_ext</span> 整块注意力落进一个融合算子 SDPA（第 228/232 行）。' +
         '粒度由 ov 算子集决定，不由 ggml 决定。'
     ];
-    tl.at(700, () => { msg.innerHTML = texts[0]; flat.forEach(e => { e.style.opacity = '.30'; }); U.markLines(document, [LN[57]]); });
-    tl.at(3600, () => { msg.innerHTML = texts[1]; flat[0].style.opacity = '1'; U.markLines(document, [LN[57]]); });
-    tl.at(7000, () => { msg.innerHTML = texts[2]; flat[1].style.opacity = '1'; U.markLines(document, [LN[59], LN[60]]); });
-    tl.at(10600, () => { msg.innerHTML = texts[3]; flat[2].style.opacity = '1'; U.markLines(document, [LN[62], LN[63]]); });
-    tl.at(14200, () => { msg.innerHTML = texts[4]; flat.forEach(e => { e.style.opacity = '1'; }); U.markLines(document, [LN[65], LN[66], LN[68], LN[69], LN[71]]); });
-    tl.at(17600, () => { msg.innerHTML = texts[5]; cnt.style.opacity = '1'; U.markLines(document, [LN[57], LN[71]]); });
+    tl.at(700, () => { msg.innerHTML = texts[0]; flat.forEach(e => { e.style.opacity = '.30'; }); hl([LN[57]]); });
+    tl.at(3600, () => { msg.innerHTML = texts[1]; flat[0].style.opacity = '1'; hl([LN[57]]); });
+    tl.at(7000, () => { msg.innerHTML = texts[2]; flat[1].style.opacity = '1'; hl([LN[59], LN[60]]); });
+    tl.at(10600, () => { msg.innerHTML = texts[3]; flat[2].style.opacity = '1'; hl([LN[62], LN[63]]); });
+    tl.at(14200, () => { msg.innerHTML = texts[4]; flat.forEach(e => { e.style.opacity = '1'; }); hl([LN[65], LN[66], LN[68], LN[69], LN[71]]); });
+    tl.at(17600, () => { msg.innerHTML = texts[5]; cnt.style.opacity = '1'; hl([LN[57], LN[71]]); });
   }
 },
 
@@ -828,6 +942,19 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
   duration: 20000,
   build(root, tl) {
     const LN = {"76": 0, "77": 1, "78": 2, "79": 3, "80": 4, "81": 6, "82": 8, "83": 10};
+
+    const hl = (ids) => {
+      const ms = document.querySelectorAll('mark.ln-mark');
+      let first = null;
+      for (let i = 0; i < ms.length; i++) {
+        const on = ids.indexOf(+ms[i].getAttribute('data-l')) >= 0;
+        ms[i].className = on ? 'ln-mark on' : 'ln-mark';
+        ms[i].style.display = 'inline-block';
+        if (on && !first) first = ms[i];
+      }
+      if (first) first.scrollIntoView({ block: 'center', inline: 'nearest' });
+    };
+
     const wrap = U.el('div', { class: 'col', style: 'gap:8px;width:100%' });
     wrap.innerHTML = `<div id="tbl"></div><div id="ex"></div><div class="formula" id="msg"></div>`;
     root.appendChild(wrap);
@@ -870,7 +997,7 @@ GGML_BACKEND_API ggml_backend_reg_t ggml_backend_openvino_reg(void);`,
       rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
       msg.innerHTML = texts[Math.min(i + 1, 5)];
     }));
-    tl.at(18200, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[5]; U.markLines(document, [LN[81], LN[82]]); });
+    tl.at(18200, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[5]; hl([LN[81], LN[82]]); });
   }
 },
 

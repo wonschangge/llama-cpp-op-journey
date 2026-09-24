@@ -553,7 +553,7 @@ void main() {
 {
   kicker: "L6-07 · 矩阵乘族（23 个）",
   title: "<span class=\"hl-b\">mul_mmq.comp</span>：B 侧先量化成 <span class=\"hl-a\">q8_1</span>，再整数点积",
-  sub: "三个矩阵乘族分工不同：大 M 走 mul_mm，小 M 走 mul_mat_vec，整数点积走 mul_mmq。",
+  sub: "三个矩阵乘族分工不同：mul_mm 按 M/N 分块，mul_mat_vec 的表按列数索引，mul_mmq 走整数点积。",
   caption: "B 侧的 q8_1 由 quantize_q8_1.comp 现场算出，再喂给 mul_mmq —— 权重始终是量化态，只有激活被压成 int8。",
   src: "ggml/src/ggml-vulkan/vulkan-shaders/mul_mmq.comp",
   mark: [0, 3, 5, 8, 10, 12, 15, 17],

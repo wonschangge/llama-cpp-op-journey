@@ -11,7 +11,7 @@
 3. 解释为什么同一个 `build_attn` 里的两次 `ggml_mul_mat` 可能落在不同后端（有权重 vs 没有权重）；
 4. 拿到任意一个 ggml 算子，能说出它落到 CPU/CUDA 内核要经过哪几个文件、哪几个函数。
 
-## 覆盖的源文件（8 个）
+## 覆盖的源文件（9 个）
 
 | 文件 | 行数 |
 |---|---|
@@ -22,11 +22,12 @@
 | `src/models/llama.cpp` | 251 |
 | `src/llama-context.cpp` | 4413 |
 | `ggml/src/ggml-cpu/ggml-cpu.cpp` | 717 |
+| `ggml/src/ggml-cpu/arch/x86/quants.c` | 4109 |
 | `ggml/src/ggml-cuda/ggml-cuda.cu` | 5857 |
 
 > **说明**：本课覆盖 **9 个源文件**，全部计入覆盖率。其中 `src/llama-graph.cpp` 是计划里本课的主文件；按"这条链路"追加了 3 个：`ggml/src/ggml.c`（`ggml_mul_mat` 构造器 + `ggml_build_forward_expand`/拓扑序）、`ggml/src/ggml-backend.cpp`（切分、归属与调度执行）、`ggml/src/ggml-cpu/ggml-cpu.c`（CPU 分派与 `vec_dot` 选择）。
 > **说明**：另外 5 个文件是这条链路的相邻跳，本课只取"这一跳"的几行：`src/models/llama.cpp`（`build_attn` 的调用点与最终 expand）、`src/llama-context.cpp`（decode 与 graph_compute）、`ggml/src/ggml-cpu/ggml-cpu.cpp`（CPU 接口表与入口）、`ggml/src/ggml-cuda/ggml-cuda.cu`（同一跳的 CUDA 实现，作对照）、`ggml/src/ggml-cpu/arch/x86/quants.c`（x86 版 `ggml_vec_dot_q4_0_q8_0`）。这些文件各自的专课会逐字展开：L2-06 / L2-07 / L5-01 / L6-01 / L5-03。
-> **说明**：说明：`ggml/src/ggml-cpu/arch/<arch>/quants.c` 的同名函数由 CMake 按架构选一份编译（`ggml/src/ggml-cpu/CMakeLists.txt` 的 `GGML_CPU_SOURCES`），本课引用的是 x86 那一份；换架构时 `type_traits_cpu[]` 里的绑定名不变，实现文件会换。
+> **说明**：`ggml/src/ggml-cpu/arch/<arch>/quants.c` 的同名函数由 CMake 按架构选一份编译（`ggml/src/ggml-cpu/CMakeLists.txt` 的 `GGML_CPU_SOURCES`），本课引用的是 x86 那一份；换架构时 `type_traits_cpu[]` 里的绑定名不变，实现文件会换。
 
 ## 场景（10 幕）
 
@@ -38,7 +39,7 @@
 6. **执行入口：decode 的三件事** — C API 只转发；llama_context::decode 决定"重建图 / 分配 / 计算"。
 7. **★ 判据：权重住在哪个 buffer，op 就归哪个后端** — 调度器按固定优先级给每个节点找归属；我们这次命中的是"输入里有权重"这一条。
 8. **从 split 到接口：backend_id → iface.graph_compute** — 切分把图切成连续段；每段拿到一个后端指针，执行就是一次虚表调用。
-9. **CPU 侧：switch (tensor-&gt;op) → mul_mat → vec_dot** — 大 switch 的判据是 op；vec_dot 的判据是 src0->type。两个字段，两次分派。
+9. **★ CPU 侧：switch (tensor->op) → mul_mat → vec_dot** — 大 switch 的判据是 op；vec_dot 的判据是 src0->type。两个字段，两次分派。
 10. **把这一课压成一张表：每一层负责哪一跳** — L1~L8 各管一段；回到起点那一行，这条链就闭合了。
 
 ## 核心结论
@@ -80,8 +81,8 @@
 
 ## 验收点
 
-- [x] 保真门禁：18 处引用 —— 18 个引用块 / 60 个连续段逐字命中
-- [x] 覆盖度门禁：本课声明 8 项，无空课、无幻影；全局覆盖 1290/1290
+- [x] 保真门禁：19 处引用 —— 19 个引用块 / 63 个连续段逐字命中
+- [x] 覆盖度门禁：本课声明 9 项，无空课、无幻影；全局覆盖 1290/1290
 - [x] 参数门禁：真值集 381 长 / 76 短选项，扫描 3 文件 2 处引用，0 处非法
 - [x] 语法检查：0 错误 / 0 警告
 - [x] 渲染门禁：10 幕 —— 1 页面 x 2 分辨率，0 错误 / 0 溢出

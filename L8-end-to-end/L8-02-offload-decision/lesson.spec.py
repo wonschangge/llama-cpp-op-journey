@@ -90,7 +90,7 @@ L.scene(
     title='★ <span class="hl-a">n_gpu_layers</span> = 最后 N 个槽位，不是前 N 层',
     sub='槽位从 0 数到 n_layer_all，最后那一个槽位是输出层 —— 它也算在 N 里面。',
     caption='常见误解：以为 --n-gpu-layers 4 是把第 0~3 层放上 GPU。源码里 il < i_gpu_start 走 CPU 分支，'
-            '所以上 GPU 的是<b>末尾</b>那几层。回顾 L2-05：那里引用过同一段，本课走完整条链。',
+            '所以上 GPU 的是【末尾】那几层。回顾 L2-05：那里引用过同一段，本课走完整条链。',
     src=MODEL, parts=[(1521, 1533)], duration=24000,
     mark_src=[1521, 1522, 1525, 1527, 1529, 1532],
     notes_src={1521: '槽位总数是 n_layer_all + 1：重复层 0..n_layer_all-1，再加一个"输出层"槽位',
@@ -146,20 +146,22 @@ const steps = [0, 1, 4, 14, 27, 28];
 const texts = [
   '先搭一把尺子：<span class="k">槽位 0..26 是 27 个重复层，槽位 27 是输出层</span>（输出层由 1546 行单独分配）。',
   '<span class="v">n_gpu_layers = 0</span>：i_gpu_start = 28，超出槽位范围 —— 连输出层也在 CPU。',
-  '<span class="v">n_gpu_layers = 1</span>：i_gpu_start = 27，只有输出层槽位上 GPU，重复层 0 个。',
+  '<span class="v">n_gpu_layers = 1</span>：i_gpu_start = 27，只有输出层槽位上 GPU，重复层 0 个（对应 1837-1841 的日志分支）。',
   '<span class="v">n_gpu_layers = 4</span>：i_gpu_start = 24，层 24/25/26 + 输出层共 4 个槽位。',
-  '这就是"最后 N 个"：<span class="k">N 从尾巴往前数</span>，第 0 层永远是最后才被搬上去的那个。',
-  '<span class="v">n_gpu_layers = 27</span>：i_gpu_start = 1 —— <span class="k">第 0 层仍然留在 CPU</span>。',
-  '要 27 个重复层全上 GPU，得给 <span class="v">28 = n_layer_all + 1</span>。'
+  '<span class="v">n_gpu_layers = 14</span>：i_gpu_start = 14，末尾 14 个槽位里 13 个是重复层。',
+  '<span class="v">n_gpu_layers = 27</span>：i_gpu_start = 1 —— 注意 <span class="k">第 0 层仍然留在 CPU</span>。',
+  '<span class="v">n_gpu_layers = 28</span>：i_gpu_start = 0，28 个槽位全上 GPU。',
+  '别问"上 GPU 的最后一层是第几层"，要问"<span class="k">分界点 i_gpu_start 是几</span>" —— ' +
+    '它是唯一的自由变量，其余全是从它推出来的。'
 ];
-steps.forEach((Lv, i) => tl.at(700 + i * 3200, () => {
+tl.at(700, () => { paint(0); msg.innerHTML = texts[0]; });
+steps.forEach((Lv, i) => tl.at(2800 + i * 3300, () => {
   const r = paint(Lv);
-  msg.innerHTML = texts[i] + '　<span class="m">（i_gpu_start = ' + r.start + '，GPU 重复层 ' + r.rep + '）</span>';
+  msg.innerHTML = texts[i + 1] + '　<span class="m">（i_gpu_start = ' + r.start + '，GPU 重复层 ' + r.rep + '）</span>';
 }));
-tl.at(700 + steps.length * 3200, () => {
+tl.at(2800 + steps.length * 3300, () => {
   paint(28);
-  msg.innerHTML = '别问"上 GPU 的最后一层是第几层"，要问"<span class="k">分界点 i_gpu_start 是几</span>" —— ' +
-    '它是唯一的自由变量，其余全是从它推出来的。';
+  msg.innerHTML = texts[steps.length + 1];
 });
 '''
 )
@@ -214,7 +216,7 @@ L.scene(
     title='调度器只认 buffer：<span class="hl-b">usage == WEIGHTS</span> 就是"层"信息的载体',
     sub='"这一层的权重在 GPU 上"这句话，到调度器这里被翻译成"这个 src 的 buffer 用了 WEIGHTS"。',
     caption='回顾 L4-02 第 4 幕：那一课讲过这段的优先级判据（预分配 > 视图 > 图输入 > 权重）。'
-            '本课关心的是它<b>读的是哪个字段</b>：src->buffer->usage。',
+            '本课关心的是它【读的是哪个字段】：src->buffer->usage。',
     src=GBN, parts=[(951, 981)], duration=22000,
     mark_src=[951, 967, 968, 970, 978, 979],
     notes_src={951: '这一段的规则：有权重的算子，尽量跟权重待在同一个后端',
@@ -317,11 +319,11 @@ const texts = [
 tl.at(500, () => { msg.innerHTML = texts[0]; });
 tl.at(3400, () => {
   msg.innerHTML = texts[1];
-  nl.forEach((c, i) => { c.style.opacity = Math.floor(i / PER) < 4 ? '1' : '.35'; });
+  nl.forEach((c, i) => { c.style.borderTop = (i % PER === 0) ? '3px solid var(--c)' : '1px solid var(--border)'; });
 });
 tl.at(6800, () => {
   msg.innerHTML = texts[2];
-  nl.forEach(c => { c.style.opacity = '1'; });
+  nl.forEach(c => { c.style.borderTop = ''; });
 });
 tl.at(10300, () => {
   msg.innerHTML = texts[3];
@@ -355,9 +357,16 @@ L.scene(
     visual='''
 const wrap = U.el('div', { class: 'col', style: 'gap:9px;width:100%' });
 wrap.innerHTML = `
-  <div class="row" style="gap:9px;align-items:flex-start">
-    <div class="col grow" id="lane" style="gap:4px"></div>
-    <div class="col" style="gap:7px;width:300px;flex:0 0 auto" id="notes5"></div>
+  <div id="lane" class="col" style="gap:4px;width:100%"></div>
+  <div class="row" style="gap:8px">
+    <div class="card" style="width:336px;border-left-color:var(--b)">
+      <div class="ct" style="color:var(--b)">expand gpu down / up</div>
+      <div class="cb">从已分配的 GPU 节点出发，向前、向后各扫一遍，
+      把中间<b>还没归属</b>且后端支持该 op 的节点也标成 GPU（1146 行）。</div></div>
+    <div class="card" style="width:336px;border-left-color:var(--e)">
+      <div class="ct" style="color:var(--e)">CPU 是墙，不是桥</div>
+      <div class="cb">遇到 CPU 归属的节点，<span class="cm" style="margin:0">cur_backend_id = -1</span>（1141 行）：
+      扩张在这里<b>停止</b>，不会越过 CPU 节点把更远的节点也染成 GPU。</div></div>
   </div>
   <div class="formula" id="m6"></div>`;
 root.appendChild(wrap);
@@ -384,41 +393,45 @@ lane.appendChild(U.el('div', { class: 'formula', style: 'padding:3px 8px;font-si
   html: '格内数字 = 层号，一层 3 个节点。实线 = pass 1 已被权重<b>钉死</b>归属（蓝 = CPU / 绿 = GPU）；' +
         '虚线 = 没有权重输入，pass 1 返回 -1，归属未知' }));
 
-wrap.querySelector('#notes5').innerHTML =
-  '<div class="card" style="border-left-color:var(--b)">' +
-  '<div class="ct" style="color:var(--b)">expand gpu down / up</div>' +
-  '<div class="cb">从已分配的 GPU 节点出发，向前、向后各扫一遍，' +
-  '把中间<b>还没归属</b>且后端支持该 op 的节点也标成 GPU（1146 行）。</div></div>' +
-  '<div class="card" style="border-left-color:var(--e)">' +
-  '<div class="ct" style="color:var(--e)">CPU 是墙，不是桥</div>' +
-  '<div class="cb">遇到 CPU 归属的节点，<span class="cm" style="margin:0">cur_backend_id = -1</span>（1141 行）：' +
-  '扩张在这里<b>停止</b>，不会越过 CPU 节点把更远的节点也染成 GPU。</div></div>';
-
 const msg = wrap.querySelector('#m6');
+function fill(i, c, col) {
+  cells[i].style.background = c;
+  cells[i].style.borderColor = col;
+  cells[i].style.borderStyle = 'solid';
+  cells[i].style.color = col;
+}
 const texts = [
-  '先看初始态：有权重的节点已经在 pass 1 定了归属，<span class="k">没有权重的节点还是 -1</span>。',
-  '<span class="v">expand gpu down</span>：从上往下扫，把 GPU 归属扩散给还没归属的邻居（1145-1146）。',
-  '碰到 CPU 节点（1139-1141）：<span class="k">cur_backend_id 被清成 -1</span>，扩张中断。',
-  '所以 CPU 权重节点像一堵墙：<span class="k">墙两侧的 GPU 段不会连成一片</span>。',
-  '这就是 <span class="v">n_gpu_layers</span> 依然有效的原因：它决定了墙立在哪里（i_gpu_start）。',
+  '初始态：有权重的节点在 pass 1 就定了归属（蓝 = CPU 权重，绿 = GPU 权重）；' +
+    '<span class="k">没有权重的节点（虚线）还是 -1</span>。',
+  '<span class="v">expand gpu down</span>（1131-1148）：从上往下扫，把 GPU 归属扩散给还没归属的邻居 —— ' +
+    '层 4 内部那两个虚线节点被染成 GPU。',
+  '扫到层 3 的最后一个权重节点（CPU 归属）时，<span class="v">cur_backend_id = -1</span>（1139-1141）：' +
+    '<span class="k">扩张在这里断掉</span>，不会越过它去染层 0..3。',
+  '层 0..3 里剩下的虚线节点由 <span class="v">expand rest down</span>（1171-1186）补上 —— ' +
+    '它们前面是 CPU，于是也归 CPU。',
+  '最终落在 <span class="k">两段</span>：节点 0..11 一段 CPU、节点 12..17 一段 GPU。' +
+    '<span class="k">CPU 权重节点就是那堵墙</span>。',
   '源码注释（1127 行）：<span class="cm" style="margin:0">cpu will never be used unless weights are on cpu, or there are no gpu ops between cpu ops</span>。'
 ];
 tl.at(600, () => { msg.innerHTML = texts[0]; });
 tl.at(3600, () => {
   msg.innerHTML = texts[1];
-  [1,3,6,8,9].forEach(i => { cells[i].style.background = 'rgba(63,185,80,.34)'; cells[i].style.opacity = '1'; });
-  [2,4,5,7].forEach(i => { cells[i].style.background = 'rgba(88,166,255,.34)'; cells[i].style.opacity = '1'; });
+  fill(13, 'rgba(63,185,80,.34)', 'var(--b)');
+  fill(16, 'rgba(63,185,80,.34)', 'var(--b)');
 });
 tl.at(7200, () => {
   msg.innerHTML = texts[2];
-  cells[4].style.outline = '2px solid var(--e)'; cells[5].style.outline = '2px solid var(--e)';
-  cells[7].style.outline = '2px solid var(--e)';
+  cells[11].style.outline = '2px solid var(--e)';
 });
 tl.at(10800, () => {
   msg.innerHTML = texts[3];
-  cells.forEach((c, i) => { c.style.outline = 'none'; });
+  [1,4,7,10].forEach(i => fill(i, 'rgba(88,166,255,.34)', 'var(--a)'));
 });
-tl.at(14000, () => { msg.innerHTML = texts[4]; });
+tl.at(14000, () => {
+  msg.innerHTML = texts[4];
+  cells[11].style.outline = 'none';
+  cells[12].style.outline = '2px solid var(--c)';
+});
 tl.at(17000, () => { msg.innerHTML = texts[5]; });
 '''
 )
@@ -444,7 +457,8 @@ const t = U.table(
   ['情形', '是否强制', '后果'],
   [['n_tokens < 32（逐 token 解码）', '强制把 norm / l_last 按回本层的设备', '边界对齐层边界'],
    ['full_offload（n_gpu_layers > n_layer_all）', '强制（同上，但本来就全在 GPU）', '边界无意义'],
-   ['n_tokens >= 32（预填充）且非 full_offload', '<b>不强制</b>', 'norm 可能落到下一层的后端，边界劈开一层']],
+   ['n_tokens >= 32（预填充）且非 full_offload', { html: '<b>不强制</b>' },
+    'norm 可能落到下一层的后端，边界劈开一层']],
   { monoCols: [] });
 wrap.querySelector('#t7').appendChild(t.el);
 
@@ -523,25 +537,30 @@ paint(0);
 
 const msg = wrap.querySelector('#m8');
 const texts = [
-  '规则只有一条：<span class="v">i_gpu_start = max(n_layer_all + 1 - n_gpu_layers, 0)</span>（1521 行），槽位 <span class="k">&gt;= i_gpu_start</span> 的走 GPU。',
+  '规则只有一条：<span class="v">i_gpu_start = max(n_layer_all + 1 - n_gpu_layers, 0)</span>（1521 行），' +
+    '槽位号 <span class="k">&gt;= i_gpu_start</span> 的走 GPU。',
   '<span class="v">L = 0</span>：i_gpu_start = 28，比最大的槽位号 27 还大 —— <span class="k">全在 CPU</span>。',
-  '<span class="v">L = 1</span>：i_gpu_start = 27。唯一上 GPU 的是输出层，重复层 0 个（对应 1537-1540 的日志分支）。',
+  '<span class="v">L = 1</span>：i_gpu_start = 27。唯一上 GPU 的是输出层，重复层 0 个（对应 1837-1841 的日志分支）。',
   '<span class="v">L = 4</span>：i_gpu_start = 24，末尾 4 个槽位 —— 层 24/25/26 与输出层。',
+  '<span class="v">L = 14</span>：i_gpu_start = 14，末尾 14 个槽位里 13 个是重复层（14..26），第 14 个是输出层。',
   '<span class="v">L = 27</span>：i_gpu_start = 1 —— 注意 <span class="k">第 0 层还在 CPU</span>。',
   '<span class="v">L = 28</span>：i_gpu_start = 0，28 个槽位全上 GPU。<span class="k">这才是"全部 offload"</span>。',
   '对照 1834 行：它算 n_gpu 时用的是 <span class="v">min(n_gpu_layers, n_layer_all)</span>，' +
-    '而 1522 行用的是 <span class="v">min(n_gpu_layers, n_layer_all + 1)</span> —— ' +
-    '<span class="k">三行日志的口径因此对不齐，别拿日志的行数反推切分</span>。'
+    '而 1522 行用的是 <span class="v">min(n_gpu_layers, n_layer_all + 1)</span> —— 当 L = 28 时，' +
+    '1834 行把计数卡在 27，1841 行于是报出 26 个 repeating 层（实际是 27），' +
+    '1846 行又按 <span class="v">n_layer_all + 1</span> 报出 28/28。' +
+    '<span class="k">三行日志口径不一致，别拿它反推切分</span>。'
 ];
-rows.forEach((r, i) => tl.at(700 + i * 3400, () => {
+tl.at(700, () => { msg.innerHTML = texts[0]; });
+rows.forEach((r, i) => tl.at(2800 + i * 3300, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
   paint(parseInt(r.children[0].textContent, 10));
-  msg.innerHTML = texts[Math.min(i + 1, 6)];
+  msg.innerHTML = texts[i + 1];
 }));
-tl.at(700 + 6 * 3400, () => {
+tl.at(2800 + 6 * 3300, () => {
   rows.forEach(x => { x.className = ''; });
   paint(28);
-  msg.innerHTML = texts[6];
+  msg.innerHTML = texts[7];
 });
 '''
 )
@@ -608,7 +627,7 @@ tl.at(15000, () => {
 
 L.section(
     '一、入口：一个整数变成一条分界线',
-    '`n_gpu_layers` 在整个加载期只被读一次（`llama-model.cpp:1438`），'
+    '`n_gpu_layers` 在 `load_tensors()` 里先被读成一个局部量（`llama-model.cpp:1438`），'
     '随即化成 `i_gpu_start`。注意右边的 `+ 1`：**槽位总数是 `n_layer_all + 1`，多出来的那一个是输出层**。'
     'CPU 判据写在 `get_layer_buft_list` 里：`il < i_gpu_start` 就走 CPU 分支。',
     src=MODEL, parts=[(1521, 1533)], lang='c')

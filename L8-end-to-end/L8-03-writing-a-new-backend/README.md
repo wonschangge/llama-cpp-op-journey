@@ -24,7 +24,7 @@
 > **说明**：本课逐字引用 **5 个文件**，全部计入覆盖率：`ggml/src/ggml-backend-impl.h`（计划指定）、`ggml/src/ggml-blas/ggml-blas.cpp`、`ggml/include/ggml-blas.h`、`ggml/src/ggml-backend-reg.cpp`、`ggml/src/ggml-backend-dl.cpp`（后四个为本课追加，用来把"清单"落到真实代码上：BLAS 是最小的真实后端，reg/dl 是注册与加载的实现）。
 > **说明**：文中提到但**不计入本课覆盖率**的文件：`ggml/src/CMakeLists.txt`（第 589 行 `ggml_add_backend(BLAS)`）、`ggml/CMakeLists.txt`（第 86 行 `GGML_BACKEND_DL`、第 194 行 `GGML_BLAS`）、`ggml/src/ggml-blas/CMakeLists.txt`、`ggml/src/ggml-backend-dl.h`、`tests/test-backend-ops.cpp`、`common/arg.cpp` —— 它们是构建接线与测试工具，不属于本课覆盖域。
 > **说明**：本课引用的数字来自实测命令：`wc -l ggml/src/ggml-blas/ggml-blas.cpp` = 530；`wc -l ggml/src/ggml-zendnn/ggml-zendnn.cpp` = 838；`find ggml/src/ggml-cuda -type f \( -name "*.cu" -o -name "*.cuh" \)` = 277 个文件、合计 45718 行；`grep -c "ggml_backend_buffer_i\|ggml_backend_buffer_type_i" ggml/src/ggml-blas/ggml-blas.cpp` = 0；三张虚表的非 NULL 指针按 `= */` 行统计为 3（backend_i）+ 10（device_i）+ 4（reg_i）= 17。
-> **说明**：**边界说明**：本机构建为 `GGML_BLAS=OFF`、`GGML_BACKEND_DL=OFF`，且 `build/bin` 下没有 `test-backend-ops`，因此第十二节的四条验证步骤**来自源码**（`tests/test-backend-ops.cpp` 的 `usage()` 第 12003-12021 行、`main()` 第 12136-12149 行；`common/arg.cpp` 第 1138-1160 行），不是本课的运行输出。本课实测过的命令只有 `llama-cli --list-devices`，输出是 `Available devices:` 与 `  (none)`（因为没有启用任何非 CPU 后端）。
+> **说明**：**未实测的部分**：本机构建为 `GGML_BLAS=OFF`、`GGML_BACKEND_DL=OFF`，且 `build/bin` 下没有 `test-backend-ops`，因此第十二节的四条验证步骤**来自源码**（`tests/test-backend-ops.cpp` 的 `usage()` 第 12003-12021 行、`main()` 第 12136-12149 行；`common/arg.cpp` 第 1138-1160 行），不是本课的运行输出。本课实测过的命令只有 `llama-cli --list-devices`，输出是 `Available devices:` 与 `  (none)`（因为没有启用任何非 CPU 后端）。
 
 ## 场景（9 幕）
 

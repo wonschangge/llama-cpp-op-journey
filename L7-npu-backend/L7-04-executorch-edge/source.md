@@ -708,6 +708,73 @@ bool ggml_et_launch_kernel(ggml_backend_et_device_context * dev_ctx,
 
 合计 **50 个文件 / 14183 行**（`wc -l` 实测）。这些内核目前**没有**统一的公共接口头：每个内核在自己的 `.c` 里定义参数结构体，宿主侧在 `ggml-et-ops.h` 里再写一遍（第十五、十六节点出了这个约定的两端）。
 
+## 二十、uberkernel 的 host/device 共享 ABI
+
+第十一节里那两个设备地址（指令数组、参数块）指向的内存，格式就是这 17 行：`ggml_et_uberkernel_inst` 是一条指令（内核编号 + 标志 + 参数在参数块里的偏移与长度），`ggml_et_uberkernel_params` 是整批指令的头。
+
+这个头文件被**两端同时 include**：宿主侧经 `ggml-et-common.h:4` 传递到 `ggml-et-kernels.cpp:344-349`（构造 `ggml_et_uberkernel_params`），设备侧由 `uberkernel.c:1` 直接 include。它是本课"共享表示"最纯粹的例子 —— 连"指令流"这种通常属于编译器内部的东西，在这里也是一份两边都认的结构体。
+
+<!-- src: ggml/src/ggml-et/ggml-et-uberkernel-common.h -->
+```c
+#pragma once
+
+#include <stdint.h>
+
+struct ggml_et_uberkernel_inst {
+    uint16_t kernel_id;
+    uint16_t flags;
+    uint32_t params_offset;
+    uint32_t params_size;
+};
+
+struct ggml_et_uberkernel_params {
+    uint32_t num_insts;
+    uint32_t inst_stride;
+    uint64_t insts;
+    uint64_t params_blob;
+};
+```
+
+## 二十一、设备侧共享头：6 个文件的分工
+
+上一节按行数把 68 个文件分成四族；这一节把"设备侧共享头"这一族再拆开 —— 它们都是**两端共用同一套语义**的体现（行数为 `wc -l` 实测）：
+
+| 文件 | 行数 | 分工（取自文件自己的头部注释） |
+|---|---|---|
+| `ggml_tensor.h` | 44 | 内核参数结构体（与宿主同名）+ 连续性判定；第十五节逐字引用 |
+| `quants.h` | 72 | 反量化助手 + 复用 `ggml-common.h` 的块定义；第十六节逐字引用 |
+| `platform.h` | 545 | 裸机 HAL：hart 与线程数、屏障/信号量、tensor engine 等待、L1/L2 scratchpad 寻址 |
+| `math_fp.h` | 299 | 硬件未实现指令的替代实现（FP16 转换、三角、除法）| 
+| `block_ops.h` | 997 | 向量块运算库（建立在 `math_fp.h` + `quants.h` 之上）| 
+| `tensor.h` | 897 | ET-SoC 张量指令的 CSR 封装：`tensor_load` / `tensor_store` / `tensor_fma` 等 |
+
+值得留意的是 `platform.h` 里的两个常数：`SOC_MINIONS_PER_SHIRE 32`、`NUM_HARTS_PER_MINION 2`（`platform.h:17-18`）—— 它们决定了第六节里"线程数 = popcount(shire_mask) x 32 x 2"这条公式。
+
+## 二十二、宿主侧的参数结构体与 CPU 对拍实现
+
+`ggml-et-ops.h` 里每个算子家族都有自己的参数结构体 —— 一共 **37 个**（`grep -c "^struct ggml_et_.*_params {"` 实测）。注意字段写的是 `ggml_tensor` 而不是指针：**结构体按值**，这正是第五幕那条机制在头文件里的样子。设备侧 `ggml_tensor.h` 里是同一批结构体的另一份声明（多了 `struct` 关键字），两端靠字段一致对齐。
+
+同一族的 `ggml-et-cpu-compare.cpp`（502 行）是第十七节那套对拍设施的**实现**：它 `ggml_backend_cpu_init()`（104）建一个临时的 CPU 后端，把输入拷到 CPU 侧（84-92），在 ET 内核跑完后再 `ggml_backend_graph_compute(ctx->cpu_backend, ctx->cpu_graph)`（360）算一遍参考结果，最后取回 ET 的输出比较（376）。一个没有图级编译器的后端，只能这样用"另一个后端"来当参照。
+
+<!-- src: ggml/src/ggml-et/ggml-et-ops.h -->
+```cpp
+struct ggml_et_binary_params {
+    ggml_tensor src0;
+    ggml_tensor src1;
+    ggml_tensor dst;
+};
+
+// Q8_0 mul_mat with optional residual bias.
+// bias.data == NULL means "no bias" - kernel skips the add.
+// When non-NULL, bias must have the same shape and strides as dst.
+struct ggml_et_mm_q8_params {
+    ggml_tensor src0;
+    ggml_tensor src1;
+    ggml_tensor dst;
+    ggml_tensor bias;
+};
+```
+
 ---
 
 ## 说明

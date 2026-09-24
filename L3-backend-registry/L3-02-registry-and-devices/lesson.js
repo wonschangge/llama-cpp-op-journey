@@ -129,7 +129,8 @@ struct ggml_backend_registry {
     const texts = [
       '16 个开关，<span class="k">从上到下就是注册顺序</span>：CUDA 在最前（120 行），CPU 在最后（171 行）。',
       '前 4 个是 GPU 家族：<span class="v">CUDA</span> / <span class="v">METAL</span> / <span class="v">SYCL</span> / <span class="v">VULKAN</span>。<br>' +
-        '注意 <span class="v">GGML_USE_CUDA</span> 这个宏在 HIP 构建（ROCm）和 MUSA 构建下也被打开 —— 见 L6-01。',
+        '注意 <span class="v">GGML_USE_CUDA</span> 这个宏在 HIP 构建（ROCm）和 MUSA 构建下也被打开<br>' +
+        '（<span class="v">ggml-hip/CMakeLists.txt:83</span>、<span class="v">ggml-musa/CMakeLists.txt:65</span>）—— 见 L6-01。',
       '中间 6 个是各家加速器：<span class="v">WEBGPU</span> / <span class="v">ZDNN</span> / <span class="v">VIRTGPU</span> / <span class="v">OPENCL</span> / <span class="v">ZENDNN</span> / <span class="v">HEXAGON</span>。',
       '后 6 个：<span class="v">CANN</span>（昇腾 NPU，L7-01）/ <span class="v">BLAS</span> / <span class="v">RPC</span> / <span class="v">OPENVINO</span> / <span class="v">ET</span> / <span class="v">CPU</span>。',
       '宏是谁定义的？<span class="k">ggml/src/CMakeLists.txt:428-439</span>：只有 <span class="v">GGML_BACKEND_DL=OFF</span> 时才给 ggml 目标加这些宏。<br>' +
@@ -511,7 +512,8 @@ ggml_backend_dev_t ggml_backend_dev_get(size_t index) {
       '★ 关键：<span class="k">这张表与构造函数的 #ifdef 顺序不是同一张表</span>。<br>' +
         '例如 <span class="v">CANN</span>：静态顺序在 CUDA 之后（156 vs 120），动态顺序在 CUDA 之前（587 vs 588）。',
       '而 <span class="v">register_backend()</span> 只做 push_back（201）—— 所以“同一个后端是编译进来的还是加载进来的”，<br>会改变它在 devices[] 里的下标。',
-      '一个只在运行期出现的后端，<span class="k">不可能挤到静态后端前面</span>；要改设备编号，只能改编译期开关的组合。'
+      '一个只在运行期出现的后端，<span class="k">不可能挤到静态后端前面</span>；要改默认编号只能改编译期开关的组合，' +
+        '或者在运行期用 <span class="v">--device</span> 显式给出顺序（第 10 幕）。'
     ];
     function light(i) { trs.forEach((r, k) => { r.className = (k === i) ? 'on' : ''; }); }
     tl.at(700,  () => { msg.innerHTML = texts[0]; light(0); });
