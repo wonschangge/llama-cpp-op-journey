@@ -103,7 +103,7 @@ tl.at(14000, () => { els.forEach(e => e.style.opacity = '1'); msg.innerHTML = te
 L.scene(
     kicker='L2-08 · 词表',
     title='分词第一步：<span class="hl-c">特殊 token 先切开</span>，再按类型分派',
-    sub='tokenize() 先做一次切分（BOS/EOS、<|im_start|> 这类特殊 token），再把每段交给具体 tokenizer。',
+    sub='tokenize() 先做一次切分（BOS/EOS 这类特殊 token），再把每段交给具体 tokenizer。',
     caption='分派表里 7 种 tokenizer：SPM / BPE / WPM / UGM / RWKV / PLAMO2 / TEST。本课细看 BPE。',
     src=VOCAB_C, parts=[(3413, 3427), (3214, 3235)], duration=19000,
     marks=[0, 11, 16, 24],
@@ -138,7 +138,7 @@ const msg = wrap.querySelector('#msg');
 const texts = [
   '分词不是一个函数，而是<b>三段</b>：切分 -> 分派 -> 各类型自己的算法。',
   '<span class="v">fragment_buffer</span>：先把整段文本装进一个前向链表，切成"片段"。',
-  '<span class="v">tokenizer_st_partition()</span>：特殊 token（BOS/EOS/控制符）在这里被<b>优先</b>摘出来，剩下的才是原始文本。',
+  '<span class="v">tokenizer_st_partition()</span>：特殊 token（BOS/EOS、控制符、用户自定义标记）在这里被<b>优先</b>摘出来，剩下的才是原始文本。',
   '<span class="v">switch (get_type())</span>：按 vocab 类型选一条实现。7 条路各有各的算法。',
   '下面三幕只看 <span class="k">BPE</span> 这一条 —— 它是当前主流 LLM 的分词方式。'
 ];
@@ -253,37 +253,35 @@ root.appendChild(wrap);
 
 const host = wrap.querySelector('#bars');
 const tables = [
-  { l: 'ranges_flags  2273 行', n: 2273, c: 'a' },
-  { l: 'map_lowercase  1433 行', n: 1433, c: 'b' },
-  { l: 'map_uppercase  1450 行', n: 1450, c: 'd' },
-  { l: 'ranges_nfd  1828 行', n: 1828, c: 'c' },
-  { l: 'set_whitespace  25 行', n: 25, c: 'e' }
+  { l: 'ranges_flags', n: 2273, c: 'a' },
+  { l: 'map_lowercase', n: 1433, c: 'b' },
+  { l: 'map_uppercase', n: 1450, c: 'd' },
+  { l: 'ranges_nfd', n: 1828, c: 'c' },
+  { l: 'set_whitespace', n: 25, c: 'e' }
 ];
 const bars = tables.map(t => { const b = U.bar(t.l, t.c); host.appendChild(b.el); return b; });
-bars.forEach(b => { b.fill.style.width = '0%'; });
+bars.forEach((b, i) => {
+  b.fill.style.width = (tables[i].n / 2273 * 100) + '%';
+  b.val.textContent = tables[i].n;
+  b.el.style.opacity = '.55';
+});
+const hi = k => bars.forEach((b, i) => { b.el.style.opacity = (k < 0 || i === k) ? '1' : '.35'; });
 
 const msg = wrap.querySelector('#msg');
 const texts = [
   '三个函数，一条链：<span class="k">字节 -> 码点 -> 类别 -> 折叠形态</span>。',
   '<span class="v">unicode_len_utf8()</span>：只看首字节的高 4 位就能查出一个 UTF-8 字符占几字节 —— 一张 16 项的查找表。',
   '<span class="v">unicode_cpt_from_utf8()</span>：按位掩码逐段拼出码点；遇到非法字节直接 throw。BPE 主循环用它决定"下一个 symbol 切多长"。',
-  '<span class="v">unicode_cpt_flags_from_cpt()</span>：码点 -> 12 个标志位（字母/数字/标点/空白/大小写/是否 NFD）。',
-  '<span class="v">unicode_cpts_normalize_nfd()</span>：二分查找 unicode_ranges_nfd，判断这个码点要不要折叠成基字符。',
-  '这五个函数的答案<b>不在代码里</b>，在 <span class="k">unicode-data.cpp</span> 的 7009 行表里。下一幕看这些表。'
+  '<span class="v">unicode_cpt_flags_from_cpt()</span>：码点 -> 12 个标志位（字母/数字/标点/空白/大小写/是否 NFD），查的是右边第一张表。',
+  '<span class="v">unicode_cpts_normalize_nfd()</span>：二分查找 <span class="v">unicode_ranges_nfd</span>，判断这个码点要不要折叠成基字符。',
+  '五张表合计 <span class="k">7009 行</span>（2273 + 1433 + 1450 + 1828 + 25）。这就是 unicode 支持的真正体积。'
 ];
-bars.forEach(b => { b.el.style.opacity = '.35'; });
-tl.at(700, () => { msg.innerHTML = texts[0]; });
-tl.at(3900, () => { msg.innerHTML = texts[1]; U.markLines(document, [0]); });
-tl.at(7100, () => { msg.innerHTML = texts[2]; U.markLines(document, [6]); });
-tl.at(10300, () => {
-  msg.innerHTML = texts[3]; U.markLines(document, [37]);
-  bars.forEach(b => { b.fill.style.width = (b === bars[0] ? '100%' : '0%'); });
-});
-tl.at(13500, () => {
-  msg.innerHTML = texts[4]; U.markLines(document, [25]);
-  bars.forEach((b, i) => { b.fill.style.width = (tables[i].n / 2273 * 100) + '%'; b.val.textContent = tables[i].n; b.el.style.opacity = '1'; });
-});
-tl.at(17500, () => { msg.innerHTML = texts[5]; U.markLines(document, []); });
+tl.at(700, () => { msg.innerHTML = texts[0]; hi(-1); });
+tl.at(3900, () => { msg.innerHTML = texts[1]; U.markLines(document, [0]); hi(-1); });
+tl.at(7100, () => { msg.innerHTML = texts[2]; U.markLines(document, [6]); hi(-1); });
+tl.at(10300, () => { msg.innerHTML = texts[3]; U.markLines(document, [37]); hi(0); });
+tl.at(13500, () => { msg.innerHTML = texts[4]; U.markLines(document, [25]); hi(3); });
+tl.at(17500, () => { msg.innerHTML = texts[5]; U.markLines(document, []); hi(-1); });
 '''
 )
 

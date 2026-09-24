@@ -32,7 +32,7 @@
 ## 场景（9 幕）
 
 1. **模型的两端：分词与采样** — 图只认 token id。进来时要分词，出去时要采样 —— 两端都在 host 上，都不在图里。
-2. **分词第一步：特殊 token 先切开，再按类型分派** — tokenize() 先做一次切分（BOS/EOS、 这类特殊 token），再把每段交给具体 tokenizer。
+2. **分词第一步：特殊 token 先切开，再按类型分派** — tokenize() 先做一次切分（BOS/EOS 这类特殊 token），再把每段交给具体 tokenizer。
 3. **★ BPE 的合并顺序由一个 rank 决定** — llm_bigram_bpe 用优先队列按 rank 排序：rank 最小的相邻对最先合并，合并后只补两个新 bigram。
 4. **unicode：类别判断与 NFD 折叠靠数据表** — 分词器要回答"这个字符是字母还是数字、要不要折叠重音"，答案是三张查表函数 + 五张生成表。
 5. **一条链就是 host 上的一个 vector** — llama_sampler_chain 的全部状态：一个 samplers 数组、一块复用缓冲、两个计时计数。
