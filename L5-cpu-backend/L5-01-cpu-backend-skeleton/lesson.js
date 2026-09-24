@@ -151,7 +151,7 @@ const SCENES = [
        ['graph_plan_compute', '已实现', '执行预编译计划'],
        ['graph_compute', '已实现', '执行整张图 —— 本课主线'],
        ['event_record / event_wait', 'NULL', 'CPU 是同步后端，没有事件'],
-       ['graph_optimize', 'NULL', 'CPU 侧的图优化只有算子融合，见第 6 幕']],
+       ['graph_optimize', 'NULL', 'CPU 侧的图优化只有算子融合，见第 5 幕']],
       { monoCols: [0] });
     wrap.querySelector('#tbl').appendChild(t.el);
 
@@ -498,10 +498,10 @@ struct ggml_compute_state {
 
     const bars = wrap.querySelector('#bars');
     const groups = [
-      { l: 'case GGML_OP_*', n: 102, c: 'a' },
+      { l: 'case 总数', n: 102, c: 'a' },
       { l: '调用内核', n: 96, c: 'b' },
-      { l: 'nop（视图算子）', n: 5, c: 'c' },
-      { l: 'GGML_OP_COUNT 兜底', n: 1, c: 'd' }
+      { l: 'nop 视图算子', n: 5, c: 'c' },
+      { l: 'COUNT 兜底', n: 1, c: 'd' }
     ];
     const bs = groups.map(function (g) { const b = U.bar(g.l + '  (' + g.n + ')', g.c); bars.appendChild(b.el); return b; });
 
@@ -522,7 +522,8 @@ struct ggml_compute_state {
       '其中 <span class="v">96 个</span>直接调用 ggml_compute_forward_* —— 每个 case 就是一次内核调用。',
       '<span class="v">5 个</span>是 nop：视图算子不需要计算，只改形状和步长。',
       '<span class="v">1 个</span>是 GGML_OP_COUNT：走到它就 GGML_ABORT("fatal error")。',
-      '还有 <span class="v">default</span>：未知 op 直接 abort —— 没有"运行时找不到内核"的软失败。',
+      '这个 switch <span class="k">没有 default</span>：102 个 case 与 <span class="v">enum ggml_op</span> 的' +
+        '102 个枚举项一一对应（枚举本身见 L1-02 引的 ggml.h）—— 编译器能查漏，不需要兜底。',
       '对比：<span class="k">GPU 后端是"每个 op 一个 kernel"</span>，CPU 是' +
         '<span class="k">"一个 switch 分派全部"</span> —— 这正是 CPU 后端骨架的全部。'
     ];

@@ -48,7 +48,7 @@ L.note('回顾 L2-06 幕 10 的结论：**"模型架构的差异 = 原语选择 
 
 # --------------------------------------------------------------- 覆盖声明
 # 计划里 L2-15 的全部 36 个文件。逐字引用的只是少数代表（见各幕 src=），
-# 其余在 source.md 第九节按行号列出各自的注意力变体；这里全部计入覆盖。
+# 其余在 source.md 第十节按行号列出各自的注意力变体；这里全部计入覆盖。
 L.cover(
     'src/models/maincoder.cpp', 'src/models/mistral4.cpp', 'src/models/models.h',
     'src/models/modern-bert.cpp', 'src/models/mpt.cpp', 'src/models/muse-glimmer.cpp',
@@ -242,7 +242,7 @@ L.scene(
     kicker='L2-15 · 变体二',
     title='★ 有 SWA 和没 SWA，共用<span class="hl-a">同一份图</span>',
     sub='Plamo3 把整份图写成一个模板：只有"注意力输入类型"这一个类型别名随窗口开关切换。',
-    caption='图里的实际落点只有三处：取哪个 cache、取哪张 mask、K/V 从哪来 —— 见 source.md 第五节。',
+    caption='图里的实际落点只有三处：取哪个 cache、取哪张 mask、K/V 从哪来 —— 见 source.md 第七节。',
     src=SRC_PLAMO3, parts=[(60, 85)], duration=21000,
     mark_src=[61, 62, 64, 68, 78, 81, 82, 84],
     notes_src={62: '有窗口 -> 用 iswa 版图（两套 cache）',
@@ -297,7 +297,7 @@ tl.at(16600, () => { msg.innerHTML = texts[4]; });
 
 L.scene(
     kicker='L2-15 · 变体三',
-    title='★ <span class="hl-e">MLA</span>：压缩 KV，只体现为一个布尔量',
+    title='<span class="hl-e">MLA</span>：压缩 KV，只体现为一个布尔量',
     sub='MLA 把 K/V 压成一份潜在向量再解压。在图这一层，它的全部痕迹是"V 那一张张量不分配"。',
     caption='回顾 L2-04 幕 6：cache 自己拿 buffer，图只拿视图。MLA 少一张张量，就是少一份 buffer。',
     src=SRC_KVC, parts=[(230, 237)], duration=21000,
@@ -645,15 +645,17 @@ L.section(
     '一、模型注册表：一个家族 = 一个类',
     '`src/models/models.h` 里有 **151 个** `llama_model_*` 类，全部继承 `llama_model_base`。'
     '每个类只承诺三件事：读超参、读张量、给出自己的图类。'
-    '本课覆盖的 36 个文件里，有 30 个就是这个类的三个函数的实现。',
+    '本课覆盖的 36 个文件里，32 个 `.cpp` 把这三个函数都实现了；'
+    '`paddleocr.cpp`（继承 `llama_model_ernie4_5`）与 `mistral4.cpp`（继承 `llama_model_deepseek2`）'
+    '只写 `build_arch_graph`，`qwen3tts.cpp` 一个都不写 —— 剩下的是声明表 `models.h` 自己。',
     src=SRC_MODELS, parts=[(143, 158)], lang='cpp')
 
 L.section(
-    '二、★ GQA：形状上的两个 head 数',
+    '二、GQA：形状上的两个 head 数',
     'GQA（grouped-query attention）在代码里没有任何专属分支。'
     '它的全部表达就是 `llm_graph_qkv` 这个三元组里 K/V 与 Q 的**第二维不同**：'
     'Q 用 `n_head`，K/V 用 `n_head_kv`。'
-    'NHD 之外的任何"变体名"在图上都不存在 —— 存在的只是两个数字。',
+    '任何"变体名"在图上都不存在 —— 存在的只是两个数字。',
     src=SRC_GRAPH_H, parts=[(978, 982)], lang='cpp')
 
 L.section(
@@ -697,7 +699,7 @@ L.section(
     src=SRC_GRAPH, parts=[(3131, 3154)], lang='cpp')
 
 L.section(
-    '八、★ MLA 是一组超参，不是一个算子',
+    '八、MLA 是一组超参，不是一个算子',
     '`is_mla()` 的判据是两个 impl 字段同时非零；'
     '`n_embd_head_k_mla()` / `n_embd_head_v_mla()` 在没有 MLA 时直接退回普通的 head 维度。'
     '源码在字段声明处留下的注释说明了这套表示的来历：'
@@ -705,7 +707,7 @@ L.section(
     src=SRC_HP_CPP, parts=[(297, 318)], lang='cpp')
 
 L.section(
-    '九、★ MLA 在 KV cache 上的唯一痕迹',
+    '九、MLA 在 KV cache 上的唯一痕迹',
     'cache 构造循环里，MLA 与非 MLA 走同一段代码，只在两处分开：'
     '`if (!is_mla)` 包住"V 的 head 维度统计"，以及 `has_v = !is_mla`。'
     '`has_v` 为假时 V 张量是 `nullptr` —— 后续所有 `v_stream` 与 `get_v()` 都走空路。'
@@ -773,7 +775,8 @@ L.section(
     '同类还有 `qwen3tts.cpp`（3 行，第 3 行是注释：'
     '`// llama_model_qwen3tts reuses llama_model_qwen3vl\'s hparams/tensors/graph logic`）、'
     '`t5encoder.cpp`（44 行，只有张量加载，图用 `llama_model_t5::graph<true>`）、'
-    '`nomic-bert.cpp`（51 行，同理）。',
+    '`nomic-bert.cpp`（51 行，同理）、'
+    '`paddleocr.cpp`（继承 `llama_model_ernie4_5`，只重写 `build_arch_graph`）。',
     src=SRC_MISTRAL, parts=[(1, 6)], lang='cpp')
 
 L.section(
@@ -795,7 +798,7 @@ L.section(
     src=SRC_QWEN3, parts=[(62, 74)], lang='cpp')
 
 L.section(
-    '十五、★ 共享 KV 的图差异：不传 K/V',
+    '十五、共享 KV 的图差异：不传 K/V',
     '这是本课验收点的直接证据。草稿模型的注意力只算 Q：'
     '权重清单里**没有 `wk` / `wv`**（`gemma4-assistant.cpp:59-60` 只创建 `wq` 与 `wo`），'
     '所以 `build_attn` 的第 6、7 个实参（`k_cur` / `v_cur`）只能是 `nullptr`。'
@@ -804,7 +807,7 @@ L.section(
     src=SRC_ASSIST, parts=[(140, 151)], lang='cpp')
 
 L.section(
-    '十六、★ 共享 KV 的 cache 侧：层张量直接挂上',
+    '十六、共享 KV 的 cache 侧：层张量直接挂上',
     '草稿模型"借"到的 K/V 张量是在 cache 构造时挂上的：'
     '`if (share && other)` 命中后执行 `layers.push_back(layer_share)`，'
     '草稿的第 `il` 层于是指向主模型某一层的**同一个** K/V 张量（日志里会打印两个指针）。'
@@ -820,7 +823,7 @@ L.section(
     '这就是"共享主模型 KV"在代码里最终发生的那一行。',
     src=SRC_KVC, parts=[(176, 192)], lang='cpp')
 
-L.footnote_add('本课声明 36 个源文件：计划中 L2-15 的 36 个全部声明，**无一遗漏**。')
+L.footnote_add('本课共覆盖 43 个源文件。其中 36 个是计划里 L2-15 的全部文件，**无一遗漏**。')
 L.footnote_add('另有 7 个源文件被本课引用并计入覆盖，它们在计划里归别的课：'
                '`src/llama-hparams.h` / `src/llama-hparams.cpp`（L2-02）、'
                '`src/llama-graph.h` / `src/llama-graph.cpp`（L2-06）、'

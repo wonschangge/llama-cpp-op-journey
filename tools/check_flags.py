@@ -55,10 +55,11 @@ USAGE = """usage: check_flags.py [--all] [--quiet] [--list]
 真值来源是真实二进制的 --help，以及本仓库门禁脚本自己的 --help。
 
 options:
-  --all      全量检查（默认行为，显式开关便于脚本化）
-  --quiet    只输出结论
-  --list     打印真值集规模与样例
-  -h, --help 显示本帮助
+  --all        全量检查（默认行为，显式开关便于脚本化）
+  --lesson DIR 只检查一课（+ 仓库根 README）
+  --quiet      只输出结论
+  --list       打印真值集规模与样例
+  -h, --help   显示本帮助
 """
 
 _cache_truth = None
@@ -211,6 +212,10 @@ def main():
         return 0
     quiet = '--quiet' in sys.argv
     _all = '--all' in sys.argv          # 显式全量开关；默认已是全量
+    # ★ 并行写作下的必要设计：本门禁原本只能全仓库扫描，于是【任何一个】课件
+    #   正在被写入（临时语法不完整）都会让所有课的验收变红。
+    #   加 --lesson 后，单课验收只看该课，全局检查留给最终交付。
+    only = sys.argv[sys.argv.index('--lesson') + 1] if '--lesson' in sys.argv else None
     long_opts, short_opts, envs, used = build_truth()
     if not used:
         print(f'✗ A2 无法建立真值集：{BIN} 下找不到可用二进制。'
@@ -226,7 +231,15 @@ def main():
     bad = []
     n_files = 0
     n_tokens = 0
-    for d in lesson_dirs():
+    dirs = lesson_dirs()
+    if only:
+        target = only if os.path.isabs(only) else os.path.join(HERE, only)
+        target = os.path.normpath(target)
+        dirs = [d for d in dirs if os.path.normpath(d) == target]
+        if not dirs:
+            print(f'✗ A2：找不到课件目录 {only}')
+            return 1
+    for d in dirs:
         for fn in ('source.md', 'lesson.js', 'README.md'):
             p = os.path.join(d, fn)
             if not os.path.isfile(p):

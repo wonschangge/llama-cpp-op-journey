@@ -20,9 +20,9 @@
 | `ggml/src/ggml-cpu/ggml-cpu.c` | 3945 |
 | `ggml/include/ggml-cpu.h` | 153 |
 
-> **说明**：本课引用 3 个源文件：`ggml/src/ggml-cpu/ggml-cpu.c`（3944 行）、`ggml/src/ggml-cpu/ggml-cpu.cpp`（716 行）、`ggml/include/ggml-cpu.h`（152 行），全部计入覆盖率。
+> **说明**：本课引用 3 个源文件：`ggml/src/ggml-cpu/ggml-cpu.c`（`wc -l` = 3944 行）、`ggml/src/ggml-cpu/ggml-cpu.cpp`（716 行）、`ggml/include/ggml-cpu.h`（152 行），全部计入覆盖率。（上面表格里的行数由生成器按 `split("\n")` 计数，比 `wc -l` 多 1 行，是末尾换行造成的。）
 > **说明**：场景 3 的算例（n_threads = 8、5 个节点、max_tasks = 8）是按 `ggml_get_n_tasks()` 的真实逻辑手算的示例，不是实测输出。
-> **说明**：文中提到但不逐字引用的位置：`struct ggml_compute_params` 定义在 `ggml/src/ggml-cpu/ggml-cpu-impl.h:18`；`ggml_cpu_extra_compute_forward()` 定义在 `ggml/src/ggml-cpu/traits.cpp:12`；`ggml_graph_compute_kickoff()` 在 `ggml-cpu.c:3288`；`struct ggml_threadpool_params` 在 `ggml/include/ggml.h:3003`。这些文件不计入本课覆盖率。
+> **说明**：文中提到但不逐字引用的位置：`enum ggml_op` 在 `ggml/include/ggml.h`（L1-02 的覆盖文件，本课只引用其计数结论：102 个枚举项）；`struct ggml_compute_params` 定义在 `ggml/src/ggml-cpu/ggml-cpu-impl.h:18`；`ggml_cpu_extra_compute_forward()` 定义在 `ggml/src/ggml-cpu/traits.cpp:12`；`ggml_graph_compute_kickoff()` 在 `ggml-cpu.c:3288`；`struct ggml_threadpool_params` 在 `ggml/include/ggml.h:3003`。这些文件不计入本课覆盖率。
 
 ## 场景（10 幕）
 
@@ -71,9 +71,9 @@
 
 ## 验收点
 
-- [x] 保真门禁：19 处引用 —— 19 个引用块 / 79 个连续段逐字命中
-- [x] 覆盖度门禁：本课声明 3 项，无空课、无幻影；全局覆盖 256/1290
-- [x] 参数门禁：真值集 381 长 / 76 短选项，扫描 84 文件 15 处引用，0 处非法
+- [x] 保真门禁：19 处引用 —— 19 个引用块 / 82 个连续段逐字命中
+- [x] 覆盖度门禁：本课声明 3 项，无空课、无幻影；全局覆盖 286/1290
+- [x] 参数门禁：真值集 381 长 / 76 短选项，扫描 99 文件 22 处引用，0 处非法
 - [x] 语法检查：0 错误 / 0 警告
 - [x] 渲染门禁：10 幕 —— 1 页面 x 2 分辨率，0 错误 / 0 溢出
 

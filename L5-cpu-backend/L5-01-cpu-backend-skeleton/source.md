@@ -57,6 +57,8 @@ CPU 与数据在同一块内存上，异步传输、事件、图优化都没有�
 
 另外三个后端 API 也一并放在这里：`ggml_backend_cpu_init()` 建上下文并调 `ggml_cpu_init()`；`ggml_backend_cpu_set_n_threads()` 改的是**后端上下文里的数字**，下一张图才会生效。
 
+最后一段是 `ggml_backend_cpu_get_proc_address()`：后端注册表（L3）通过**按名字查函数指针**的方式拿到 `ggml_backend_set_n_threads` 这类能力 —— llama.cpp 就是用这条路给 CPU 后端设线程数的。
+
 <!-- src: ggml/src/ggml-cpu/ggml-cpu.cpp -->
 ```cpp
 static const struct ggml_backend_i ggml_backend_cpu_i = {
@@ -116,6 +118,22 @@ void ggml_backend_cpu_set_n_threads(ggml_backend_t backend_cpu, int n_threads) {
     struct ggml_backend_cpu_context * ctx = (struct ggml_backend_cpu_context *)backend_cpu->context;
     ctx->n_threads = n_threads;
 }
+//>> ---- ggml/src/ggml-cpu/ggml-cpu.cpp:655-669 ----
+static void * ggml_backend_cpu_get_proc_address(ggml_backend_reg_t reg, const char * name) {
+    if (strcmp(name, "ggml_backend_set_n_threads") == 0) {
+        ggml_backend_set_n_threads_t fct = ggml_backend_cpu_set_n_threads;
+        return (void *)fct;
+    }
+    if (strcmp(name, "ggml_backend_dev_get_extra_bufts") == 0) {
+        ggml_backend_dev_get_extra_bufts_t fct = ggml_backend_cpu_device_get_extra_buffers_type;
+        return (void *)fct;
+    }
+    if (strcmp(name, "ggml_backend_get_features") == 0) {
+        return (void *)ggml_backend_cpu_get_features;
+    }
+    if (strcmp(name, "ggml_backend_set_abort_callback") == 0) {
+        return (void *)ggml_backend_cpu_set_abort_callback;
+    }
 ```
 
 ## 三、★ 规划：ggml_graph_plan 逐节点问任务数
@@ -178,6 +196,8 @@ struct ggml_cplan ggml_graph_plan(
 线程主体 `ggml_graph_compute_thread()` 先构造 `params`，再进入节点循环：
 每个节点先试 `ggml_cpu_try_fuse_ops()`（CPU 侧的算子融合），没命中才调 `ggml_compute_forward()`；节点之间用 `ggml_barrier()` 同步。
 
+`ggml_barrier()` 是自旋屏障：`n_threads == 1` 时**直接返回**，所以单线程推理没有任何同步开销；多线程时才走 `n_barrier` / `n_barrier_passed` 那套原子计数。
+
 <!-- src: ggml/src/ggml-cpu/ggml-cpu.c -->
 ```c
 struct ggml_threadpool {
@@ -217,6 +237,35 @@ struct ggml_compute_state {
     struct ggml_threadpool * threadpool;
     int ith;
 };
+//>> ---- ggml/src/ggml-cpu/ggml-cpu.c:576-603 ----
+void ggml_barrier(struct ggml_threadpool * tp) {
+    int n_threads = atomic_load_explicit(&tp->n_graph, memory_order_relaxed) & GGML_THREADPOOL_N_THREADS_MASK;
+    if (n_threads == 1) {
+        return;
+    }
+
+#ifdef GGML_USE_OPENMP
+    #pragma omp barrier
+#else
+    int n_passed = atomic_load_explicit(&tp->n_barrier_passed, memory_order_relaxed);
+
+    // enter barrier (full seq-cst fence)
+    int n_barrier = atomic_fetch_add_explicit(&tp->n_barrier, 1, memory_order_seq_cst);
+
+    if (n_barrier == (n_threads - 1)) {
+        // last thread
+        atomic_store_explicit(&tp->n_barrier, 0, memory_order_relaxed);
+
+        // exit barrier (full seq-cst fence)
+        atomic_fetch_add_explicit(&tp->n_barrier_passed, 1, memory_order_seq_cst);
+        return;
+    }
+
+    // wait for other threads
+    while (atomic_load_explicit(&tp->n_barrier_passed, memory_order_relaxed) == n_passed) {
+        ggml_thread_cpu_relax();
+    }
+
 //>> ---- ggml/src/ggml-cpu/ggml-cpu.c:3122-3167 ----
     struct ggml_compute_params params = {
         /*.ith        =*/ state->ith,
@@ -278,7 +327,9 @@ struct ggml_compute_state {
 | nop | 5 | `NONE` / `RESHAPE` / `PERMUTE` / `VIEW` / `TRANSPOSE` |
 | 兜底 abort | 1 | `GGML_OP_COUNT` -> `GGML_ABORT("fatal error")` |
 
-对比 GPU 后端：CUDA 是"每个 op 一个 kernel 启动"，CPU 是"一个 switch + 一个线程池"。
+这个 switch **没有 `default` 分支** —— 不是漏了，是不需要：`enum ggml_op`（`ggml/include/ggml.h`，L1-02 逐字讲过）恰好有 102 个枚举项，与 102 个 `case` 一一对应。**算子身份表变了，这个 switch 必须跟着变**，否则新 op 会静默地什么都不做。
+
+对照 GPU 后端：CUDA 是"每个 op 一个 kernel 启动"，CPU 是"一个 switch + 一个线程池"。
 
 <!-- src: ggml/src/ggml-cpu/ggml-cpu.c -->
 ```c
@@ -539,7 +590,7 @@ void ggml_compute_forward_mul_mat(
 
 `ggml/include/ggml-cpu.h` 只有 152 行，却是 CPU 后端的全部公共面：`struct ggml_cplan`、线程池 5 件套、`ggml_graph_plan` / `ggml_graph_compute`、`ggml_cpu_has_*` 特征检测、`ggml_type_traits_cpu`、以及后端 API。
 
-两个入口在 `ggml-cpu.c`：`ggml_cpu_init()`（3867 行）第一次调用时建 GELU / SILU / FP16 查表，并读 `GGML_CPU_DISABLE_FUSION` 环境变量；`ggml_cpu_has_avx()`（3643 行）这类特征检测**是编译期常量** —— 它返回的是"这份二进制是否编进了 AVX"，不是运行时探测。这条线索通向 L5-05（多架构 SIMD 与厂商加速）。
+两个入口在 `ggml-cpu.c`：`ggml_cpu_init()`（3867 行）第一次调用时建 GELU / Quick GELU / SILU / FP16 查表，并读 `GGML_CPU_DISABLE_FUSION` 环境变量（3936 行）；`ggml_cpu_has_avx()`（3643 行）这类特征检测**是编译期常量** —— 它返回的是"这份二进制是否编进了 AVX"，不是运行时探测。这条线索通向 L5-05（多架构 SIMD 与厂商加速）。
 
 <!-- src: ggml/src/ggml-cpu/ggml-cpu.c -->
 ```c
@@ -564,6 +615,17 @@ void ggml_cpu_init(void) {
     static bool is_first_call = true;
 
     if (is_first_call) {
+//>> ---- ggml/src/ggml-cpu/ggml-cpu.c:3935-3944 ----
+        {
+            const char * env = getenv("GGML_CPU_DISABLE_FUSION");
+            ggml_cpu_disable_fusion = (env != NULL && atoi(env) == 1);
+        }
+
+        is_first_call = false;
+    }
+
+    ggml_critical_section_end();
+}
 ```
 
 ## 九、头文件：声明与调用顺序
@@ -629,6 +691,6 @@ void ggml_cpu_init(void) {
 
 ## 说明
 
-- 本课引用 3 个源文件：`ggml/src/ggml-cpu/ggml-cpu.c`（3944 行）、`ggml/src/ggml-cpu/ggml-cpu.cpp`（716 行）、`ggml/include/ggml-cpu.h`（152 行），全部计入覆盖率。
+- 本课引用 3 个源文件：`ggml/src/ggml-cpu/ggml-cpu.c`（`wc -l` = 3944 行）、`ggml/src/ggml-cpu/ggml-cpu.cpp`（716 行）、`ggml/include/ggml-cpu.h`（152 行），全部计入覆盖率。（上面表格里的行数由生成器按 `split("\n")` 计数，比 `wc -l` 多 1 行，是末尾换行造成的。）
 - 场景 3 的算例（n_threads = 8、5 个节点、max_tasks = 8）是按 `ggml_get_n_tasks()` 的真实逻辑手算的示例，不是实测输出。
-- 文中提到但不逐字引用的位置：`struct ggml_compute_params` 定义在 `ggml/src/ggml-cpu/ggml-cpu-impl.h:18`；`ggml_cpu_extra_compute_forward()` 定义在 `ggml/src/ggml-cpu/traits.cpp:12`；`ggml_graph_compute_kickoff()` 在 `ggml-cpu.c:3288`；`struct ggml_threadpool_params` 在 `ggml/include/ggml.h:3003`。这些文件不计入本课覆盖率。
+- 文中提到但不逐字引用的位置：`enum ggml_op` 在 `ggml/include/ggml.h`（L1-02 的覆盖文件，本课只引用其计数结论：102 个枚举项）；`struct ggml_compute_params` 定义在 `ggml/src/ggml-cpu/ggml-cpu-impl.h:18`；`ggml_cpu_extra_compute_forward()` 定义在 `ggml/src/ggml-cpu/traits.cpp:12`；`ggml_graph_compute_kickoff()` 在 `ggml-cpu.c:3288`；`struct ggml_threadpool_params` 在 `ggml/include/ggml.h:3003`。这些文件不计入本课覆盖率。

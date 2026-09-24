@@ -56,7 +56,7 @@ src/llama-hparams.cpp
 
 ## 一、模型注册表：一个家族 = 一个类
 
-`src/models/models.h` 里有 **151 个** `llama_model_*` 类，全部继承 `llama_model_base`。每个类只承诺三件事：读超参、读张量、给出自己的图类。本课覆盖的 36 个文件里，有 30 个就是这个类的三个函数的实现。
+`src/models/models.h` 里有 **151 个** `llama_model_*` 类，全部继承 `llama_model_base`。每个类只承诺三件事：读超参、读张量、给出自己的图类。本课覆盖的 36 个文件里，32 个 `.cpp` 把这三个函数都实现了；`paddleocr.cpp`（继承 `llama_model_ernie4_5`）与 `mistral4.cpp`（继承 `llama_model_deepseek2`）只写 `build_arch_graph`，`qwen3tts.cpp` 一个都不写 —— 剩下的是声明表 `models.h` 自己。
 
 <!-- src: src/models/models.h -->
 ```cpp
@@ -78,9 +78,9 @@ struct llama_model_llama : public llama_model_base {
 };
 ```
 
-## 二、★ GQA：形状上的两个 head 数
+## 二、GQA：形状上的两个 head 数
 
-GQA（grouped-query attention）在代码里没有任何专属分支。它的全部表达就是 `llm_graph_qkv` 这个三元组里 K/V 与 Q 的**第二维不同**：Q 用 `n_head`，K/V 用 `n_head_kv`。NHD 之外的任何"变体名"在图上都不存在 —— 存在的只是两个数字。
+GQA（grouped-query attention）在代码里没有任何专属分支。它的全部表达就是 `llm_graph_qkv` 这个三元组里 K/V 与 Q 的**第二维不同**：Q 用 `n_head`，K/V 用 `n_head_kv`。任何"变体名"在图上都不存在 —— 存在的只是两个数字。
 
 <!-- src: src/llama-graph.h -->
 ```cpp
@@ -225,7 +225,7 @@ void llama_model_base::load_swa_pattern(llama_model_loader & ml, uint32_t n_patt
     ggml_tensor * cur = build_attn_mha(q, k, v, kq_b, kq_mask, sinks, v_mla, 0, kq_scale, il);
 ```
 
-## 八、★ MLA 是一组超参，不是一个算子
+## 八、MLA 是一组超参，不是一个算子
 
 `is_mla()` 的判据是两个 impl 字段同时非零；`n_embd_head_k_mla()` / `n_embd_head_v_mla()` 在没有 MLA 时直接退回普通的 head 维度。源码在字段声明处留下的注释说明了这套表示的来历："deepseek2 using MLA converts into MQA with larger heads, then decompresses to MHA"。
 
@@ -255,7 +255,7 @@ uint32_t llama_hparams::n_embd_head_v_mla() const {
 }
 ```
 
-## 九、★ MLA 在 KV cache 上的唯一痕迹
+## 九、MLA 在 KV cache 上的唯一痕迹
 
 cache 构造循环里，MLA 与非 MLA 走同一段代码，只在两处分开：`if (!is_mla)` 包住"V 的 head 维度统计"，以及 `has_v = !is_mla`。`has_v` 为假时 V 张量是 `nullptr` —— 后续所有 `v_stream` 与 `get_v()` 都走空路。这就是"压缩 KV"落到内存上的样子：**少一张张量**。
 
@@ -364,7 +364,7 @@ struct llama_model_mistral4 : public llama_model_deepseek2 {
 
 ## 十二、名实不符之二：只有六行的模型文件
 
-`src/models/mistral4.cpp` 全文如下。它没有 `load_arch_hparams`、没有 `load_arch_tensors`、没有图类 —— 因为三样都从 `llama_model_deepseek2` 继承。同类还有 `qwen3tts.cpp`（3 行，第 3 行是注释：`// llama_model_qwen3tts reuses llama_model_qwen3vl's hparams/tensors/graph logic`）、`t5encoder.cpp`（44 行，只有张量加载，图用 `llama_model_t5::graph<true>`）、`nomic-bert.cpp`（51 行，同理）。
+`src/models/mistral4.cpp` 全文如下。它没有 `load_arch_hparams`、没有 `load_arch_tensors`、没有图类 —— 因为三样都从 `llama_model_deepseek2` 继承。同类还有 `qwen3tts.cpp`（3 行，第 3 行是注释：`// llama_model_qwen3tts reuses llama_model_qwen3vl's hparams/tensors/graph logic`）、`t5encoder.cpp`（44 行，只有张量加载，图用 `llama_model_t5::graph<true>`）、`nomic-bert.cpp`（51 行，同理）、`paddleocr.cpp`（继承 `llama_model_ernie4_5`，只重写 `build_arch_graph`）。
 
 <!-- src: src/models/mistral4.cpp -->
 ```cpp
@@ -439,7 +439,7 @@ struct llama_model_dflash : public llama_model_base {
         ggml_tensor * inpSA = inpL;
 ```
 
-## 十五、★ 共享 KV 的图差异：不传 K/V
+## 十五、共享 KV 的图差异：不传 K/V
 
 这是本课验收点的直接证据。草稿模型的注意力只算 Q：权重清单里**没有 `wk` / `wv`**（`gemma4-assistant.cpp:59-60` 只创建 `wq` 与 `wo`），所以 `build_attn` 的第 6、7 个实参（`k_cur` / `v_cur`）只能是 `nullptr`。`build_attn` 内部 `if (k_cur)` / `if (v_cur)` 两段写 cache 的代码因此整段跳过，K/V 直接来自 `mctx_cur->get_k()/get_v()`。
 
@@ -459,7 +459,7 @@ struct llama_model_dflash : public llama_model_base {
                 Qcur, nullptr, nullptr, nullptr, nullptr, nullptr, hparams.f_attention_scale, il);
 ```
 
-## 十六、★ 共享 KV 的 cache 侧：层张量直接挂上
+## 十六、共享 KV 的 cache 侧：层张量直接挂上
 
 草稿模型"借"到的 K/V 张量是在 cache 构造时挂上的：`if (share && other)` 命中后执行 `layers.push_back(layer_share)`，草稿的第 `il` 层于是指向主模型某一层的**同一个** K/V 张量（日志里会打印两个指针）。提供层映射的 `share` 回调来自 `llama_model::create_memory()`，它把草稿的 SWA 层映射到主模型的倒数第 2 层、其余层映射到最后 1 层：
 
@@ -508,6 +508,6 @@ struct llama_model_dflash : public llama_model_base {
 
 ## 说明
 
-- 本课声明 36 个源文件：计划中 L2-15 的 36 个全部声明，**无一遗漏**。
+- 本课共覆盖 43 个源文件。其中 36 个是计划里 L2-15 的全部文件，**无一遗漏**。
 - 另有 7 个源文件被本课引用并计入覆盖，它们在计划里归别的课：`src/llama-hparams.h` / `src/llama-hparams.cpp`（L2-02）、`src/llama-graph.h` / `src/llama-graph.cpp`（L2-06）、`src/llama-kv-cache.cpp`（L2-04）、`src/llama-model.cpp`（L2-05，L2-04 也已借用）、`src/models/gemma4-assistant.cpp`（L2-14）。本课只引用它们与本课论题直接相关的少量行；各自的主覆盖仍在那七课。
 - 本课不讨论任何命令行参数，参数门禁的真值集来自真实二进制的帮助输出。

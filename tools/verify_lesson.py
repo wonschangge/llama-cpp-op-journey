@@ -91,7 +91,7 @@ def verify(d, quiet=False):
     m = re.search(r'(\d+) 个引用块 / (\d+) 个连续段', out)
     res['fid'] = (code == 0, f"{m.group(1)} 个引用块 / {m.group(2)} 个连续段逐字命中" if m else sanitize(out.strip()[-60:]))
 
-    code, out = run('check_flags.py', '--quiet')
+    code, out = run('check_flags.py', '--lesson', d, '--quiet')
     m = re.search(r'长选项 (\d+) 个 / 短选项 (\d+) 个，扫描 (\d+) 个文件、(\d+) 处引用', out)
     res['flags'] = (code == 0, (f"真值集 {m.group(1)} 长 / {m.group(2)} 短选项，"
                                 f"扫描 {m.group(3)} 文件 {m.group(4)} 处引用，0 处非法"

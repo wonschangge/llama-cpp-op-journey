@@ -237,7 +237,7 @@ struct llama_model_llama : public llama_model_base {
   kicker: "L2-15 · 变体二",
   title: "★ 有 SWA 和没 SWA，共用<span class=\"hl-a\">同一份图</span>",
   sub: "Plamo3 把整份图写成一个模板：只有\"注意力输入类型\"这一个类型别名随窗口开关切换。",
-  caption: "图里的实际落点只有三处：取哪个 cache、取哪张 mask、K/V 从哪来 —— 见 source.md 第五节。",
+  caption: "图里的实际落点只有三处：取哪个 cache、取哪张 mask、K/V 从哪来 —— 见 source.md 第七节。",
   src: "src/models/plamo3.cpp",
   mark: [1, 2, 5, 10, 20, 24, 26, 28],
   lineNo: 60,
@@ -316,10 +316,10 @@ llama_model_plamo3::graph<iswa>::graph(const llama_model & model, const llm_grap
   }
 },
 
-/* ------------------------------------------------------ 5 ★ <span class="hl-e">MLA</span>：压缩 KV，只体现为一个布尔量 */
+/* ------------------------------------------------------ 5 <span class="hl-e">MLA</span>：压缩 KV，只体现为一个布尔量 */
 {
   kicker: "L2-15 · 变体三",
-  title: "★ <span class=\"hl-e\">MLA</span>：压缩 KV，只体现为一个布尔量",
+  title: "<span class=\"hl-e\">MLA</span>：压缩 KV，只体现为一个布尔量",
   sub: "MLA 把 K/V 压成一份潜在向量再解压。在图这一层，它的全部痕迹是\"V 那一张张量不分配\"。",
   caption: "回顾 L2-04 幕 6：cache 自己拿 buffer，图只拿视图。MLA 少一张张量，就是少一份 buffer。",
   src: "src/llama-kv-cache.cpp",
