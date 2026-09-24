@@ -39,7 +39,7 @@
 3. **★ 图像是以"已算好的 embedding"进文本图的** — 源码注释把这句话写死了：an image arrives as an embd batch, so ubatch->token is null。
 4. **★ 文本图在入口处分叉：ubatch.token ? sqrtf(n_embd) : 1.0f** — Gemma 4 用同一个指针判断"这一批是 token 还是图像 embedding"，并据此决定要不要缩放。
 5. **视觉塔是另一张 ggml 图：先 conv2d 切 patch** — tools/mtmd 里的视觉塔有自己的 ggml_context 与 cgraph；它与文本图不共享节点，只共享"embedding 张量"这个概念。
-6. **★ 形状全链：[n_embd, n_patches] 到 [n_mmproj_embd, n_tokens]** — 每一步的 ne 都来自源码：ViT → pooler → projector，最后成为文本图入口的宽度。
+6. **★ 形状全链：[n_embd, n_patches] 到 [n_mmproj_embd, n_tokens]** — 每一步的 ne 都来自源码：ViT -> pooler -> projector，最后成为文本图入口的宽度。
 7. **拼接点：llama_batch 的 embd 字段** — 视觉塔的输出被拷成一条扁平 float 缓冲，再作为一个"没有 token 的 batch"交给 llama_decode。
 8. **同一个 LLM，四种"多模态"接法** — 判据都不是 token id，而是 ubatch.embd 这个指针 —— 图在构建时就知道自己是不是在处理媒体输入。
 9. **把这一课压成一张表** — 验收点：视觉塔的输出以什么形状喂给 LLM 部分。

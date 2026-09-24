@@ -66,23 +66,23 @@
   - 讲解要点：llama_batch 的 token 序列结构、ubatch 切分、模型构造与设备分配
   - 验收点：能说明一个 batch 是如何被切成 ubatch 并影响图形态的
   - 目录：`L2-model-to-graph/L2-05-batch-and-model-build/`
-- [ ] **`L2-06`** ★ 计算图骨架 llama-graph　`P0`　2 文件
+- [x] **`L2-06`** ★ 计算图骨架 llama-graph　`P0`　2 文件
   - 讲解要点：llm_graph_context、build_* 原语族（build_norm/build_attn/build_ffn/build_moe_ffn）
   - 验收点：能说出 build_moe_ffn 把一个 MoE 层展开成哪些 ggml 算子
   - 目录：`L2-model-to-graph/L2-06-graph-skeleton/`
-- [ ] **`L2-07`** ★ 上下文与解码 llama-context　`P0`　2 文件
+- [x] **`L2-07`** ★ 上下文与解码 llama-context　`P0`　2 文件
   - 讲解要点：decode 主流程、图构建→分配→计算的调用链、graph reuse
   - 验收点：能按顺序列出 llama_decode 内部从建图到 ggml_backend_sched_graph_compute 的每一步
   - 目录：`L2-model-to-graph/L2-07-context-and-decode/`
-- [ ] **`L2-08`** 采样器与词表　`P1`　8 文件
+- [x] **`L2-08`** 采样器与词表　`P1`　8 文件
   - 讲解要点：采样链、grammar 约束、BPE 分词与 unicode 规范化
   - 验收点：能说明采样为何在 CPU 上做而不进图
   - 目录：`L2-model-to-graph/L2-08-sampler-and-vocab/`
-- [ ] **`L2-09`** 量化、导出与适配器　`P1`　10 文件
+- [x] **`L2-09`** 量化、导出与适配器　`P1`　10 文件
   - 讲解要点：量化流水线、imatrix、LoRA 适配器如何改变图、对话模板
   - 验收点：能说出 LoRA 是在哪一步被加进图的
   - 目录：`L2-model-to-graph/L2-09-quant-export-adapter/`
-- [ ] **`L2-10`** 模型家族（一）：多模态与视觉编码　`P0`　6 文件
+- [x] **`L2-10`** 模型家族（一）：多模态与视觉编码　`P0`　6 文件
   - 讲解要点：视觉/音频编码器如何进入同一个图；mmproj 的算子与 LLM 部分如何拼接
   - 验收点：能说出视觉塔的输出以什么形状喂给 LLM 部分
   - 目录：`L2-model-to-graph/L2-10-models-multimodal/`

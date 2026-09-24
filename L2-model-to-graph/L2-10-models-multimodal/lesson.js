@@ -114,7 +114,7 @@ struct llama_model_clip : public llama_model_base {
     const defs = [
       { c: 'a', t: '接口契约', b: '模型基类要求实现三个虚函数：<br>load_arch_hparams / load_arch_tensors / build_arch_graph',
         m: 'struct llama_model_clip : public llama_model_base' },
-      { c: 'c', t: '为什么不能干脆删掉', b: 'llama-quantize 要打开 mmproj GGUF，就得按架构号查到<b>一个类型</b>；<br>没有类型，量化工具就打不开多模态模型',
+      { c: 'c', t: '为什么不能干脆删掉', b: 'clip.cpp 的注释写明它存在的唯一目的：<br>让 llama-quantize 能打开 <b>mmproj GGUF</b>',
         m: '// Stub to allow llama-quantize to open mmproj GGUFs' },
       { c: 'e', t: '为什么不能在这里实现', b: '真正的 CLIP 运行时在 tools/mtmd/clip.cpp（不在覆盖域）；<br>在 llama 侧再写一遍就是两套实现',
         m: 'GGML_ABORT' }
@@ -128,7 +128,7 @@ struct llama_model_clip : public llama_model_base {
       'models.h 是公共声明头：151 个 <span class="m">struct llama_model_*</span>，每个模型一个。',
       '<span class="v">三个虚函数</span>是所有架构都必须满足的接口：超参、权重张量、图构建。',
       'CLIP 也声明了这个类型，但 <span class="k">三个实现都 [[noreturn]]</span>：它从不被调用。',
-      '它存在的唯一理由是：<span class="k">让量化工具能按架构号打开 mmproj GGUF</span>。',
+      '它存在的唯一理由写在 clip.cpp 的注释里：<span class="k">让 llama-quantize 能打开 mmproj GGUF</span>。',
       '运行时在哪？下一幕看那一行注释指的路。'
     ];
     tl.at(400, () => { msg.innerHTML = texts[0]; });
@@ -321,7 +321,7 @@ struct llama_model_clip : public llama_model_base {
 {
   kicker: "L2-10 · 视觉塔",
   title: "★ 形状全链：<span class=\"hl-a\">[n_embd, n_patches]</span> 到 <span class=\"hl-a\">[n_mmproj_embd, n_tokens]</span>",
-  sub: "每一步的 ne 都来自源码：ViT → pooler → projector，最后成为文本图入口的宽度。",
+  sub: "每一步的 ne 都来自源码：ViT -> pooler -> projector，最后成为文本图入口的宽度。",
   caption: "术语回顾 L1-01：ne[0] 是最内层维度。这里 ne[0] 是特征宽度，ne[1] 是 token 数。",
   src: "tools/mtmd/models/gemma4v.cpp",
   mark: [0, 14, 19, 35, 36, 40],

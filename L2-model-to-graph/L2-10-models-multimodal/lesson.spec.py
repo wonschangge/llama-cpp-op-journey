@@ -108,7 +108,8 @@ tl.at(15600, () => {
 L.scene(
     kicker='L2-10 · 声明',
     title='<span class="hl-c">models.h</span>：为什么 llama 侧必须留一个空壳',
-    sub='架构类都要满足 llama_model_base 的接口；CLIP 也用同一个接口声明，只是三个实现全部 [[noreturn]]。',    caption='回顾 L2-06：build_arch_graph 返回 llm_graph_context —— 这是所有模型图构建的统一入口。',
+    sub='架构类都要满足 llama_model_base 的接口；CLIP 也用同一个接口声明，只是三个实现全部 [[noreturn]]。',
+    caption='回顾 L2-06：build_arch_graph 返回 llm_graph_context —— 这是所有模型图构建的统一入口。',
     src=SRC_MODELS, parts=[(399, 412)], duration=16000,
     mark_src=[400, 401, 404, 407, 410],
     notes_src={400: '这句注释是本课第一个可核对的事实：这些函数永远不会被调用',
@@ -297,7 +298,7 @@ tl.at(14600, () => { msg.innerHTML = texts[5]; });
 L.scene(
     kicker='L2-10 · 视觉塔',
     title='★ 形状全链：<span class="hl-a">[n_embd, n_patches]</span> 到 <span class="hl-a">[n_mmproj_embd, n_tokens]</span>',
-    sub='每一步的 ne 都来自源码：ViT → pooler → projector，最后成为文本图入口的宽度。',
+    sub='每一步的 ne 都来自源码：ViT -> pooler -> projector，最后成为文本图入口的宽度。',
     caption='术语回顾 L1-01：ne[0] 是最内层维度。这里 ne[0] 是特征宽度，ne[1] 是 token 数。',
     src=SRC_MTMD_GEMMA4, parts=[(76, 118)], duration=22000,
     mark_src=[76, 90, 95, 111, 112, 116],
@@ -542,7 +543,7 @@ L.section(
     '这是本课最短的文件，也是最能说明问题的一个。它给出三条 `GGML_ABORT`，'
     '并在注释里写明自己的身份（`Stub to allow llama-quantize to open mmproj GGUFs`），'
     '最后一行直接指路：**CLIP 在 llama 分发路径里没有推理图，运行时在 `tools/mtmd/clip.cpp`**。',
-    src=SRC_CLIP, parts=[(3, 17)], lang='c')
+    src=SRC_CLIP, parts=[(3, 18)], lang='c')
 
 L.section(
     '三、视觉塔的契约（tools/mtmd/clip-graph.h）',
@@ -557,7 +558,7 @@ L.section(
     '视觉塔算完之后，代码并不去"找名字"，而是**取这张图的最后一个节点**当输出，'
     '并用它的 `ne[1]` 校验 token 数。这是"视觉塔输出一个张量"这句话最直接的证据。\n\n'
     '> 同样在 `tools/`，不计入覆盖率。',
-    src=SRC_MTMD_CLIP, parts=[(5769, 5786)], lang='c')
+    src=SRC_MTMD_CLIP, parts=[(5771, 5786)], lang='c')
 
 L.section(
     '五、两个 n_embd 必须相等（tools/mtmd/mtmd.cpp）',
@@ -568,10 +569,10 @@ L.section(
 
 L.section(
     '六、拷成一条扁平缓冲（tools/mtmd/mtmd.cpp）',
-    '视觉塔的输出张量被拷成一条扁平 `std::vector<float>`，长度 = 宽度 × token 数。'
+    '视觉塔的输出张量被拷成一条扁平 `std::vector<float>`，长度 = 宽度 x token 数。'
     '这条缓冲随后就是 `llama_batch.embd` 指向的内存。\n\n'
     '> 同样在 `tools/`，不计入覆盖率。',
-    src=SRC_MTMD_MAIN, parts=[(1774, 1795)], lang='c')
+    src=SRC_MTMD_MAIN, parts=[(1774, 1798)], lang='c')
 
 L.section(
     '七、音频侧：pockettts 的文本主干',
@@ -585,7 +586,7 @@ L.section(
     'Gemma 4 的 per-layer 嵌入需要按 token 查表。图像批次没有 token id，'
     '于是源码走"多模态 embedding 路径"：用 padding token（ID=0）的嵌入，'
     '并保留了"这未必与 transformers 实现一致"的 TODO。',
-    src=SRC_GEMMA4, parts=[(456, 469)], lang='c')
+    src=SRC_GEMMA4, parts=[(456, 470)], lang='c')
 
 L.section(
     '九、qwen4exp：图像 token 的 id 来自元数据',

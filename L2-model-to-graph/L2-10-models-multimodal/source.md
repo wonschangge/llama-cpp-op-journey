@@ -63,6 +63,7 @@ void llama_model_clip::load_arch_tensors(llama_model_loader &) {
 [[noreturn]]
 std::unique_ptr<llm_graph_context> llama_model_clip::build_arch_graph(const llm_graph_params &) const {
     GGML_ABORT("CLIP has no inference graph via llama_model dispatch; runtime lives in tools/mtmd/clip.cpp");
+}
 ```
 
 ## 三、视觉塔的契约（tools/mtmd/clip-graph.h）
@@ -96,8 +97,6 @@ std::unique_ptr<llm_graph_context> llama_model_clip::build_arch_graph(const llm_
 
 <!-- src: tools/mtmd/clip.cpp -->
 ```c
-    }
-
     // the last node is the embedding tensor, code2wav has no out_embd
     ggml_tensor * embeddings = params->out_embd ? ggml_graph_node(gf, -1) : nullptr;
 
@@ -137,7 +136,7 @@ mtmd 在建上下文时就断言：mmproj 的输出宽度必须等于文本模�
 
 ## 六、拷成一条扁平缓冲（tools/mtmd/mtmd.cpp）
 
-视觉塔的输出张量被拷成一条扁平 `std::vector<float>`，长度 = 宽度 × token 数。这条缓冲随后就是 `llama_batch.embd` 指向的内存。
+视觉塔的输出张量被拷成一条扁平 `std::vector<float>`，长度 = 宽度 x token 数。这条缓冲随后就是 `llama_batch.embd` 指向的内存。
 
 > 同样在 `tools/`，不计入覆盖率。
 
@@ -164,6 +163,9 @@ static int32_t mtmd_encode_impl(mtmd_context * ctx, const mtmd_image_tokens * im
         ctx->n_threads,
         &image_tokens->batch_f32,
         out_embd);
+
+    return ok ? 0 : 1;
+}
 
 ```
 
@@ -217,6 +219,7 @@ Gemma 4 的 per-layer 嵌入需要按 token 查表。图像批次没有 token id
         inp_per_layer = ggml_reshape_3d(ctx0, inp_per_layer, n_embd_per_layer, n_layer, 1);
         cb(inp_per_layer, "inp_per_layer_multimodal", -1);
     }
+    return inp_per_layer;
 ```
 
 ## 九、qwen4exp：图像 token 的 id 来自元数据
