@@ -45,7 +45,7 @@ static inline void ggml_bitset_clear(ggml_bitset_t * bitset, size_t i) {
 
 ## 二、hash set 的分配与容量策略
 
-表本身只有两个数组：`keys`（指针）与 `used`（位图），`ggml_hash_set_new()` 一次把两者建好。容量不走"两倍扩容"，而是查一张写死的质数表：注释说明这些数是 "next primes after powers of two"，二分找出第一个不小于需求的值；如果需求超出表长，就退化成 `min_sz | 1`（奇数）。第 7 幕看到的 `size * 2` 就是传给它的需求 —— 因为一张表要同时装下 nodes 与 leafs。注意注释里的"next primes after powers of two"是有道理的：质数取模能让线性探测的聚集更均匀，而当前实现是"建图时定容、表满即 abort"，不做任何扩容。
+表本身只有两个数组：`keys`（指针）与 `used`（位图），`ggml_hash_set_new()` 一次把两者建好。容量不走"两倍扩容"，而是查一张写死的质数表：注释说明这些数是 "next primes after powers of two"，二分找出第一个不小于需求的值；如果需求超出表长，就退化成 `min_sz | 1`（奇数）。建图时传给它的需求是 `size * 2` —— 因为一张表要同时装下 nodes 与 leafs（段落末尾的引用给出注释原文）。注意注释里的"next primes after powers of two"是有道理的：质数取模能让线性探测的聚集更均匀，而当前实现是"建图时定容、表满即 abort"，不做任何扩容。
 
 <!-- src: ggml/src/ggml.c -->
 ```c
@@ -57,7 +57,7 @@ struct ggml_hash_set ggml_hash_set_new(size_t size) {
     result.used = GGML_CALLOC(ggml_bitset_size(size), sizeof(ggml_bitset_t));
     return result;
 }
-//>> ---- ggml/src/ggml.c:6631-6654 ----
+//>> ---- ggml/src/ggml.c:6631-6655 ----
 size_t ggml_hash_size(size_t min_sz) {
     // next primes after powers of two
     static const size_t primes[] = {
@@ -82,6 +82,10 @@ size_t ggml_hash_size(size_t min_sz) {
     }
     size_t sz = l < n_primes ? primes[l] : min_sz | 1;
     return sz;
+}
+//>> ---- ggml/src/ggml.c:7482-7483 ----
+    // the size of the hash table is doubled since it needs to hold both nodes and leafs
+    size_t hash_size = ggml_hash_size(size * 2);
 ```
 
 ## 三、为什么标记位不能打在张量上
@@ -205,5 +209,5 @@ typedef std::unique_ptr<ggml_backend_sched,  ggml_backend_sched_deleter>  ggml_b
 
 - 本课声明 3 个源文件：`ggml/src/ggml.c`（主）、`ggml/src/ggml-impl.h`（`struct ggml_cgraph` 与 `struct ggml_hash_set` 的定义与实现所在）、`ggml/include/ggml-cpp.h`（C++ RAII 包装层）。三者都在覆盖域内，均计入覆盖率。
 - `ggml_graph_plan()` / `ggml_graph_compute()` 这一版不在 `ggml.c` 里（它们属于 CPU 后端的 `ggml-cpu`）。本课只说"顺序被后端按 nodes[] 消费"，不引用其源码，具体展开见 L4-04。
-- 第 7 幕提到的 GGML_DEFAULT_GRAPH_SIZE（默认图容量）定义在 `ggml/include/ggml.h`，该文件由 L1-01 覆盖；本课不引用其行号，故不计入本课声明。
-- 工程备注：`tools/check_flags.py` 的 `strip_verbatim()` 会把 lesson.js 的**内容**当作路径传给 `dump_scenes.js`，node 因此把整份内容回显到 stderr，而该回显在 65536 字节处被截断（实测 `stderr 长度 = 2 x 文件字节 + 51`）。截断点落在多字节字符中间时，Python 的 `text=True` 解码会抛 `UnicodeDecodeError`，整个参数门禁失败。本课的 `visual` 因此写得紧凑，把 lesson.js 控制在 32742 字节以内。
+- GGML_DEFAULT_GRAPH_SIZE（默认图容量）定义在 `ggml/include/ggml.h`，该文件由 L1-01 覆盖；本课不引用其行号，故不计入本课声明。
+- 工程备注（历史）：本课写作期间 `tools/check_flags.py` 的 `strip_verbatim()` 把 lesson.js 的**内容**当路径传给 `dump_scenes.js`，node 回显整份内容到 stderr 并在 65536 字节处截断（实测 `stderr = 2 x 文件字节 + 51`）；截断点落在多字节字符中间时 Python 的 strict 解码会抛 `UnicodeDecodeError`，整个参数门禁失败。该缺陷已由 3385a08 修复（现在传的是路径，且解码用 `errors="replace"`、不再静默降级）。缺陷存在期间本课 `visual` 写得紧凑、把 lesson.js 压到 32 KB 上下；修复后这个限制已消失，较长的解释仍留在 `source.md`。
