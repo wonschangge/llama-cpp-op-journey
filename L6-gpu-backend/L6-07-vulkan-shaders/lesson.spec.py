@@ -606,8 +606,9 @@ const texts = [
   'K-quant 的块是 <span class="k">super-block</span>：256 个元素，8 个 sub-block 各 32 个。',
   '每个 sub-block 有自己的 6-bit scale。8 个 x 6 bit = 48 bit，正好塞进 ' +
   '<span class="v">scales[12]</span>（12 字节 = 96 bit，另一半留给 min）。',
-  '第 <span class="v">19-21</span> 行一次取 3 个 uint32（每个含 2 个 scale），' +
-  '第 <span class="v">23-26</span> 行用移位/掩码把它们摊成 8 个浮点 scale。',
+  '第 <span class="v">19-21</span> 行一次取 3 个 16-bit 槽' +
+  '（<span class="v">scales[]</span> 一共 6 个 uint16 = 12 字节），' +
+  '第 <span class="v">23-26</span> 行用移位/掩码把它们摊成 8 个 6-bit scale。',
   '第 <span class="v">12-13</span> 行：一个 super-block 的数据被劈成 ' +
   '<span class="v">y1_idx</span>（前 128 元素）与 <span class="v">y2_idx</span>（后 128）。',
   '第 <span class="v">37-38</span> 行取 qs：<span class="v">q_offset/4</span> 与 <span class="v">+16</span> —— ' +
