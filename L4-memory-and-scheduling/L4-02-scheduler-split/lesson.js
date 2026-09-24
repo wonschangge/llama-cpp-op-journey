@@ -146,7 +146,7 @@ struct ggml_backend_sched {
       '<span class="v">backends[] / bufts[]</span>：后端是有序的，'
         + '<span class="k">下标就是优先级</span>（0 最高）。',
       '<span class="v">hv_tensor_backend_ids</span>：归属的答案存在这里。'
-        + '它按张量指针哈希，所以整张图 5000 个节点也是一次哈希查找。',
+        + '它按张量指针哈希（见 844 行的 <span class="k">hash_id</span> 宏），一次归属查询就是一次查表。',
       '<span class="v">hv_tensor_copies</span>：<span class="k">跨段搬运的"目标"在这里</span>。'
         + '一个源张量，在每个可能需要它的后端上，各有一份副本。',
       '<span class="v">splits[]</span>：切分结果。注意 <span class="k">i_start / i_end 是图上的下标</span>，'
@@ -387,8 +387,8 @@ struct ggml_backend_sched {
         + '如果它正好是最后一个（CPU）……',
       '……并且权重在 <span class="v">host</span> 内存里，'
         + '<span class="k">就从 0 开始找有没有更靠前的后端愿意接</span>（for b &lt; src_backend_id）。',
-      '注意 <span class="v">offload_op</span> 是后端自己的意见：'
-        + '有些后端对"值不值得"有判断（比如 op 太小、搬运不划算），它会说不。',
+      '注意 <span class="v">offload_op</span> 是后端自己的意见：它和 supports_op 是两个不同的判断'
+        + '（头文件第 110 行把两者分开声明）。',
       '抢到了会怎样？归属只决定"谁来算"，<span class="k">数据怎么到位是 pass 5 的事</span>：'
         + '这个 host 上的权重会在边界被造一份副本搬过去（第 12 节）。'
     ];
@@ -672,7 +672,7 @@ struct ggml_backend_sched {
     const texts = [
       'alloc_graph 是"要开始跑了"的入口。它只有两步，但第一步是整课的重点。',
       '<span class="v">第一步 split_graph()</span>：重新算归属、重新切段、重新造副本。'
-        + '每换一张图（哪怕只是 batch 变了）都要重来一遍。',
+        + '每分配一张新图都要重来一遍。',
       '<span class="v">第二步 alloc_splits()</span>：把带后端 id 的图交给 galloc —— '
         + '<span class="k">L4-01 的 arena 按这些 id 决定每段的张量落在哪个 buffer</span>。',
       '<span class="v">cur_copy / next_copy</span>：并行（流水线）模式下，每次 alloc 换一份副本，'

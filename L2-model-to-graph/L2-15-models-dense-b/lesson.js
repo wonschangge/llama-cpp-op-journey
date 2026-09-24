@@ -13,7 +13,7 @@ const SCENES = [
 {
   kicker: "L2 · 从模型到图",
   title: "36 个模型文件，两类差异",
-  sub: "每课一个视角：这一课问的是\"这 36 个文件之间的差异，是配置的差异，还是结构的差异\"。",
+  sub: "本课一个视角：这 36 个文件之间的差异，是配置的差异，还是结构的差异。",
   caption: "L2-14 已覆盖 37 个文件（稠密主干上篇）；本课覆盖规划里剩下的 36 个，全部在 src/models/ 下。",
   src: "src/models/models.h",
   mark: [4, 6, 7, 9, 14],
@@ -109,9 +109,9 @@ struct llama_model_llama : public llama_model_base {
     const host = wrap.querySelector('#shapes');
 
     const rows = [
-      { n: 'Qcur', s: '[ n_embd_head,  n_head,     n_tokens ]', c: 'a', b: '32 个 Q 头' },
-      { n: 'Kcur', s: '[ n_embd_head,  n_head_kv,  n_tokens ]', c: 'b', b: '8 个 KV 头' },
-      { n: 'Vcur', s: '[ n_embd_head,  n_head_kv,  n_tokens ]', c: 'b', b: '8 个 KV 头' },
+      { n: 'Qcur', s: '[ n_embd_head,  n_head,     n_tokens ]', c: 'a', b: 'n_head 个 Q 头' },
+      { n: 'Kcur', s: '[ n_embd_head,  n_head_kv,  n_tokens ]', c: 'b', b: 'n_head_kv 个 KV 头' },
+      { n: 'Vcur', s: '[ n_embd_head,  n_head_kv,  n_tokens ]', c: 'b', b: 'n_head_kv 个 KV 头' },
       { n: 'kqv_out', s: '[ n_embd_head,  n_head,     n_tokens ]', c: 'c', b: '输出回到 Q 的头数' }
     ];
     const els = rows.map(r => {
@@ -125,9 +125,9 @@ struct llama_model_llama : public llama_model_base {
     els.forEach(e => e.style.opacity = '.30');
 
     const note = U.el('div', { class: 'card', style: 'border-left-color:var(--d)' });
-    note.innerHTML = '<div class="ct" style="color:var(--d)">四个头共享一组 K/V</div>' +
-      '<div class="cb">n_head / n_head_kv = 32 / 8 = <b>4</b>：每 4 个 Q 头共用一组 K/V，' +
-      'KV cache 因此只有 MHA 的 1/4。<br>' +
+    note.innerHTML = '<div class="ct" style="color:var(--d)">n_head / n_head_kv = 一组 Q 头共用一个 KV 头</div>' +
+      '<div class="cb">这个比值就是 GQA 的<b>组大小</b>；它等于 1 时退化成 MHA。' +
+      'KV cache 的体量随之按 <b>n_head_kv / n_head</b> 缩小。<br>' +
       'KV 头数在 hparams 里是<b>逐层数组</b>（<span class="cm" style="margin:0">n_head_kv_arr[]</span>），' +
       '所以同一份 build_qkv 代码能同时表达 MHA（相等）和 GQA（不等）。</div>';
     host.appendChild(note);
@@ -281,7 +281,7 @@ llama_model_plamo3::graph<iswa>::graph(const llama_model & model, const llm_grap
 
     const br = wrap.querySelector('#br');
     const left = U.card({ c: 'c', t: 'swa_type != LLAMA_SWA_TYPE_NONE',
-      b: '13 行代码的全部差异：<br>图类变成 <b>graph&lt;true&gt;</b>，<br>注意力输入变成 iswa 版。', m: 'graph<true>' },
+      b: '两条 return 的全部差异：<br>图类变成 <b>graph&lt;true&gt;</b>，<br>注意力输入变成 iswa 版。', m: 'graph<true>' },
       { style: 'width:296px' });
     const right = U.card({ c: 'b', t: 'swa_type == LLAMA_SWA_TYPE_NONE',
       b: '同一个图类模板的另一个实参：<br><b>graph&lt;false&gt;</b>，<br>注意力输入是普通 KV 版。', m: 'graph<false>' },
@@ -291,7 +291,7 @@ llama_model_plamo3::graph<iswa>::graph(const llama_model & model, const llm_grap
 
     const pts = wrap.querySelector('#pts');
     pts.innerHTML = '<div class="card" style="border-left-color:var(--a)">' +
-      '<div class="ct" style="color:var(--a)">图侧的三处三元表达式（llama-graph.cpp:3133 / 3148 / 3151）</div>' +
+      '<div class="ct" style="color:var(--a)">图侧的三处三元表达式（llama-graph.cpp:3133 / 3148 / 3151-3152）</div>' +
       '<div class="cb">' +
       '<div class="cm" style="margin:2px 0">mctx_cur = is_swa ? mctx_iswa-&gt;get_swa() : mctx_iswa-&gt;get_base()</div>' +
       '<div class="cm" style="margin:2px 0">kq_mask  = is_swa ? inp-&gt;get_kq_mask_swa() : inp-&gt;get_kq_mask()</div>' +
@@ -395,7 +395,7 @@ llama_model_plamo3::graph<iswa>::graph(const llama_model & model, const llm_grap
   lineNo: 24,
   code: `enum llama_swa_type {
     LLAMA_SWA_TYPE_NONE      = 0,
-//>> 本课没有文件用 NONE 之外的第三种语义：STANDARD 四个、SYMMETRIC 一个
+//>> 本课的 5 个窗口文件里，4 个用 STANDARD、1 个用 SYMMETRIC；CHUNKED 没有出现
     LLAMA_SWA_TYPE_STANDARD  = 1,
     LLAMA_SWA_TYPE_CHUNKED   = 2,
     LLAMA_SWA_TYPE_SYMMETRIC = 3,
@@ -627,7 +627,7 @@ llama_model_plamo3::graph<iswa>::graph(const llama_model & model, const llm_grap
     root.appendChild(wrap);
 
     const defs = [
-      { c: 'd', t: '① 谁跟谁共享', b: '草稿 context 的 <b>cparams.ctx_other</b> 指回主模型 context（speculative.cpp:2555 设置）。', m: 'llama-context.cpp' },
+      { c: 'd', t: '① 谁跟谁共享', b: '草稿 context 的 <b>cparams.ctx_other</b> 指回主模型 context —— 在 common/speculative.cpp:2555 赋值。', m: 'cparams.ctx_other' },
       { c: 'c', t: '② 建 memory 时给出层映射', b: 'create_memory 为草稿装 <b>share</b> 回调：SWA 层映射到主模型倒数第 2 层，其余映射到最后 1 层。', m: 'llama-model.cpp:2690-2698' },
       { c: 'b', t: '③ cache 里不分配，直接挂上', b: 'share && other 命中时执行 <b>layers.push_back(layer_share)</b> —— 草稿层拿到的是主模型层的同一个 K/V 张量。', m: 'llama-kv-cache.cpp:176-190' },
       { c: 'a', t: '④ 图上只差两个实参', b: 'build_attn(..., Qcur, nullptr, nullptr, ...)：K/V 从共享张量读，草稿自己不写 cache。', m: 'gemma4-assistant.cpp:150-151' }
@@ -690,7 +690,7 @@ llama_model_plamo3::graph<iswa>::graph(const llama_model & model, const llm_grap
       [['Q/K/V 头数', 'n_head = n_head_kv', 'GQA：n_head_kv < n_head', '同主模型（借它的头数）'],
        ['注意力范围', '全上下文', 'SWA：每层一个窗口开关', '随主模型的层（SWA 层映射到 SWA 层）'],
        ['KV 张量', 'K 一张 + V 一张', 'MLA：只有 K 一张', '一张都不建，挂主模型的'],
-       ['层数', 'n_layer 层', '不变', 'n_layer_nextn 层（常为 1）'],
+       ['层数', 'n_layer 层', '不变', 'n_layer_nextn 层（草稿层）'],
        ['权重清单', 'wq / wk / wv / wo', '不变', '只有 wq / wo（没有 wk / wv）'],
        ['图代码差异', '——', '一个类型别名 / 一个布尔量', 'build_attn 少传两个实参']],
       { monoCols: [] });

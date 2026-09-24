@@ -3,8 +3,8 @@
 
 运行：python3 L2-model-to-graph/L2-13-models-moe-b/lesson.spec.py
 
-本课是 L2-12（MoE 上）的下篇。L2-12 覆盖静态扫描分出的前 12 个 MoE 文件，
-讲 `build_moe_ffn` 的**基础序列**；本课覆盖后 12 个（清单由
+本课是 L2-12（MoE 上）的下篇。L2-12 覆盖静态扫描分出的前 24 个 MoE 文件，
+讲 `build_moe_ffn` 的**基础序列**；本课覆盖后 24 个（清单由
 `python3 tools/plan_matrix.py --files` 里 `L2-13` 这一行给出，共 24 个文件），
 讲同一骨架的**参数**如何被不同模型选成不同的路由策略：
 共享专家、分组路由、以及 MoE 与注意力变体的组合。
@@ -192,7 +192,7 @@ rows.forEach((r, i) => tl.at(2400 + i * 2400, () => {
 }));
 tl.at(22800, () => {
   rows.forEach(x => { x.className = ''; });
-  msg.innerHTML = texts[10];
+  msg.innerHTML = texts[9];
 });
 '''
 )
@@ -302,7 +302,7 @@ L.scene(
     kicker='L2-13 · 24 个调用点',
     title='同一个函数，<span class="hl-c">21 个调用点</span>各选不同的开关',
     sub='20 个文件共 21 处调用；下表每一格都是对这 24 个文件静态统计出来的。',
-    caption='L2-12 覆盖的另外 12 个 MoE 文件走的是同一张参数表。',
+    caption='L2-12 覆盖的另外 24 个 MoE 文件走的是同一张参数表。',
     src='src/models/step35.cpp', parts=[(512, 522)], duration=20000,
     mark_src=[512, 517, 519, 520, 521],
     visual='''
@@ -335,9 +335,9 @@ const texts = [
 tl.at(600, () => { msg.innerHTML = texts[0]; });
 rows.forEach((r, i) => tl.at(3000 + i * 3000, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
-  msg.innerHTML = texts[Math.min(i + 1, 7)];
+  msg.innerHTML = texts[Math.min(i + 1, 6)];
 }));
-tl.at(18300, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[7]; });
+tl.at(18300, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[6]; });
 '''
 )
 
@@ -477,7 +477,7 @@ L.scene(
     kicker='L2-13 · 总表',
     title='把 24 个文件压成 <span class="hl-d">一张表</span>',
     sub='每格都写了证据行号；共享专家与分组路由是两条互不相干的开关。',
-    caption='完整的 24 行逐文件表在 source.md 的第五节。',
+    caption='完整的 24 行逐文件表在 source.md 的第六节（六 · 逐文件证据）。',
     src=HPARAMS_H, parts=[(110, 127)], duration=26000,
     mark_src=[110, 112, 114, 115, 124, 125, 126, 127],
     visual='''

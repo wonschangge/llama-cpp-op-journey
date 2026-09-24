@@ -281,10 +281,10 @@ llama_model_mamba::graph::graph(const llama_model & model, const llm_graph_param
   }
 },
 
-/* ------------------------------------------------------ 4 ★ <span class="hl-c">ggml_ssm_scan</span> 的 7 个输入：形状写在注释里 */
+/* ------------------------------------------------------ 4 <span class="hl-c">ggml_ssm_scan</span> 的 7 个输入：形状写在注释里 */
 {
   kicker: "L2-11 · 核心 · SSM",
-  title: "★ <span class=\"hl-c\">ggml_ssm_scan</span> 的 7 个输入：形状写在注释里",
+  title: "<span class=\"hl-c\">ggml_ssm_scan</span> 的 7 个输入：形状写在注释里",
   sub: "内核开头七行就是权威的输入契约。8 个参数（含 K）分别描述状态、输入、步长、衰减与选择矩阵。",
   caption: "输出张量的构造在 ggml/src/ggml.c:5739-5751（逐字见 source.md 第三节）：长度 = nelements(x) + K * s->ne[0] * s->ne[1] * s->ne[2] * ids->ne[0]。",
   src: "ggml/src/ggml-cpu/ops.cpp",
@@ -786,10 +786,10 @@ llama_model_mamba::graph::graph(const llama_model & model, const llm_graph_param
   }
 },
 
-/* ------------------------------------------------------ 10 ★ 一张表收束：<span class="hl-a">记忆</span>决定图的形状 */
+/* ------------------------------------------------------ 10 一张表收束：<span class="hl-a">记忆</span>决定图的形状 */
 {
   kicker: "L2-11 · 收束",
-  title: "★ 一张表收束：<span class=\"hl-a\">记忆</span>决定图的形状",
+  title: "一张表收束：<span class=\"hl-a\">记忆</span>决定图的形状",
   sub: "同一层里，\"怎么记\"比\"算什么\"更能决定图长什么样 —— 这就是本课与稠密家族课的分界。",
   caption: "下一课 L2-12：MoE 家族（上），看稀疏专家怎么在图上展开；本课的混合模型（jamba / granite-hybrid / qwen3next 等）在那一课还会再出现。",
   src: "src/models/bailingmoe3.cpp",
