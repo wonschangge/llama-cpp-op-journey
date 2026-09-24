@@ -435,7 +435,7 @@ const SCENES = [
 {
   kicker: "L2-13 · 发现",
   title: "<span class=\"hl-a\">借图</span>：3 个文件自己没有 MoE 图",
-  sub: "phimoe.cpp（55 行）没有一行 build_moe_ffn —— 它的 MoE 行为由 phi3.cpp:153 决定。",
+  sub: "phimoe.cpp 是这 24 个文件里最短的一个，全篇没有一行 build_moe_ffn —— 它的 MoE 行为由 phi3.cpp:153 决定。",
   caption: "同类的还有 nomic-bert-moe（借 bert）、minicpm（借 granite）。",
   src: "src/models/models.h",
   mark: [0, 2, 3, 5, 6],
@@ -467,7 +467,7 @@ const SCENES = [
     const msg = wrap.querySelector('#msg');
     const texts = [
       '24 个文件里 <span class="k">21 个</span>在 models.h 里声明了自己的 <span class="v">struct graph</span>；<br>剩下 <span class="k">3 个</span>只是把别人的图 <span class="v">using</span> 过来。',
-      'phimoe.cpp 全文 55 行：hparams、张量声明、选图，仅此而已。',
+      'phimoe.cpp 全文只有三段：hparams、张量声明、选图，仅此而已。',
       '<span class="k">文件行数少不等于模型简单</span>：PhiMoE 的路由图完全长在 phi3.cpp 里，<br>靠 <span class="v">ffn_gate_inp == nullptr</span> 分流（phi3.cpp:143）。',
       '这也是静态扫描会把它分到"MoE 文件"的原因 —— 它命中了 <span class="v">ffn_gate_inp</span>，<br>但命中的是<b>张量名</b>，不是图原语。'
     ];

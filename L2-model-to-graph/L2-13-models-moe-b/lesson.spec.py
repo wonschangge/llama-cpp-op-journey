@@ -397,7 +397,7 @@ tl.at(15600, () => { msg.innerHTML = texts[4]; U.markLines(document, __MD__); })
 L.scene(
     kicker='L2-13 · 发现',
     title='<span class="hl-a">借图</span>：3 个文件自己没有 MoE 图',
-    sub='phimoe.cpp（55 行）没有一行 build_moe_ffn —— 它的 MoE 行为由 phi3.cpp:153 决定。',
+    sub='phimoe.cpp 是这 24 个文件里最短的一个，全篇没有一行 build_moe_ffn —— 它的 MoE 行为由 phi3.cpp:153 决定。',
     caption='同类的还有 nomic-bert-moe（借 bert）、minicpm（借 granite）。',
     src=MODELS_H, parts=[(657, 666)], duration=16000,
     mark_src=[657, 659, 660, 662, 663],
@@ -417,7 +417,7 @@ wrap.querySelector('#tbl').appendChild(t.el);
 const msg = wrap.querySelector('#msg');
 const texts = [
   '24 个文件里 <span class="k">21 个</span>在 models.h 里声明了自己的 <span class="v">struct graph</span>；<br>剩下 <span class="k">3 个</span>只是把别人的图 <span class="v">using</span> 过来。',
-  'phimoe.cpp 全文 55 行：hparams、张量声明、选图，仅此而已。',
+  'phimoe.cpp 全文只有三段：hparams、张量声明、选图，仅此而已。',
   '<span class="k">文件行数少不等于模型简单</span>：PhiMoE 的路由图完全长在 phi3.cpp 里，<br>靠 <span class="v">ffn_gate_inp == nullptr</span> 分流（phi3.cpp:143）。',
   '这也是静态扫描会把它分到"MoE 文件"的原因 —— 它命中了 <span class="v">ffn_gate_inp</span>，<br>但命中的是<b>张量名</b>，不是图原语。'
 ];
@@ -645,30 +645,30 @@ L.section(
 # ---------------------------------------------------------------- 逐文件证据（24 个）
 
 _PER_FILE = [
-    ('llada-moe.cpp', 163, '全篇唯一一处 build_moe_ffn；norm_w 写死 false，exp_probs_b 传 nullptr。文件里没有 shexp，也没有 n_expert_groups。', [(126, 137)]),
-    ('llama.cpp', 250, '`llama` 架构在 `hparams.n_ff_shexp > 0` 时声明三张共享专家张量。但它的图（196-217）传给 `build_moe_ffn` 的是 `ffn_*_exps_s`（每专家缩放），**不是 shexp** —— 全文件 `shexp` 出现 4 次，全在这 5 行的声明里。', [(84, 88)]),
-    ('llama4.cpp', 272, '共享专家走 `build_ffn` + `ggml_add`，没有自己的门控；MoE 侧 `gating_op` 是 `SIGMOID`、`norm_w` 是 `false`。llama4 在 `build_moe_ffn` 体内还有两处 arch 特判（`llama-graph.cpp:2020` 的 `weight_before_ffn`、2072-2074 的 `selection_probs = logits`）。', [(230, 241)]),
-    ('maple.cpp', 150, '唯一把 `w_scale` 写成字面量 `1.0f` 的调用点（其余 20 处都读 `hparams.expert_weights_scale`）。MAPLE 在 `build_moe_ffn` 里另有一处 arch 特判：`llama-graph.cpp:2228` 的 swiglu clamp 分支。', [(121, 131)]),
-    ('mellum.cpp', 219, '用 18 参数的重载：除权重外还传 `ffn_up_exps_s` / `ffn_gate_exps_s` / `ffn_down_exps_s` 三个每专家缩放张量。', [(172, 188)]),
-    ('mimo2.cpp', 396, '传 `ffn_exp_probs_b`（选择偏置），`gating_op` 是 `SIGMOID`。同文件另有 `graph_mtp`（`models.h:2555`），MTP 分支里还要再走一次 FFN。', [(206, 220)]),
-    ('minicpm.cpp', 89, '声明了 MoE 与共享专家张量，但 `build_arch_graph` 用的是 `llama_model_granite::graph`（`models.h:1739`）—— 全文件 0 处 `build_moe_ffn`。', [(70, 81)]),
-    ('minimax-01.cpp', 484, '`exp_probs_b` + `SOFTMAX` + `norm_w=true`；FFN 之后还有 `f_residual_scale`（455 行）。', [(442, 453)]),
-    ('minimax-m2.cpp', 168, '`gating_op` 不写死，转成 `hparams.expert_gating_func` —— 概率函数由 GGUF 决定。', [(130, 140)]),
-    ('minimax-m3.cpp', 608, '路由专家用 `LLM_FFN_SWIGLU_OAI_MOE` 激活；`norm_w` 与 `gating_op` 都读 hparams。共享专家宽度是 `n_ff_exp * n_expert_shared`（79-81），它是本课 24 个文件里**唯一**读 `n_expert_shared` 的。', [(559, 582)]),
-    ('mistral3.cpp', 235, '18 参数重载（每专家缩放）。共享专家张量在 80-83 声明，但 MoE 分支（186-209）里没有接 —— 全文件 `shexp` 只出现在声明处。', [(193, 207)]),
-    ('nemotron-h-moe.cpp', 164, '`gate_exps` 传 `nullptr`（源码注释 "no gate"），激活换成 `LLM_FFN_RELU_SQR`；第 13 个参数传 `router_logits`，路由 logits 在 100 行已用 `build_lora_mm` 算好。', [(115, 130)]),
-    ('nomic-bert-moe.cpp', 56, '用 `hparams.moe_every_n_layers` 决定哪些层是 MoE（37 行），图借 `llama_model_bert::graph`（`models.h:341`）。', [(37, 46)]),
-    ('olmoe.cpp', 173, '基础组合里最"素"的一个：`norm_w=false`、无偏置、`SOFTMAX`、无 shexp。', [(136, 146)]),
-    ('openai-moe.cpp', 175, '**唯一**使用 17 参数"带偏置"重载的调用点（`ffn_gate_inp_b` 等 4 组偏置）；`gating_op` 是 `SOFTMAX_WEIGHT`，即 softmax 作用在**选中的权重**上（`llama-graph.cpp:2127-2132`）。', [(131, 142)]),
-    ('phi3.cpp', 196, '稠密与 MoE 共用同一张图，靠 `ffn_gate_inp == nullptr` 分流；`build_arch_graph` 按 `swa_type` 在 `graph<true>` / `graph<false>` 之间选（59-65）。PhiMoE 借的就是这张图。', [(143, 164)]),
-    ('phimoe.cpp', 55, '只有 hparams、张量声明与选图三段：38-41 声明四张 MoE 张量（这就是静态扫描把它分进 MoE 组的原因），48-54 按 `swa_type` 选 `graph<iswa>`。**0 处 `build_moe_ffn`**，MoE 行为完全由 `phi3.cpp:153` 决定。', [(38, 41)]),
-    ('qwen2moe.cpp', 194, '共享专家有自己的门控：`ffn_gate_inp_shexp`（54 行，形状 `[n_embd]`）出标量，经 sigmoid 门（151）乘到共享专家输出上，再在 165 行加回 `moe_out`。24 个文件里只有它声明 `LLM_TENSOR_FFN_GATE_INP_SHEXP`。', [(145, 166)]),
-    ('qwen3moe.cpp', 179, '18 参数重载 + `norm_w=true`；无 shexp、无偏置。', [(136, 152)]),
-    ('qwen3vlmoe.cpp', 190, 'MoE 侧参数与 qwen3moe 逐字相同（SILU / true / hparams.expert_weights_scale / SOFTMAX）。差别不在 MoE：这个文件里 `clip_` / `vision` / `mmproj` 命中 0 次，视觉塔在 `tools/mtmd` 里（不计入本课覆盖率，见 L2-10）。', [(144, 156)]),
-    ('refact.cpp', 160, '按 `n_expert == 0`（50 行）分别声明稠密与 MoE 张量，MoE 分支里连共享专家张量都建了；但它的 `graph` 的 FFN 只有一条 `build_ffn`（128-133），全文件 0 处 `build_moe_ffn`。', [(59, 70)]),
-    ('rnd1.cpp', 177, '基础组合：`nullptr` 偏置、`norm_w=true`、`SOFTMAX`、无 shexp。', [(138, 150)]),
-    ('smallthinker.cpp', 188, '`gate_inp` 传 `nullptr`，第 14 个参数传 `probs`（109 行算好）；激活是 `LLM_FFN_RELU`。', [(148, 159)]),
-    ('step35.cpp', 560, '主干与 MTP 各一处 MoE 调用（313 / 512），参数全部读 hparams；共享专家用 `build_ffn` + `ggml_add`（327-335 / 525-533）。', [(512, 533)]),
+    ('llada-moe.cpp', 164, '全篇唯一一处 build_moe_ffn；norm_w 写死 false，exp_probs_b 传 nullptr。文件里没有 shexp，也没有 n_expert_groups。', [(126, 137)]),
+    ('llama.cpp', 251, '`llama` 架构在 `hparams.n_ff_shexp > 0` 时声明三张共享专家张量。但它的图（196-217）传给 `build_moe_ffn` 的是 `ffn_*_exps_s`（每专家缩放），**不是 shexp** —— 全文件 `shexp` 出现 4 次，全在这 5 行的声明里。', [(84, 88)]),
+    ('llama4.cpp', 273, '共享专家走 `build_ffn` + `ggml_add`，没有自己的门控；MoE 侧 `gating_op` 是 `SIGMOID`、`norm_w` 是 `false`。llama4 在 `build_moe_ffn` 体内还有两处 arch 特判（`llama-graph.cpp:2020` 的 `weight_before_ffn`、2072-2074 的 `selection_probs = logits`）。', [(230, 241)]),
+    ('maple.cpp', 151, '唯一把 `w_scale` 写成字面量 `1.0f` 的调用点（其余 20 处都读 `hparams.expert_weights_scale`）。MAPLE 在 `build_moe_ffn` 里另有一处 arch 特判：`llama-graph.cpp:2228` 的 swiglu clamp 分支。', [(121, 131)]),
+    ('mellum.cpp', 220, '用 18 参数的重载：除权重外还传 `ffn_up_exps_s` / `ffn_gate_exps_s` / `ffn_down_exps_s` 三个每专家缩放张量。', [(172, 188)]),
+    ('mimo2.cpp', 397, '传 `ffn_exp_probs_b`（选择偏置），`gating_op` 是 `SIGMOID`。同文件另有 `graph_mtp`（`models.h:2555`），MTP 分支里还要再走一次 FFN。', [(206, 220)]),
+    ('minicpm.cpp', 90, '声明了 MoE 与共享专家张量，但 `build_arch_graph` 用的是 `llama_model_granite::graph`（`models.h:1739`）—— 全文件 0 处 `build_moe_ffn`。', [(70, 81)]),
+    ('minimax-01.cpp', 485, '`exp_probs_b` + `SOFTMAX` + `norm_w=true`；FFN 之后还有 `f_residual_scale`（455 行）。', [(442, 453)]),
+    ('minimax-m2.cpp', 169, '`gating_op` 不写死，转成 `hparams.expert_gating_func` —— 概率函数由 GGUF 决定。', [(130, 140)]),
+    ('minimax-m3.cpp', 609, '路由专家用 `LLM_FFN_SWIGLU_OAI_MOE` 激活；`norm_w` 与 `gating_op` 都读 hparams。共享专家宽度是 `n_ff_exp * n_expert_shared`（79-81），它是本课 24 个文件里**唯一**读 `n_expert_shared` 的。', [(559, 582)]),
+    ('mistral3.cpp', 236, '18 参数重载（每专家缩放）。共享专家张量在 80-83 声明，但 MoE 分支（186-209）里没有接 —— 全文件 `shexp` 只出现在声明处。', [(193, 207)]),
+    ('nemotron-h-moe.cpp', 165, '`gate_exps` 传 `nullptr`（源码注释 "no gate"），激活换成 `LLM_FFN_RELU_SQR`；第 13 个参数传 `router_logits`，路由 logits 在 100 行已用 `build_lora_mm` 算好。', [(115, 130)]),
+    ('nomic-bert-moe.cpp', 57, '用 `hparams.moe_every_n_layers` 决定哪些层是 MoE（37 行），图借 `llama_model_bert::graph`（`models.h:341`）。', [(37, 46)]),
+    ('olmoe.cpp', 174, '基础组合里最"素"的一个：`norm_w=false`、无偏置、`SOFTMAX`、无 shexp。', [(136, 146)]),
+    ('openai-moe.cpp', 176, '**唯一**使用 17 参数"带偏置"重载的调用点（`ffn_gate_inp_b` 等 4 组偏置）；`gating_op` 是 `SOFTMAX_WEIGHT`，即 softmax 作用在**选中的权重**上（`llama-graph.cpp:2127-2132`）。', [(131, 142)]),
+    ('phi3.cpp', 197, '稠密与 MoE 共用同一张图，靠 `ffn_gate_inp == nullptr` 分流；`build_arch_graph` 按 `swa_type` 在 `graph<true>` / `graph<false>` 之间选（59-65）。PhiMoE 借的就是这张图。', [(143, 164)]),
+    ('phimoe.cpp', 56, '只有 hparams、张量声明与选图三段：38-41 声明四张 MoE 张量（这就是静态扫描把它分进 MoE 组的原因），48-54 按 `swa_type` 选 `graph<iswa>`。**0 处 `build_moe_ffn`**，MoE 行为完全由 `phi3.cpp:153` 决定。', [(38, 41)]),
+    ('qwen2moe.cpp', 195, '共享专家有自己的门控：`ffn_gate_inp_shexp`（54 行，形状 `[n_embd]`）出标量，经 sigmoid 门（151）乘到共享专家输出上，再在 165 行加回 `moe_out`。24 个文件里只有它声明 `LLM_TENSOR_FFN_GATE_INP_SHEXP`。', [(145, 166)]),
+    ('qwen3moe.cpp', 180, '18 参数重载 + `norm_w=true`；无 shexp、无偏置。', [(136, 152)]),
+    ('qwen3vlmoe.cpp', 191, 'MoE 侧参数与 qwen3moe 逐字相同（SILU / true / hparams.expert_weights_scale / SOFTMAX）。差别不在 MoE：这个文件里 `clip_` / `vision` / `mmproj` 命中 0 次，视觉塔在 `tools/mtmd` 里（不计入本课覆盖率，见 L2-10）。', [(144, 156)]),
+    ('refact.cpp', 161, '按 `n_expert == 0`（50 行）分别声明稠密与 MoE 张量，MoE 分支里连共享专家张量都建了；但它的 `graph` 的 FFN 只有一条 `build_ffn`（128-133），全文件 0 处 `build_moe_ffn`。', [(59, 70)]),
+    ('rnd1.cpp', 178, '基础组合：`nullptr` 偏置、`norm_w=true`、`SOFTMAX`、无 shexp。', [(138, 150)]),
+    ('smallthinker.cpp', 189, '`gate_inp` 传 `nullptr`，第 14 个参数传 `probs`（109 行算好）；激活是 `LLM_FFN_RELU`。', [(148, 159)]),
+    ('step35.cpp', 561, '主干与 MTP 各一处 MoE 调用（313 / 512），参数全部读 hparams；共享专家用 `build_ffn` + `ggml_add`（327-335 / 525-533）。', [(512, 533)]),
 ]
 
 for _name, _nlines, _prose, _parts in _PER_FILE:

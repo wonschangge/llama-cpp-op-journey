@@ -90,6 +90,18 @@ def lint_one(d):
             errs.append('JS 语法错误: ' + (r.stderr.strip().split('\n')[0:3] and
                                            ' | '.join(r.stderr.strip().split('\n')[:3])))
         else:
+            # ★ 静默错误检查：Python 的 repr() 会把元组写成 ("a","b","c")，
+            #   这在 JS 里是【逗号表达式】—— 每行塌缩成最后一个字符串。
+            #   node --check 通过、渲染门禁 0 错误 0 溢出，但表格内容全错。
+            #   由 L2-11 子代理实测踩到（dump DOM 才发现）。
+            with open(ljs, encoding='utf-8') as fh:
+                body = fh.read()
+            for m in re.finditer(r'\[\s*\(', body):
+                ln = body[:m.start()].count('\n') + 1
+                errs.append(f'第 {ln} 行疑似 Python 元组写进 JS（["(" 开头]）：'
+                            f'在 JS 里会变成逗号表达式，每行只剩最后一个值。'
+                            f'请改成嵌套数组 [[...],[...]] 或 JSROWS() 辅助函数')
+                break
             r2 = subprocess.run(['node', os.path.join(HERE, 'tools', 'dump_scenes.js'), ljs],
                                 capture_output=True, text=True)
             try:

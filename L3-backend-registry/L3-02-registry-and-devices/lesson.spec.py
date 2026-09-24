@@ -73,7 +73,7 @@ const texts = [
 ];
 tl.at(700, () => { msg.innerHTML = texts[0]; U.markLines(document, [1, 2]); });
 tl.at(3600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [5, 6]); });
-tl.at(6800, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [4]); });
+tl.at(6800, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [5, 6]); });
 tl.at(10000, () => { els[2].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, []); });
 tl.at(13000, () => { els.forEach(e => e.style.opacity = '1'); msg.innerHTML = texts[4]; });
 '''
@@ -221,15 +221,13 @@ wrap.innerHTML = `
   <div class="flow wrap" style="justify-content:center">
     <span class="chip">进程启动</span><span class="arrow">-></span>
     <span class="chip a">第一次调用 ggml_backend_*</span><span class="arrow">-></span>
-    <span class="chip b">get_reg() 构造 registro</span><span class="arrow">-></span>
+    <span class="chip b">get_reg() 构造 registry</span><span class="arrow">-></span>
     <span class="chip c">16 个 #ifdef 注册静态后端</span><span class="arrow">-></span>
     <span class="chip d">load_all() 追加动态后端</span>
   </div>
   <div class="row center" id="cards" style="gap:9px"></div>
   <div class="formula" id="msg"></div>`;
 root.appendChild(wrap);
-const flow = wrap.querySelector('.flow');
-flow.innerHTML = flow.innerHTML.replace('registro', 'registry');
 
 const defs = [
   { c: 'c', t: '注册表是懒的', b: '没有任何全局初始化函数：<br>第一次触碰才构造，构造即注册。' },
@@ -249,7 +247,7 @@ const texts = [
   '于是“有哪些后端”= <span class="k">编译期静态集合</span> ∪ <span class="k">运行期加载的集合</span>，且前者总是先来。',
   '顺序也由此定死：<span class="k">静态后端永远排在动态后端前面</span>。'
 ];
-tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1, 2]); });
+tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1]); });
 tl.at(3700, () => { msg.innerHTML = texts[1]; U.markLines(document, [0]); });
 tl.at(6700, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [6, 7, 8]); });
 tl.at(9700, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, []); });
@@ -459,8 +457,8 @@ const texts = [
   '它的价值：把“数据怎么切到多张卡”这件事<b>藏在一个设备后面</b>；<br>调度器仍然以为自己在跟一个设备打交道（L4-02）。拆开看是 <span class="v">simple_devs</span>。'
 ];
 tl.at(700,  () => { msg.innerHTML = texts[0]; U.markLines(document, [0, 1, 2]); });
-tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [3, 4, 5]); });
-tl.at(6600, () => { els[3].style.opacity = '1'; els[4].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [22, 23, 24]); });
+tl.at(3600, () => { els[0].style.opacity = '1'; msg.innerHTML = texts[1]; U.markLines(document, [3, 5]); });
+tl.at(6600, () => { els[3].style.opacity = '1'; els[4].style.opacity = '1'; msg.innerHTML = texts[2]; U.markLines(document, [23, 24, 25, 27, 28]); });
 tl.at(9600, () => { els[1].style.opacity = '1'; msg.innerHTML = texts[3]; U.markLines(document, []); });
 tl.at(12600,() => { els[2].style.opacity = '1'; msg.innerHTML = texts[3]; });
 tl.at(15600,() => { els[5].style.opacity = '1'; msg.innerHTML = texts[4]; });

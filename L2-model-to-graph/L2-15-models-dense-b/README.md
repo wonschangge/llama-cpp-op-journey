@@ -56,9 +56,9 @@
 | `src/llama-kv-cache.cpp` | 2818 |
 | `src/models/gemma4-assistant.cpp` | 201 |
 | `src/llama-graph.h` | 1391 |
+| `src/llama-model.cpp` | 3360 |
 | `src/llama-graph.cpp` | 3916 |
 | `src/llama-hparams.cpp` | 354 |
-| `src/llama-model.cpp` | 3360 |
 
 > **说明**：本课声明 36 个源文件：计划中 L2-15 的 36 个全部声明，**无一遗漏**。
 > **说明**：另有 7 个源文件被本课引用并计入覆盖，它们在计划里归别的课：`src/llama-hparams.h` / `src/llama-hparams.cpp`（L2-02）、`src/llama-graph.h` / `src/llama-graph.cpp`（L2-06）、`src/llama-kv-cache.cpp`（L2-04）、`src/llama-model.cpp`（L2-05，L2-04 也已借用）、`src/models/gemma4-assistant.cpp`（L2-14）。本课只引用它们与本课论题直接相关的少量行；各自的主覆盖仍在那七课。
@@ -103,9 +103,9 @@
 
 ## 验收点
 
-- [x] 保真门禁：25 处引用 —— 25 个引用块 / 46 个连续段逐字命中
-- [x] 覆盖度门禁：本课声明 43 项，无空课、无幻影；全局覆盖 255/1290
-- [x] 参数门禁：真值集 381 长 / 76 短选项，扫描 81 文件 15 处引用，0 处非法
+- [x] 保真门禁：26 处引用 —— 26 个引用块 / 47 个连续段逐字命中
+- [x] 覆盖度门禁：本课声明 43 项，无空课、无幻影；全局覆盖 256/1290
+- [x] 参数门禁：真值集 381 长 / 76 短选项，扫描 84 文件 15 处引用，0 处非法
 - [x] 语法检查：0 错误 / 0 警告
 - [x] 渲染门禁：10 幕 —— 1 页面 x 2 分辨率，0 错误 / 0 溢出
 

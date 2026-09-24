@@ -671,14 +671,24 @@ L.section(
     src=SRC_HPARAMS, parts=[(170, 183)], lang='cpp')
 
 L.section(
-    '五、窗口只有四种语义',
+    '五、周期怎么变成逐层开关',
+    '`load_swa_pattern()` 只做两件事：先试着从元数据里直接读一个逐层数组（`get_arr`），'
+    '读不到就把"周期"展开。展开规则在 `llama_hparams::set_swa_pattern()` 里：'
+    '`is_swa_impl[il] = n_pattern == 0 || (il % n_pattern < (n_pattern - 1))`。'
+    '所以 `load_swa_pattern(ml, 4)` 得到的是"每 4 层里前 3 层 SWA、第 4 层全上下文"；'
+    '`dense_first = true` 时判据反过来，周期里的第一层是稠密层 —— modern-bert 用的就是 '
+    '`load_swa_pattern(ml, 3, true)`。',
+    src=SRC_MODEL, parts=[(3308, 3315)], lang='cpp')
+
+L.section(
+    '六、窗口只有四种语义',
     '`is_masked_swa()` 是全仓库**唯一**判断"这个位置对那个位置可见吗"的地方 —— '
     '无论有没有 KV cache 都走它。四个 `case` 就是四种窗口语义。'
     '注意它的参数是 `(n_swa, swa_type, p0, p1)`：只有位置，没有张量。',
     src=SRC_HPARAMS, parts=[(471, 500)], lang='cpp')
 
 L.section(
-    '六、窗口在图上的三个落点',
+    '七、窗口在图上的三个落点',
     '`build_attn` 的 iswa 版里，`is_swa(il)` 只被用来做三次选择：'
     '读哪一套 cache（`get_swa()` / `get_base()`）、读哪一张 mask、往哪里写 K/V。'
     '这三行就是"SWA 在图上"的全部。'
@@ -687,7 +697,7 @@ L.section(
     src=SRC_GRAPH, parts=[(3131, 3154)], lang='cpp')
 
 L.section(
-    '七、★ MLA 是一组超参，不是一个算子',
+    '八、★ MLA 是一组超参，不是一个算子',
     '`is_mla()` 的判据是两个 impl 字段同时非零；'
     '`n_embd_head_k_mla()` / `n_embd_head_v_mla()` 在没有 MLA 时直接退回普通的 head 维度。'
     '源码在字段声明处留下的注释说明了这套表示的来历：'
@@ -695,7 +705,7 @@ L.section(
     src=SRC_HP_CPP, parts=[(297, 318)], lang='cpp')
 
 L.section(
-    '八、★ MLA 在 KV cache 上的唯一痕迹',
+    '九、★ MLA 在 KV cache 上的唯一痕迹',
     'cache 构造循环里，MLA 与非 MLA 走同一段代码，只在两处分开：'
     '`if (!is_mla)` 包住"V 的 head 维度统计"，以及 `has_v = !is_mla`。'
     '`has_v` 为假时 V 张量是 `nullptr` —— 后续所有 `v_stream` 与 `get_v()` 都走空路。'
@@ -703,7 +713,7 @@ L.section(
     src=SRC_KVC, parts=[(200, 237)], lang='cpp')
 
 L.section(
-    '九、36 个文件的注意力变体清单',
+    '十、36 个文件的注意力变体清单',
     '依据行的含义：纯数字是该文件的行号；`hN` 指 `src/models/models.h` 第 N 行。\n\n'
     '| 文件 | 注意力输入 / 变体 | 依据行 |\n|---|---|---|\n'
     '| `maincoder.cpp` | `build_attn_inp_kv()` + QK-norm | 61 |\n'
@@ -747,7 +757,7 @@ L.section(
     )
 
 L.section(
-    '十、名实不符之一：`using graph = ...`',
+    '十一、名实不符之一：`using graph = ...`',
     '`models.h` 里有一批类不自己写图，而是用一行别名把别族的图借过来。'
     '本课涉及的四处：`llama_model_nomic_bert`（第 330 行，借 `llama_model_bert::graph`）、'
     '`llama_model_mistral4`（第 1397 行，借 `llama_model_deepseek2::graph`）、'
@@ -757,7 +767,7 @@ L.section(
     src=SRC_MODELS, parts=[(1393, 1400)], lang='cpp')
 
 L.section(
-    '十一、名实不符之二：只有六行的模型文件',
+    '十二、名实不符之二：只有六行的模型文件',
     '`src/models/mistral4.cpp` 全文如下。它没有 `load_arch_hparams`、没有 `load_arch_tensors`、'
     '没有图类 —— 因为三样都从 `llama_model_deepseek2` 继承。'
     '同类还有 `qwen3tts.cpp`（3 行，第 3 行是注释：'
@@ -767,7 +777,7 @@ L.section(
     src=SRC_MISTRAL, parts=[(1, 6)], lang='cpp')
 
 L.section(
-    '十二、草稿模型的声明：两个独立的模型类',
+    '十三、草稿模型的声明：两个独立的模型类',
     '草稿模型不是"主模型的一个开关"，而是 `models.h` 里**独立的两个类**：'
     '`llama_model_eagle3` 与 `llama_model_dflash`。'
     '它们的图都带一个 `template <bool is_enc>` 与一个主模型没有的输入构造函数 `build_inp_embd_enc()`：'
@@ -776,7 +786,7 @@ L.section(
     src=SRC_MODELS, parts=[(1357, 1390)], lang='cpp')
 
 L.section(
-    '十三、主模型侧的钩子：导出每层输入',
+    '十四、主模型侧的钩子：导出每层输入',
     '草稿模型需要主模型中间层的隐藏状态。主模型的图为此只加了一行：'
     '在层循环开头把 `inpL` 存进 `res->t_layer_inp[il]`。'
     '`llm_graph_result::set_outputs()` 会对被请求的层调 `ggml_set_output()`（`llama-graph.cpp:1375-1383`），'
@@ -785,7 +795,7 @@ L.section(
     src=SRC_QWEN3, parts=[(62, 74)], lang='cpp')
 
 L.section(
-    '十四、★ 共享 KV 的图差异：不传 K/V',
+    '十五、★ 共享 KV 的图差异：不传 K/V',
     '这是本课验收点的直接证据。草稿模型的注意力只算 Q：'
     '权重清单里**没有 `wk` / `wv`**（`gemma4-assistant.cpp:59-60` 只创建 `wq` 与 `wo`），'
     '所以 `build_attn` 的第 6、7 个实参（`k_cur` / `v_cur`）只能是 `nullptr`。'
@@ -794,7 +804,7 @@ L.section(
     src=SRC_ASSIST, parts=[(140, 151)], lang='cpp')
 
 L.section(
-    '十五、★ 共享 KV 的 cache 侧：层张量直接挂上',
+    '十六、★ 共享 KV 的 cache 侧：层张量直接挂上',
     '草稿模型"借"到的 K/V 张量是在 cache 构造时挂上的：'
     '`if (share && other)` 命中后执行 `layers.push_back(layer_share)`，'
     '草稿的第 `il` 层于是指向主模型某一层的**同一个** K/V 张量（日志里会打印两个指针）。'
@@ -803,7 +813,7 @@ L.section(
     src=SRC_MODEL, parts=[(2687, 2698)], lang='cpp')
 
 L.section(
-    '十六、挂上之后：cache 构造函数里的那一跳',
+    '十七、挂上之后：cache 构造函数里的那一跳',
     '上面那个 `share` 回调在 cache 构造循环里被消费。命中时**不 new 任何张量**，'
     '而是把主模型 cache 里的那一层整体 push 进自己的 `layers`：'
     '`map_layer_ids[il]` 因此指向一个共享项，`layers.back().il` 被改写成草稿的层号。'

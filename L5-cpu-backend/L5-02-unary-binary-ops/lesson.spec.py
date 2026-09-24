@@ -632,8 +632,8 @@ L.section(
     '八、binary-ops.h：加 / 减 / 乘 / 除的四个入口',
     '头文件只有 16 行，其中 4 行是函数声明。`add` 的入口名字是 '
     '`ggml_compute_forward_add_non_quantized` —— 名字里的 "non_quantized" 是给 `ops.cpp` 用的：'
-    '`ggml_compute_forward_add()` 先按类型分流，非量化类型才转发到这里，量化类型另走 '
-    '`ggml_compute_forward_add_q_f32`（见下一节的 `ops.cpp:654` 附近）。',
+    '`ggml_compute_forward_add()` 先按类型分流：非量化类型才转发到这里，量化类型另走 '
+    '`ggml_compute_forward_add_q_f32`（`ops.cpp:578`，分流开关在 `ops.cpp:654`）。',
     src=BHDR, parts=[(9, 12)], lang='c')
 
 L.section(
@@ -647,7 +647,12 @@ L.section(
     src=OCPP, parts=[(47, 56), (526, 545)], lang='c')
 
 L.section(
-    '十、ops.cpp 里的三个特例',
+    '十、ops.cpp 里的类型分流与三个特例',
+    '`ggml_compute_forward_add()` 是"二元算子怎么遇到量化类型"的答案：'
+    'f32 / f16 / bf16 转发到 `binary-ops.cpp` 的模板，**所有量化类型**改走 '
+    '`ggml_compute_forward_add_q_f32`。后者对量化类型先 `dequantize_row_q` 到线程私有的 '
+    '`wdata` 缓冲区、用 `ggml_vec_acc_f32` 加上 src1、再用 `quantize_row_q` 写回目标类型 —— '
+    '`to_float` / `from_float` 这两个函数指针就来自 L1-04 讲的类型 traits。\n\n'
     '`ADD1`：第二个输入必须是**标量张量**（`ggml_is_scalar`），语义是"整行加同一个数"。\n\n'
     '`SCALE`：**没有第二个输入张量**，scale 与 bias 从 `op_params` 里 memcpy 出来 —— '
     'L1-01 讲的那 64 字节在这里被真正使用。\n\n'
@@ -655,7 +660,7 @@ L.section(
     '越界写 0。它标着 `TODO: optimize / multi-thread`，并且 `GGML_UNUSED(params)` —— 目前是单线程的。\n\n'
     '关于 "sliding window"：这个词在 `ggml-cpu/` 下只出现一次（`ops.cpp:9734`，SSM 卷积的缓存窗口）。'
     '逐元素家族里的"窗口"变体是 `WIN_PART` / `WIN_UNPART` 这类分窗算子，不是注意力里的滑动窗口。',
-    src=OCPP, parts=[(775, 790), (4697, 4711), (10030, 10038)], lang='c')
+    src=OCPP, parts=[(654, 671), (775, 790), (4697, 4711), (10030, 10038)], lang='c')
 
 L.section(
     '十一、实测：这些 SIMD 到底从哪来',

@@ -175,7 +175,7 @@ root.appendChild(wrap);
 const defs = [
   { c: 'a', k: 'SOFTMAX', m: 'ggml_soft_max', b: '整行归一化，<br>概率和 = 1。<br>最主流。' },
   { c: 'd', k: 'SIGMOID', m: 'ggml_sigmoid', b: '逐元素独立，<br>和不必为 1。<br>DeepSeek-V3 起。' },
-  { c: 'f', k: 'SQRT_SOFTPLUS', m: 'ggml_sqrt(ggml_softplus(x))', b: '开方 + softplus，<br>非负。<br>少见。' },
+  { c: 'f', k: 'SQRT_SOFTPLUS', m: 'ggml_sqrt', b: '先 ggml_softplus，<br>再 ggml_sqrt 开方，<br>结果非负。少见。' },
   { c: 'e', k: 'SOFTMAX_WEIGHT', m: 'probs = logits', b: '此处不门控，<br>挪到 weights 上做。' }
 ];
 const host = wrap.querySelector('#cards');

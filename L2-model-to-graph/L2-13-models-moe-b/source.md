@@ -212,7 +212,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
             cur = moe_out;
 ```
 
-## 六 · `llada-moe.cpp`（163 行，引用 126-137）
+## 六 · `llada-moe.cpp`（164 行，引用 126-137）
 
 全篇唯一一处 build_moe_ffn；norm_w 写死 false，exp_probs_b 传 nullptr。文件里没有 shexp，也没有 n_expert_groups。
 
@@ -232,7 +232,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
         cb(cur, "ffn_moe_out", il);
 ```
 
-## 六 · `llama.cpp`（250 行，引用 84-88）
+## 六 · `llama.cpp`（251 行，引用 84-88）
 
 `llama` 架构在 `hparams.n_ff_shexp > 0` 时声明三张共享专家张量。但它的图（196-217）传给 `build_moe_ffn` 的是 `ffn_*_exps_s`（每专家缩放），**不是 shexp** —— 全文件 `shexp` 出现 4 次，全在这 5 行的声明里。
 
@@ -245,7 +245,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
                 layer.ffn_down_shexp = create_tensor(tn(LLM_TENSOR_FFN_DOWN_SHEXP, "weight", i), {hparams.n_ff_shexp, n_embd}, 0);
 ```
 
-## 六 · `llama4.cpp`（272 行，引用 230-241）
+## 六 · `llama4.cpp`（273 行，引用 230-241）
 
 共享专家走 `build_ffn` + `ggml_add`，没有自己的门控；MoE 侧 `gating_op` 是 `SIGMOID`、`norm_w` 是 `false`。llama4 在 `build_moe_ffn` 体内还有两处 arch 特判（`llama-graph.cpp:2020` 的 `weight_before_ffn`、2072-2074 的 `selection_probs = logits`）。
 
@@ -265,7 +265,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
             cb(cur, "ffn_moe_out_merged", il);
 ```
 
-## 六 · `maple.cpp`（150 行，引用 121-131）
+## 六 · `maple.cpp`（151 行，引用 121-131）
 
 唯一把 `w_scale` 写成字面量 `1.0f` 的调用点（其余 20 处都读 `hparams.expert_weights_scale`）。MAPLE 在 `build_moe_ffn` 里另有一处 arch 特判：`llama-graph.cpp:2228` 的 swiglu clamp 分支。
 
@@ -284,7 +284,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
                 il);
 ```
 
-## 六 · `mellum.cpp`（219 行，引用 172-188）
+## 六 · `mellum.cpp`（220 行，引用 172-188）
 
 用 18 参数的重载：除权重外还传 `ffn_up_exps_s` / `ffn_gate_exps_s` / `ffn_down_exps_s` 三个每专家缩放张量。
 
@@ -309,7 +309,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
         cb(moe_out, "ffn_moe_out", il);
 ```
 
-## 六 · `mimo2.cpp`（396 行，引用 206-220）
+## 六 · `mimo2.cpp`（397 行，引用 206-220）
 
 传 `ffn_exp_probs_b`（选择偏置），`gating_op` 是 `SIGMOID`。同文件另有 `graph_mtp`（`models.h:2555`），MTP 分支里还要再走一次 FFN。
 
@@ -332,7 +332,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
         }
 ```
 
-## 六 · `minicpm.cpp`（89 行，引用 70-81）
+## 六 · `minicpm.cpp`（90 行，引用 70-81）
 
 声明了 MoE 与共享专家张量，但 `build_arch_graph` 用的是 `llama_model_granite::graph`（`models.h:1739`）—— 全文件 0 处 `build_moe_ffn`。
 
@@ -352,7 +352,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
             }
 ```
 
-## 六 · `minimax-01.cpp`（484 行，引用 442-453）
+## 六 · `minimax-01.cpp`（485 行，引用 442-453）
 
 `exp_probs_b` + `SOFTMAX` + `norm_w=true`；FFN 之后还有 `f_residual_scale`（455 行）。
 
@@ -372,7 +372,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
         cb(cur, "ffn_moe_out", il);
 ```
 
-## 六 · `minimax-m2.cpp`（168 行，引用 130-140）
+## 六 · `minimax-m2.cpp`（169 行，引用 130-140）
 
 `gating_op` 不写死，转成 `hparams.expert_gating_func` —— 概率函数由 GGUF 决定。
 
@@ -391,7 +391,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
                 il);
 ```
 
-## 六 · `minimax-m3.cpp`（608 行，引用 559-582）
+## 六 · `minimax-m3.cpp`（609 行，引用 559-582）
 
 路由专家用 `LLM_FFN_SWIGLU_OAI_MOE` 激活；`norm_w` 与 `gating_op` 都读 hparams。共享专家宽度是 `n_ff_exp * n_expert_shared`（79-81），它是本课 24 个文件里**唯一**读 `n_expert_shared` 的。
 
@@ -423,7 +423,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
 
 ```
 
-## 六 · `mistral3.cpp`（235 行，引用 193-207）
+## 六 · `mistral3.cpp`（236 行，引用 193-207）
 
 18 参数重载（每专家缩放）。共享专家张量在 80-83 声明，但 MoE 分支（186-209）里没有接 —— 全文件 `shexp` 只出现在声明处。
 
@@ -446,7 +446,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
                     model.layers[il].ffn_down_exps_s);
 ```
 
-## 六 · `nemotron-h-moe.cpp`（164 行，引用 115-130）
+## 六 · `nemotron-h-moe.cpp`（165 行，引用 115-130）
 
 `gate_exps` 传 `nullptr`（源码注释 "no gate"），激活换成 `LLM_FFN_RELU_SQR`；第 13 个参数传 `router_logits`，路由 logits 在 100 行已用 `build_lora_mm` 算好。
 
@@ -470,7 +470,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
                 layer.ffn_down_exps_s);
 ```
 
-## 六 · `nomic-bert-moe.cpp`（56 行，引用 37-46）
+## 六 · `nomic-bert-moe.cpp`（57 行，引用 37-46）
 
 用 `hparams.moe_every_n_layers` 决定哪些层是 MoE（37 行），图借 `llama_model_bert::graph`（`models.h:341`）。
 
@@ -488,7 +488,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
         }
 ```
 
-## 六 · `olmoe.cpp`（173 行，引用 136-146）
+## 六 · `olmoe.cpp`（174 行，引用 136-146）
 
 基础组合里最"素"的一个：`norm_w=false`、无偏置、`SOFTMAX`、无 shexp。
 
@@ -507,7 +507,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
                 il);
 ```
 
-## 六 · `openai-moe.cpp`（175 行，引用 131-142）
+## 六 · `openai-moe.cpp`（176 行，引用 131-142）
 
 **唯一**使用 17 参数"带偏置"重载的调用点（`ffn_gate_inp_b` 等 4 组偏置）；`gating_op` 是 `SOFTMAX_WEIGHT`，即 softmax 作用在**选中的权重**上（`llama-graph.cpp:2127-2132`）。
 
@@ -527,7 +527,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
                 il);
 ```
 
-## 六 · `phi3.cpp`（196 行，引用 143-164）
+## 六 · `phi3.cpp`（197 行，引用 143-164）
 
 稠密与 MoE 共用同一张图，靠 `ffn_gate_inp == nullptr` 分流；`build_arch_graph` 按 `swa_type` 在 `graph<true>` / `graph<false>` 之间选（59-65）。PhiMoE 借的就是这张图。
 
@@ -557,7 +557,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
             cb(cur, "ffn_moe_out", il);
 ```
 
-## 六 · `phimoe.cpp`（55 行，引用 38-41）
+## 六 · `phimoe.cpp`（56 行，引用 38-41）
 
 只有 hparams、张量声明与选图三段：38-41 声明四张 MoE 张量（这就是静态扫描把它分进 MoE 组的原因），48-54 按 `swa_type` 选 `graph<iswa>`。**0 处 `build_moe_ffn`**，MoE 行为完全由 `phi3.cpp:153` 决定。
 
@@ -569,7 +569,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
         layer.ffn_up_exps   = create_tensor(tn(LLM_TENSOR_FFN_UP_EXPS,   "weight", i), {n_embd, n_ff,   n_expert}, 0);
 ```
 
-## 六 · `qwen2moe.cpp`（194 行，引用 145-166）
+## 六 · `qwen2moe.cpp`（195 行，引用 145-166）
 
 共享专家有自己的门控：`ffn_gate_inp_shexp`（54 行，形状 `[n_embd]`）出标量，经 sigmoid 门（151）乘到共享专家输出上，再在 165 行加回 `moe_out`。24 个文件里只有它声明 `LLM_TENSOR_FFN_GATE_INP_SHEXP`。
 
@@ -599,7 +599,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
             cb(moe_out, "ffn_out", il);
 ```
 
-## 六 · `qwen3moe.cpp`（179 行，引用 136-152）
+## 六 · `qwen3moe.cpp`（180 行，引用 136-152）
 
 18 参数重载 + `norm_w=true`；无 shexp、无偏置。
 
@@ -624,7 +624,7 @@ DeepSeek V3 的 device-limited routing 在 llama.cpp 里的实现是 2081-2103 �
         cb(moe_out, "ffn_moe_out", il);
 ```
 
-## 六 · `qwen3vlmoe.cpp`（190 行，引用 144-156）
+## 六 · `qwen3vlmoe.cpp`（191 行，引用 144-156）
 
 MoE 侧参数与 qwen3moe 逐字相同（SILU / true / hparams.expert_weights_scale / SOFTMAX）。差别不在 MoE：这个文件里 `clip_` / `vision` / `mmproj` 命中 0 次，视觉塔在 `tools/mtmd` 里（不计入本课覆盖率，见 L2-10）。
 
@@ -645,7 +645,7 @@ MoE 侧参数与 qwen3moe 逐字相同（SILU / true / hparams.expert_weights_sc
         cb(moe_out, "ffn_moe_out", il);
 ```
 
-## 六 · `refact.cpp`（160 行，引用 59-70）
+## 六 · `refact.cpp`（161 行，引用 59-70）
 
 按 `n_expert == 0`（50 行）分别声明稠密与 MoE 张量，MoE 分支里连共享专家张量都建了；但它的 `graph` 的 FFN 只有一条 `build_ffn`（128-133），全文件 0 处 `build_moe_ffn`。
 
@@ -665,7 +665,7 @@ MoE 侧参数与 qwen3moe 逐字相同（SILU / true / hparams.expert_weights_sc
             }
 ```
 
-## 六 · `rnd1.cpp`（177 行，引用 138-150）
+## 六 · `rnd1.cpp`（178 行，引用 138-150）
 
 基础组合：`nullptr` 偏置、`norm_w=true`、`SOFTMAX`、无 shexp。
 
@@ -686,7 +686,7 @@ MoE 侧参数与 qwen3moe 逐字相同（SILU / true / hparams.expert_weights_sc
         cb(moe_out, "ffn_moe_out", il);
 ```
 
-## 六 · `smallthinker.cpp`（188 行，引用 148-159）
+## 六 · `smallthinker.cpp`（189 行，引用 148-159）
 
 `gate_inp` 传 `nullptr`，第 14 个参数传 `probs`（109 行算好）；激活是 `LLM_FFN_RELU`。
 
@@ -706,7 +706,7 @@ MoE 侧参数与 qwen3moe 逐字相同（SILU / true / hparams.expert_weights_sc
                     il, probs);
 ```
 
-## 六 · `step35.cpp`（560 行，引用 512-533）
+## 六 · `step35.cpp`（561 行，引用 512-533）
 
 主干与 MTP 各一处 MoE 调用（313 / 512），参数全部读 hparams；共享专家用 `build_ffn` + `ggml_add`（327-335 / 525-533）。
 

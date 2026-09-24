@@ -4,6 +4,7 @@ ggml/src/ggml-cpu/ops.cpp
 ggml/src/ggml-cpu/unary-ops.cpp
 ggml/src/ggml-cpu/binary-ops.cpp
 ggml/src/ggml-cpu/ops.h
+ggml/src/ggml-cpu/binary-ops.h
 -->
 
 # L5-02 · ★ 一元与二元算子内核 — 源文件
@@ -253,7 +254,7 @@ static void binary_op(const ggml_compute_params * params, ggml_tensor * dst) {
 }
 ```
 
-## 七、ops.h / binary-ops.h：这一族的声明表
+## 七、ops.h：这一族的总目录
 
 `ops.h` 是这一族的总目录：加/减/乘/除的入口、DUP、ADD1、SCALE，以及一元与二元的两个分派器（`ggml_compute_forward_unary` / `ggml_compute_forward_glu`）都在这里声明。所有函数都是 `extern "C"`，参数永远是 `(params, dst)`。
 
@@ -273,7 +274,62 @@ void ggml_compute_forward_unary(const struct ggml_compute_params * params, struc
 void ggml_compute_forward_glu(const struct ggml_compute_params * params, struct ggml_tensor * dst);
 ```
 
-## 八、ops.cpp 里的三个特例
+## 八、binary-ops.h：加 / 减 / 乘 / 除的四个入口
+
+头文件只有 16 行，其中 4 行是函数声明。`add` 的入口名字是 `ggml_compute_forward_add_non_quantized` —— 名字里的 "non_quantized" 是给 `ops.cpp` 用的：`ggml_compute_forward_add()` 先按类型分流：非量化类型才转发到这里，量化类型另走 `ggml_compute_forward_add_q_f32`（`ops.cpp:578`，分流开关在 `ops.cpp:654`）。
+
+<!-- src: ggml/src/ggml-cpu/binary-ops.h -->
+```c
+void ggml_compute_forward_add_non_quantized(const struct ggml_compute_params * params, struct ggml_tensor * dst);
+void ggml_compute_forward_sub(const struct ggml_compute_params * params, struct ggml_tensor * dst);
+void ggml_compute_forward_mul(const struct ggml_compute_params * params, struct ggml_tensor * dst);
+void ggml_compute_forward_div(const struct ggml_compute_params * params, struct ggml_tensor * dst);
+```
+
+## 九、DUP：模板实参是两个类型
+
+`ggml_compute_forward_dup_flt` 的模板参数是 `(src_t, dst_t)` —— 一元/二元算子模板化的另一种形态：这里不参数化"运算"，只参数化"类型对"。函数开头两条断言说明了适用范围：两个类型都必须是**非量化**类型。
+
+分发在 `ggml_compute_forward_dup()`：同类型直接走 `dup_bytes`（按字节搬），不同则按 `(src0->type, dst->type)` 手工列出模板实参；目标类型是量化类型时改走 `dup_to_q`。
+
+<!-- src: ggml/src/ggml-cpu/ops.cpp -->
+```c
+static void ggml_compute_forward_dup_flt(
+        const ggml_compute_params * params,
+        ggml_tensor * dst) {
+
+    const ggml_tensor * src0 = dst->src[0];
+
+    GGML_ASSERT(ggml_nelements(dst) == ggml_nelements(src0));
+    GGML_ASSERT(!ggml_is_quantized(src0->type) && !ggml_is_quantized(dst->type));
+
+    GGML_TENSOR_UNARY_OP_LOCALS
+//>> ---- ggml/src/ggml-cpu/ops.cpp:526-545 ----
+void ggml_compute_forward_dup(
+        const ggml_compute_params * params,
+        ggml_tensor * dst) {
+
+    const ggml_tensor * src0 = dst->src[0];
+
+    if (src0->type == dst->type) {
+        ggml_compute_forward_dup_bytes(params, dst);
+        return;
+    }
+
+    switch (src0->type) {
+        case GGML_TYPE_F16:
+            {
+                /**/ if (dst->type == GGML_TYPE_F16)  ggml_compute_forward_dup_flt<ggml_fp16_t, ggml_fp16_t>(params, dst);
+                else if (dst->type == GGML_TYPE_BF16) ggml_compute_forward_dup_flt<ggml_fp16_t, ggml_bf16_t>(params, dst);
+                else if (dst->type == GGML_TYPE_F32)  ggml_compute_forward_dup_flt<ggml_fp16_t, float      >(params, dst);
+                else ggml_compute_forward_dup_to_q<ggml_fp16_t>(params, dst);
+            } break;
+        case GGML_TYPE_BF16:
+```
+
+## 十、ops.cpp 里的类型分流与三个特例
+
+`ggml_compute_forward_add()` 是"二元算子怎么遇到量化类型"的答案：f32 / f16 / bf16 转发到 `binary-ops.cpp` 的模板，**所有量化类型**改走 `ggml_compute_forward_add_q_f32`。后者对量化类型先 `dequantize_row_q` 到线程私有的 `wdata` 缓冲区、用 `ggml_vec_acc_f32` 加上 src1、再用 `quantize_row_q` 写回目标类型 —— `to_float` / `from_float` 这两个函数指针就来自 L1-04 讲的类型 traits。
 
 `ADD1`：第二个输入必须是**标量张量**（`ggml_is_scalar`），语义是"整行加同一个数"。
 
@@ -285,6 +341,25 @@ void ggml_compute_forward_glu(const struct ggml_compute_params * params, struct 
 
 <!-- src: ggml/src/ggml-cpu/ops.cpp -->
 ```c
+void ggml_compute_forward_add(
+        const ggml_compute_params * params,
+        ggml_tensor * dst) {
+
+    const ggml_tensor * src0 = dst->src[0];
+
+    switch (src0->type) {
+        case GGML_TYPE_F32:
+        case GGML_TYPE_F16:
+        case GGML_TYPE_BF16:
+            {
+                ggml_compute_forward_add_non_quantized(params, dst);
+            } break;
+        case GGML_TYPE_Q1_0:
+        case GGML_TYPE_Q2_0:
+        case GGML_TYPE_Q4_0:
+        case GGML_TYPE_Q4_1:
+        case GGML_TYPE_Q5_0:
+//>> ---- ggml/src/ggml-cpu/ops.cpp:775-790 ----
 static void ggml_compute_forward_add1_f32(
         const ggml_compute_params * params,
         ggml_tensor * dst) {
@@ -329,7 +404,7 @@ static void ggml_compute_forward_scale_f32(
                         const int64_t i01 = px*w + i1;
 ```
 
-## 九、实测：这些 SIMD 到底从哪来
+## 十一、实测：这些 SIMD 到底从哪来
 
 本课的向量化结论不是从源码"推断"的，而是在本机编译后看汇编得到的。命令与输出：
 

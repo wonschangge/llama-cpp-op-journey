@@ -39,9 +39,9 @@ src/llama-hparams.h
 src/llama-kv-cache.cpp
 src/models/gemma4-assistant.cpp
 src/llama-graph.h
+src/llama-model.cpp
 src/llama-graph.cpp
 src/llama-hparams.cpp
-src/llama-model.cpp
 -->
 
 # L2-15 · 模型家族（六）：稠密 Transformer（下）与投机解码草稿模型 — 源文件
@@ -139,7 +139,23 @@ struct llm_graph_qkv {
     std::array<uint32_t, LLAMA_MAX_LAYERS> is_swa_impl;
 ```
 
-## 五、窗口只有四种语义
+## 五、周期怎么变成逐层开关
+
+`load_swa_pattern()` 只做两件事：先试着从元数据里直接读一个逐层数组（`get_arr`），读不到就把"周期"展开。展开规则在 `llama_hparams::set_swa_pattern()` 里：`is_swa_impl[il] = n_pattern == 0 || (il % n_pattern < (n_pattern - 1))`。所以 `load_swa_pattern(ml, 4)` 得到的是"每 4 层里前 3 层 SWA、第 4 层全上下文"；`dense_first = true` 时判据反过来，周期里的第一层是稠密层 —— modern-bert 用的就是 `load_swa_pattern(ml, 3, true)`。
+
+<!-- src: src/llama-model.cpp -->
+```cpp
+void llama_model_base::load_swa_pattern(llama_model_loader & ml, uint32_t n_pattern, bool dense_first) {
+    if (ml.get_arr(LLM_KV_ATTENTION_SLIDING_WINDOW_PATTERN, hparams.is_swa_impl, false)) {
+        return;
+    }
+
+    ml.get_key(LLM_KV_ATTENTION_SLIDING_WINDOW_PATTERN, n_pattern, false);
+    hparams.set_swa_pattern(n_pattern, dense_first);
+}
+```
+
+## 六、窗口只有四种语义
 
 `is_masked_swa()` 是全仓库**唯一**判断"这个位置对那个位置可见吗"的地方 —— 无论有没有 KV cache 都走它。四个 `case` 就是四种窗口语义。注意它的参数是 `(n_swa, swa_type, p0, p1)`：只有位置，没有张量。
 
@@ -177,7 +193,7 @@ struct llm_graph_qkv {
                         return true;
 ```
 
-## 六、窗口在图上的三个落点
+## 七、窗口在图上的三个落点
 
 `build_attn` 的 iswa 版里，`is_swa(il)` 只被用来做三次选择：读哪一套 cache（`get_swa()` / `get_base()`）、读哪一张 mask、往哪里写 K/V。这三行就是"SWA 在图上"的全部。编码器模型（`modern-bert` / `neo-bert`）走的是 `build_attn_inp_no_cache()` 那条路，但窗口判据仍然是同一个 `llama_hparams::is_masked_swa()`（`llama-graph.cpp:438`）。
 
@@ -209,7 +225,7 @@ struct llm_graph_qkv {
     ggml_tensor * cur = build_attn_mha(q, k, v, kq_b, kq_mask, sinks, v_mla, 0, kq_scale, il);
 ```
 
-## 七、★ MLA 是一组超参，不是一个算子
+## 八、★ MLA 是一组超参，不是一个算子
 
 `is_mla()` 的判据是两个 impl 字段同时非零；`n_embd_head_k_mla()` / `n_embd_head_v_mla()` 在没有 MLA 时直接退回普通的 head 维度。源码在字段声明处留下的注释说明了这套表示的来历："deepseek2 using MLA converts into MQA with larger heads, then decompresses to MHA"。
 
@@ -239,7 +255,7 @@ uint32_t llama_hparams::n_embd_head_v_mla() const {
 }
 ```
 
-## 八、★ MLA 在 KV cache 上的唯一痕迹
+## 九、★ MLA 在 KV cache 上的唯一痕迹
 
 cache 构造循环里，MLA 与非 MLA 走同一段代码，只在两处分开：`if (!is_mla)` 包住"V 的 head 维度统计"，以及 `has_v = !is_mla`。`has_v` 为假时 V 张量是 `nullptr` —— 后续所有 `v_stream` 与 `get_v()` 都走空路。这就是"压缩 KV"落到内存上的样子：**少一张张量**。
 
@@ -285,7 +301,7 @@ cache 构造循环里，MLA 与非 MLA 走同一段代码，只在两处分开�
         has_v && ggml_format_name(v, "cache_%sv_l%d", name_tag, il);
 ```
 
-## 九、36 个文件的注意力变体清单
+## 十、36 个文件的注意力变体清单
 
 依据行的含义：纯数字是该文件的行号；`hN` 指 `src/models/models.h` 第 N 行。
 
@@ -330,7 +346,7 @@ cache 构造循环里，MLA 与非 MLA 走同一段代码，只在两处分开�
 
 统计：23 个文件用 `build_attn_inp_kv()`，4 个碰窗口（2 个直接用 iswa、2 个用模板二选一），3 个没有 KV cache，6 个不建注意力图。
 
-## 十、名实不符之一：`using graph = ...`
+## 十一、名实不符之一：`using graph = ...`
 
 `models.h` 里有一批类不自己写图，而是用一行别名把别族的图借过来。本课涉及的四处：`llama_model_nomic_bert`（第 330 行，借 `llama_model_bert::graph`）、`llama_model_mistral4`（第 1397 行，借 `llama_model_deepseek2::graph`）、`llama_model_t5encoder`（第 1478 行，借 `llama_model_t5::graph<true>`）、以及用继承复用的 `llama_model_qwen3tts : public llama_model_qwen3vl`（第 625 行）。下面引的是 Mistral4 —— 它是 DeepSeek2 的子类，连超参和张量加载都不重写。
 
@@ -346,7 +362,7 @@ struct llama_model_mistral4 : public llama_model_deepseek2 {
 };
 ```
 
-## 十一、名实不符之二：只有六行的模型文件
+## 十二、名实不符之二：只有六行的模型文件
 
 `src/models/mistral4.cpp` 全文如下。它没有 `load_arch_hparams`、没有 `load_arch_tensors`、没有图类 —— 因为三样都从 `llama_model_deepseek2` 继承。同类还有 `qwen3tts.cpp`（3 行，第 3 行是注释：`// llama_model_qwen3tts reuses llama_model_qwen3vl's hparams/tensors/graph logic`）、`t5encoder.cpp`（44 行，只有张量加载，图用 `llama_model_t5::graph<true>`）、`nomic-bert.cpp`（51 行，同理）。
 
@@ -360,7 +376,7 @@ std::unique_ptr<llm_graph_context> llama_model_mistral4::build_arch_graph(const 
 
 ```
 
-## 十二、草稿模型的声明：两个独立的模型类
+## 十三、草稿模型的声明：两个独立的模型类
 
 草稿模型不是"主模型的一个开关"，而是 `models.h` 里**独立的两个类**：`llama_model_eagle3` 与 `llama_model_dflash`。它们的图都带一个 `template <bool is_enc>` 与一个主模型没有的输入构造函数 `build_inp_embd_enc()`：草稿模型要先跑一遍"编码器"把主模型的特征融合进来。`llama_model_dflash` 还多一个 `graph_dsv4`，继承自 `llama_model_deepseek4::graph`。
 
@@ -402,7 +418,7 @@ struct llama_model_dflash : public llama_model_base {
 };
 ```
 
-## 十三、主模型侧的钩子：导出每层输入
+## 十四、主模型侧的钩子：导出每层输入
 
 草稿模型需要主模型中间层的隐藏状态。主模型的图为此只加了一行：在层循环开头把 `inpL` 存进 `res->t_layer_inp[il]`。`llm_graph_result::set_outputs()` 会对被请求的层调 `ggml_set_output()`（`llama-graph.cpp:1375-1383`），运行时再由 `llama_context::extract_layer_inputs()` 抽出。本课有 3 个文件写了这一行：`qwen3.cpp:72`、`nanbeige.cpp:106`、`muse-glimmer.cpp:80`。
 
@@ -423,7 +439,7 @@ struct llama_model_dflash : public llama_model_base {
         ggml_tensor * inpSA = inpL;
 ```
 
-## 十四、★ 共享 KV 的图差异：不传 K/V
+## 十五、★ 共享 KV 的图差异：不传 K/V
 
 这是本课验收点的直接证据。草稿模型的注意力只算 Q：权重清单里**没有 `wk` / `wv`**（`gemma4-assistant.cpp:59-60` 只创建 `wq` 与 `wo`），所以 `build_attn` 的第 6、7 个实参（`k_cur` / `v_cur`）只能是 `nullptr`。`build_attn` 内部 `if (k_cur)` / `if (v_cur)` 两段写 cache 的代码因此整段跳过，K/V 直接来自 `mctx_cur->get_k()/get_v()`。
 
@@ -443,7 +459,7 @@ struct llama_model_dflash : public llama_model_base {
                 Qcur, nullptr, nullptr, nullptr, nullptr, nullptr, hparams.f_attention_scale, il);
 ```
 
-## 十五、★ 共享 KV 的 cache 侧：层张量直接挂上
+## 十六、★ 共享 KV 的 cache 侧：层张量直接挂上
 
 草稿模型"借"到的 K/V 张量是在 cache 构造时挂上的：`if (share && other)` 命中后执行 `layers.push_back(layer_share)`，草稿的第 `il` 层于是指向主模型某一层的**同一个** K/V 张量（日志里会打印两个指针）。提供层映射的 `share` 回调来自 `llama_model::create_memory()`，它把草稿的 SWA 层映射到主模型的倒数第 2 层、其余层映射到最后 1 层：
 
@@ -463,7 +479,7 @@ struct llama_model_dflash : public llama_model_base {
                             };
 ```
 
-## 十六、挂上之后：cache 构造函数里的那一跳
+## 十七、挂上之后：cache 构造函数里的那一跳
 
 上面那个 `share` 回调在 cache 构造循环里被消费。命中时**不 new 任何张量**，而是把主模型 cache 里的那一层整体 push 进自己的 `layers`：`map_layer_ids[il]` 因此指向一个共享项，`layers.back().il` 被改写成草稿的层号。这就是"共享主模型 KV"在代码里最终发生的那一行。
 
