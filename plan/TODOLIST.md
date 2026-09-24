@@ -20,7 +20,7 @@
   - 验收点：能说出 ggml_tensor 里哪些字段决定一次内核调用的形状
   - 目录：`L1-operator-representation/L1-01-tensor-data-plane/`
 - [x] **`L1-02`** 算子枚举与元数据：算子的身份　`P0`　3 文件
-  - 讲解要点：GGML_OP_* 枚举、ggml_op_name、参数个数表 nargs、算子如何在图上成为一个节点
+  - 讲解要点：GGML_OP_* 枚举、GGML_OP_NAME / GGML_OP_SYMBOL 两张身份表、输入个数由构造器赋值决定（实测无 nargs 表）、输出形状规则在构造器内、op_params 槽位随 op 变、ggml_op_is_empty 的分类用法
   - 验收点：给出任意一个 GGML_OP_*，能说出它的输入个数与输出形状规则在哪定义
   - 目录：`L1-operator-representation/L1-02-op-enum-and-nargs/`
 - [x] **`L1-03`** 计算图与拓扑遍历　`P0`　3 文件
@@ -31,7 +31,7 @@
   - 讲解要点：block_q4_0 等块布局（实测：Q4_0=18B / Q4_1=20B / Q8_0=34B / Q4_K=144B / Q6_K=210B）、scale/min 的表示、反量化函数族、ggml.c 里的 ggml_type_traits 表如何绑定类型与块大小
   - 验收点：能画出 Q4_0 与 Q4_K 的块内存布局差异，并说出对内核的影响
   - 目录：`L1-operator-representation/L1-04-quant-block-layout/`
-- [ ] **`L1-05`** 上下文、线程与优化器接口　`P0`　6 文件
+- [x] **`L1-05`** 上下文、线程与优化器接口　`P0`　6 文件
   - 讲解要点：ggml_context 的 arena 对象分配（实测在 ggml.c）、全局临界区、ggml-opt 的训练接口
   - 验收点：能说明 ggml_context 为什么用 arena 而非逐个 malloc
   - 目录：`L1-operator-representation/L1-05-context-threads-opt/`
@@ -46,15 +46,15 @@
 >
 > 15 课，覆盖 224 个源文件。
 
-- [ ] **`L2-01`** llama.h 公共 API 全景　`P0`　4 文件
+- [x] **`L2-01`** llama.h 公共 API 全景　`P0`　4 文件
   - 讲解要点：模型/上下文/采样三段式 API、参数结构体族、llama.cpp 作为聚合入口的地位
   - 验收点：能画出从 llama_model_load 到 llama_decode 的 API 调用顺序图
   - 目录：`L2-model-to-graph/L2-01-llama-h-api/`
-- [ ] **`L2-02`** 架构表与超参：模型长什么样的元数据　`P0`　6 文件
+- [x] **`L2-02`** 架构表与超参：模型长什么样的元数据　`P0`　6 文件
   - 讲解要点：LLM_ARCH_* 枚举、张量命名表、hparams 与 cparams 的分工
   - 验收点：能解释新增一个模型架构需要在架构表里加哪几项
   - 目录：`L2-model-to-graph/L2-02-arch-table-hparams/`
-- [ ] **`L2-03`** 权重加载与内存映射　`P0`　6 文件
+- [x] **`L2-03`** 权重加载与内存映射　`P0`　6 文件
   - 讲解要点：mmap vs read、后端 buffer type 的选择时机、张量落位（哪个后端持有权重）
   - 验收点：能说出权重张量在什么时刻决定自己被分配到哪个后端
   - 目录：`L2-model-to-graph/L2-03-weight-loading-mmap/`
@@ -62,7 +62,7 @@
   - 讲解要点：KV cache 的 cell 抽象、iswa/dsa/msa/dsv4 变体、recurrent 与 hybrid 记忆
   - 验收点：能解释为什么需要 memory 抽象而不是一个统一的 KV cache
   - 目录：`L2-model-to-graph/L2-04-kv-cache-and-memory/`
-- [ ] **`L2-05`** 批、解码参数与模型装配　`P0`　6 文件
+- [x] **`L2-05`** 批、解码参数与模型装配　`P0`　6 文件
   - 讲解要点：llama_batch 的 token 序列结构、ubatch 切分、模型构造与设备分配
   - 验收点：能说明一个 batch 是如何被切成 ubatch 并影响图形态的
   - 目录：`L2-model-to-graph/L2-05-batch-and-model-build/`

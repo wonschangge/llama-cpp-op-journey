@@ -35,7 +35,11 @@ dict(id="L1-01", layer="L1", prio="P0",
 dict(id="L1-02", layer="L1", prio="P0",
      title="算子枚举与元数据：算子的身份",
      paths=["ggml/src/ggml.c", "ggml/src/ggml-impl.h"],
-     ideas="GGML_OP_* 枚举、ggml_op_name、参数个数表 nargs、算子如何在图上成为一个节点",
+     # 实测回改：v0.5.0 里【不存在】nargs 表（grep -rn nargs ggml/ 零命中）。
+     # 输入个数由各构造器里赋了几个 result->src[i] 决定；输出形状规则也在构造器里。
+     ideas="GGML_OP_* 枚举、GGML_OP_NAME / GGML_OP_SYMBOL 两张身份表、"
+           "输入个数由构造器赋值决定（实测无 nargs 表）、输出形状规则在构造器内、"
+           "op_params 槽位随 op 变、ggml_op_is_empty 的分类用法",
      accept="给出任意一个 GGML_OP_*，能说出它的输入个数与输出形状规则在哪定义"),
 
 dict(id="L1-03", layer="L1", prio="P0",

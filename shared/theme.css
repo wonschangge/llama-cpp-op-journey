@@ -102,6 +102,7 @@ html, body {
   white-space: pre; tab-size: 4;
 }
 .code .ln { color: #484f58; user-select: none; }
+.code .ln-note { color: #3d444d; }
 
 /* 语法着色 —— 由 U.hl 的单遍 tokenizer 产出 */
 .code .tk-c  { color: #7d8590; font-style: italic; }  /* 注释 */

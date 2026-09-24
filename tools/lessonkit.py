@@ -94,12 +94,48 @@ class Lesson:
         return self
 
     def scene(self, kicker, title, sub, caption, src, parts, visual,
-              notes=None, marks=None, duration=15000, linebase=None):
-        code = self._render_code(src, parts, notes or {}, linebase)
+              notes=None, marks=None, duration=15000, linebase=None,
+              mark_src=None, notes_src=None):
+        """marks: 渲染后数组下标（0-based，含注解行）；不推荐，容易数错。
+        mark_src: 【推荐】要高亮的上游行号列表 —— 由 lessonkit 自动换算成渲染下标，
+                  不会因为插入注解行而错位。
+        notes: 块内下标（0-based，相对该 parts 段的首行）-> 注解文字。
+        notes_src: 【推荐】上游行号 -> 注解文字，注解插在该行【之后】。"""
+        if notes and notes_src:
+            raise SystemExit(f'{self.id}: notes 与 notes_src 不能同时给')
+        if notes_src:
+            base = parts[0][0]
+            span = set()
+            for (a, b) in parts:
+                span |= set(range(a, b + 1))
+            missing = set(notes_src) - span
+            if missing:
+                raise SystemExit(f'{self.id}: notes_src 行号不在引用区间内: {sorted(missing)}')
+            notes = {ln - base: txt for ln, txt in notes_src.items()}
+        code, srcmap = self._render_code(src, parts, notes or {}, linebase)
+        if mark_src:
+            want = set(mark_src)
+            idx = [i for i, ln in enumerate(srcmap) if ln in want]
+            missing = want - {ln for ln in srcmap if ln is not None}
+            if missing:
+                raise SystemExit(
+                    f'{self.id} 第 {len(self.scenes) + 1} 幕: mark_src 里的行号不在引用区间内: '
+                    f'{sorted(missing)}')
+            if marks:
+                raise SystemExit(f'{self.id}: marks 与 mark_src 不能同时给')
+        else:
+            idx = list(marks or [])
+            bad = [i for i in idx
+                   if i >= len(srcmap) or srcmap[i] is None]
+            if bad:
+                raise SystemExit(
+                    f'{self.id} 第 {len(self.scenes) + 1} 幕: marks 指向了空行/注解行 '
+                    f'（渲染下标 {bad}）。这类行没有上游行号，高亮它们通常是数错了；'
+                    f'请改用 mark_src=[上游行号...]。')
         self.cover(src)
         self.scenes.append(dict(
             kicker=kicker, title=title, sub=sub, caption=caption,
-            src=src, code=code, marks=marks or [], duration=duration,
+            src=src, code=code, marks=idx, duration=duration,
             visual=visual, lineno=self._last_linebase))
         return self
 
@@ -112,8 +148,8 @@ class Lesson:
         block = None
         if src and parts:
             self.cover(src)
-            block = dict(src=src, code=self._render_code(src, parts, notes or {}),
-                         lang=lang)
+            text, _map = self._render_code(src, parts, notes or {})
+            block = dict(src=src, code=text, lang=lang)
         self.sections.append(dict(heading=heading, prose=prose, block=block))
         return self
 
@@ -124,15 +160,20 @@ class Lesson:
     # ------------------------------------------------------------ 渲染代码
 
     def _render_code(self, src, parts, notes, linebase=None):
-        out = []
+        """返回 (code_text, srcmap)。srcmap[i] = 第 i 个渲染行对应的上游行号，
+        注解行与多段分隔行为 None（因此它们不会占用行号槽）。"""
+        out, srcmap = [], []
         for pi, (a, b) in enumerate(parts):
             chunk = q(src, a, b)
             if pi:
                 out.append(f'{NOTE_PREFIX} ---- {src}:{a}-{b} ----')
+                srcmap.append(None)
             for k, ln in enumerate(chunk):
                 out.append(ln)
+                srcmap.append(a + k)
                 if k in notes:
                     out.append(f'{NOTE_PREFIX} {notes[k]}')
+                    srcmap.append(None)
         # 行号槽：单段时显示【上游真实行号】（避免误导）；多段时禁用（0 = 不显示），
         # 因为拼接后的行号无法用单一数字表达，改由 //>> ---- 分隔行标注真实区间。
         if linebase:
@@ -141,7 +182,7 @@ class Lesson:
             self._last_linebase = parts[0][0]
         else:
             self._last_linebase = 0
-        return '\n'.join(out)
+        return '\n'.join(out), srcmap
 
     # ---------------------------------------------------------------- 产出
 

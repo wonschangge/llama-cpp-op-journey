@@ -150,17 +150,23 @@ def strip_verbatim(text, is_js):
     这些区域里的 `-` 属于上游代码，不是课件在宣称某个 CLI 参数。
     """
     if is_js:
-        # 用 dump_scenes.js 拿到 code 字段，然后按出现位置抠掉
+        # text 是【lesson.js 的路径】—— 交给 node 求值 SCENES，再把 code 字段抠掉
         r = subprocess.run(['node', os.path.join(HERE, 'tools', 'dump_scenes.js'), text],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, errors='replace')
         try:
             data = json.loads(r.stdout)
-            for s in data.get('scenes', []):
-                if s.get('code'):
-                    text = text.replace(s['code'], '\n')
-        except Exception:
-            pass
-        return text
+        except Exception as e:
+            # ★ 绝不静默降级：抠不掉逐字引用，就等于把上游 C 代码当散文去扫
+            #   `--flag`，会产出大量假阳性，或者（更糟）因为 except 吞掉而假装通过。
+            return None, f'无法求值 SCENES（{e}）'
+        if 'parseError' in data:
+            return None, f'SCENES 解析失败: {data["parseError"]}'
+        with open(text, encoding='utf-8', errors='replace') as fh:
+            content = fh.read()
+        for s in data.get('scenes', []):
+            if s.get('code'):
+                content = content.replace(s['code'], '\n')
+        return content, None
     # markdown: 抠掉带 <!-- src: --> 声明的围栏代码块
     lines = text.split('\n')
     out, i = [], 0
@@ -185,7 +191,7 @@ def strip_verbatim(text, is_js):
             continue
         out.append(lines[i])
         i += 1
-    return '\n'.join(out)
+    return '\n'.join(out), None
 
 
 def extract_flags(text):
@@ -228,7 +234,15 @@ def main():
             n_files += 1
             with open(p, encoding='utf-8') as fh:
                 raw = fh.read()
-            text = strip_verbatim(raw, fn.endswith('.js'))
+            # ★ js 分支需要【路径】（要交给 node 去 parse），不是文件内容。
+            #   曾经误传内容 -> node 报 ENAMETOOLONG -> stderr 被 64KiB 截断在多字节
+            #   UTF-8 边界上 -> UnicodeDecodeError -> 门禁崩溃。
+            #   因为本门禁是全局扫描，一课崩掉会让【所有课】的参数门禁都失败。
+            text, why = strip_verbatim(p if fn.endswith(".js") else raw, fn.endswith(".js"))
+            if why:
+                print(f"✗ A2 失败：{os.path.relpath(p, HERE)}: {why}")
+                print("  （拒绝静默降级：抠不掉逐字引用就会把上游代码当散文扫，结果不可信）")
+                return 1
             for tok in sorted(extract_flags(text)):
                 n_tokens += 1
                 if tok in long_opts or tok in ALLOW:

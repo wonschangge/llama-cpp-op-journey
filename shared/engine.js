@@ -157,18 +157,29 @@ var U = (function () {
     return out;
   }
 
-  /* 带行号的代码渲染。startNo <= 0 表示不显示行号槽（多段拼接时用）。 */
+  /* 带行号的代码渲染。startNo <= 0 表示不显示行号槽（多段拼接时用）。
+     ★ 注解行（//>> 开头）【不占用行号】——否则其后所有真实行号会整体错位。
+     行号槽是"上游真实行号"，错位就等于误导学员。 */
   function codeBlock(code, markLines, startNo) {
     var lines = code.split('\n');
     var marks = {};
     (markLines || []).forEach(function (x) { marks[x] = 1; });
     var showNo = !(startNo === 0 || startNo === null || startNo === undefined);
-    var base = showNo ? (startNo || 1) : 1;
+    var n = showNo ? (startNo || 1) : 1;
     var html = '';
     for (var i = 0; i < lines.length; i++) {
+      var isNote = /^\s*\/\/>>/.test(lines[i]);
       var body = hl(lines[i]);
       if (marks[i]) body = '<mark class="ln-mark" data-l="' + i + '">' + body + '</mark>';
-      var gut = showNo ? ('<span class="ln">' + pad(base + i, 4) + '</span>  ') : '';
+      var gut = '';
+      if (showNo) {
+        if (isNote) {
+          gut = '<span class="ln ln-note">  >>  </span>';
+        } else {
+          gut = '<span class="ln">' + pad(n, 4) + '</span>  ';
+          n++;
+        }
+      }
       html += gut + body + '\n';
     }
     return html;
