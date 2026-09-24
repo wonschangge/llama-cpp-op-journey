@@ -74,9 +74,9 @@ root.appendChild(wrap);
 
 const defs = [
   { c: 'a', w: '214px', t: '本课的两个文件', b: '两个文件一共 93 行：<br>两个原语 + 一个句柄类型。',
-    m: 'dl_load_library / dl_get_sym / dl_error' },
+    m: 'dl_load_library · dl_get_sym · dl_error' },
   { c: 'c', w: '214px', t: '它们不认识"后端"', b: '文件里没有一处提到<br>CPU / CUDA / Vulkan 之类的名字。',
-    m: 'void * dlsym(dl_handle * handle, const char * name)' },
+    m: 'void * dl_get_sym(dl_handle * handle, const char * name)' },
   { c: 'b', w: '214px', t: '规矩在注册表那一侧', b: '取哪个符号、版本要对得上、<br>失败怎么办，全在 reg.cpp 里。',
     m: '"ggml_backend_init"' }
 ];
@@ -262,7 +262,7 @@ const defs = [
   { c: 'b', w: '214px', t: '可选：ggml_backend_score', b: '返回 int；0 = 本机不支持。<br>缺了它，库只能被直接点名加载，<br>无法参与"择优"。',
     m: '"ggml_backend_score"   reg.cpp:229' },
   { c: 'a', w: '214px', t: '为什么必须 extern "C"', b: 'dlsym 按"字面名字"查符号，<br>而 C++ 会对函数名做名字改编。',
-    m: 'extern "C" { GGML_BACKEND_API ggml_backend_reg_t ggml_backend_init(void); }' }
+    m: 'GGML_BACKEND_API ggml_backend_reg_t ggml_backend_init(void);' }
 ];
 const host = wrap.querySelector('#cards');
 const els = defs.map(d => { const e = U.card(d); host.appendChild(e); return e; });
@@ -305,7 +305,7 @@ const defs = [
   { c: 'a', w: '214px', t: '通过条件（两道）', b: 'reg 非 NULL；<br>api_version 与当前版本精确相等。',
     m: 'if (!reg || reg->api_version != GGML_BACKEND_API_VERSION)' },
   { c: 'c', w: '214px', t: '两种失败，两条日志', b: 'reg == NULL → "returned NULL"<br>版本不符 → 打出两个版本号。',
-    m: 'GGML_LOG_ERROR("... incompatible API version (backend: %d, current: %d)")' },
+    m: 'incompatible API version (backend: %d, current: %d)' },
   { c: 'd', w: '214px', t: '为什么必须精确相等', b: 'L3-01 的三张虚表是 ABI 契约：<br>字段顺序或个数一变，<br>旧库的调用约定就错了。',
     m: '#define GGML_BACKEND_API_VERSION 2' }
 ];
@@ -356,7 +356,7 @@ const defs = [
   { c: 'b', w: '300px', t: '宏替你写符号', b: '后端只提供自己的注册函数，<br>宏把它包成 extern "C" 的导出符号。',
     m: 'GGML_BACKEND_DL_IMPL(ggml_backend_cpu_reg)' },
   { c: 'a', w: '300px', t: '不开开关就没有符号', b: 'GGML_BACKEND_DL 未定义时两个宏展开为空 ——<br>库里没有这两个符号，<br>注册表也就不会去加载它。',
-    m: '#else  /  #define GGML_BACKEND_DL_IMPL(reg_fn)' }
+    m: '#    define GGML_BACKEND_DL_IMPL(reg_fn)' }
 ];
 const host = wrap.querySelector('#cards');
 const els = defs.map(d => { const e = U.card(d); host.appendChild(e); return e; });
@@ -494,7 +494,7 @@ L.section(
 
 L.section(
     '二、同一抽象的另一端：Windows',
-    'Windows 分支用 `LoadLibraryW` / `GetProcAddress`，并在两处用 `SetErrorMode` 压掉系统错误弹窗 '
+    'Windows 分支用 `LoadLibraryW` / `GetProcAddress`，并在两处用 `SetErrorMode` 压掉系统错误弹窗'
     '（注释写明理由：suppress error dialogs for missing DLLs）。\n\n'
     '对照上一节可以看到一处**能力不对等**：POSIX 的 `dl_error()` 会返回 `dlerror()` 的文本，'
     '而 Windows 分支的 `dl_error()` 直接 `return "";`。'

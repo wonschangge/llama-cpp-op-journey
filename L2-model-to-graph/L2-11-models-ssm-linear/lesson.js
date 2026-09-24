@@ -712,7 +712,7 @@ llama_model_mamba::graph::graph(const llama_model & model, const llm_graph_param
 
     const t = U.table(
       ['文件', '真实主题（读代码得出）', 'SSM/线性注意力？'],
-      [("arwkv7.cpp", "RWKV-7 的变体：每层 token-shift + build_rwkv7_time_mix + channel mix", "是"), ("bailingmoe3.cpp", "KDA 层 + MLA 层 + MoE：KDA 走 build_recurrent_attn，卷积用 ggml_ssm_conv", "是（混合）"), ("deepseek2.cpp", "DeepSeek-V2 的 MLA + MoE：wkv_a_mqa / wkv_b 是低秩 KV 压缩投影", "否"), ("deepseek32.cpp", "DeepSeek-V3.2 的 DSA 稀疏注意力 + MLA，走 KV cache", "否"), ("delta-net-base.cpp", "gated delta net 公共基类：三种实现 + 卷积状态 + 状态写回", "是（基类）"), ("dflash.cpp", "DFlash 投机解码草稿图：layer.wkv 只是一个普通 K/V 投影权重名", "否"), ("dots3note.cpp", "MLA + DSA indexer（源码注释写明 adapted from deepseek32）", "否"), ("falcon-h1.cpp", "混合：按 hparams.is_recr(il) 在 Mamba2 层与注意力层间切换", "是（混合）"), ("glm-dsa.cpp", "GLM 的 DSA 稀疏注意力 + MLA，走 KV cache", "否"), ("granite-hybrid.cpp", "混合：Mamba2 层 + 注意力层，inp->get_recr() 传状态", "是（混合）"), ("hy-v4.cpp", "Hunyuan V4 的 MLA + DSA，走 KV cache", "否"), ("jamba.cpp", "混合：Mamba-1 层 + 注意力层 + MoE", "是（混合）"), ("kimi-k3.cpp", "KDA 层（n_head_kv == 0 标记）+ MLA 层", "是（混合）"), ("kimi-linear.cpp", "KDA 层（ggml_ssm_conv + gated delta net）+ MLA 层", "是（混合）"), ("lfm2.cpp", "短卷积块：卷积状态存 recurrent cache，用 ggml_ssm_conv；无 ssm_scan", "是（只卷积）")].map(r => [r[0], r[1], r[2]]),
+      [["arwkv7.cpp","RWKV-7 的变体：每层 token-shift + build_rwkv7_time_mix + channel mix","是"],["bailingmoe3.cpp","KDA 层 + MLA 层 + MoE：KDA 走 build_recurrent_attn，卷积用 ggml_ssm_conv","是（混合）"],["deepseek2.cpp","DeepSeek-V2 的 MLA + MoE：wkv_a_mqa / wkv_b 是低秩 KV 压缩投影","否"],["deepseek32.cpp","DeepSeek-V3.2 的 DSA 稀疏注意力 + MLA，走 KV cache","否"],["delta-net-base.cpp","gated delta net 公共基类：三种实现 + 卷积状态 + 状态写回","是（基类）"],["dflash.cpp","DFlash 投机解码草稿图：layer.wkv 只是一个普通 K/V 投影权重名","否"],["dots3note.cpp","MLA + DSA indexer（源码注释写明 adapted from deepseek32）","否"],["falcon-h1.cpp","混合：按 hparams.is_recr(il) 在 Mamba2 层与注意力层间切换","是（混合）"],["glm-dsa.cpp","GLM 的 DSA 稀疏注意力 + MLA，走 KV cache","否"],["granite-hybrid.cpp","混合：Mamba2 层 + 注意力层，inp->get_recr() 传状态","是（混合）"],["hy-v4.cpp","Hunyuan V4 的 MLA + DSA，走 KV cache","否"],["jamba.cpp","混合：Mamba-1 层 + 注意力层 + MoE","是（混合）"],["kimi-k3.cpp","KDA 层（n_head_kv == 0 标记）+ MLA 层","是（混合）"],["kimi-linear.cpp","KDA 层（ggml_ssm_conv + gated delta net）+ MLA 层","是（混合）"],["lfm2.cpp","短卷积块：卷积状态存 recurrent cache，用 ggml_ssm_conv；无 ssm_scan","是（只卷积）"]],
       { monoCols: [0] });
     t.el.style.fontSize = '9px';
     t.el.style.lineHeight = '1.15';
@@ -721,7 +721,7 @@ llama_model_mamba::graph::graph(const llama_model & model, const llm_graph_param
 
     const msg = wrap.querySelector('#msg');
     const texts = [
-      '这 15 个里，<span class="k">8 个名副其实，7 个不是</span>。',
+      '这 15 个里，<span class="k">9 个名副其实，6 个不是</span>。',
       '<span class="v">delta-net-base.cpp</span> 是基类不是模型：它同时服务 kimi-linear / kimi-k3 / bailingmoe3 / qwen3next / qwen35。',
       '<span class="v">bailingmoe3 / kimi-k3 / kimi-linear</span> 是"KDA + MLA"的混合体：'
         + '<span class="k">同一份模型里既有 recurrent 层也有 KV cache 层</span>，由 is_recr(il) 分开。'
@@ -761,7 +761,7 @@ llama_model_mamba::graph::graph(const llama_model & model, const llm_graph_param
 
     const t = U.table(
       ['文件', '真实主题（读代码得出）', 'SSM/线性注意力？'],
-      [("mamba2.cpp", "Mamba-2 的超参与权重加载；图直接复用 llama_model_mamba::graph", "是"), ("mamba-base.cpp", "llm_build_mamba_base：build_mamba_layer / build_mamba2_layer，ggml_ssm_scan 的唯一出处", "是（基类）"), ("mamba.cpp", "Mamba-1/2 的图：逐层 build_mamba_layer 或 build_mamba2_layer + 残差", "是"), ("minicpm3.cpp", "MiniCPM3 的 MLA 图，走 build_attn_inp_kv", "否"), ("nemotron-h.cpp", "混合：Mamba2 层 + 注意力层 + MoE", "是（混合）"), ("plamo2.cpp", "自带一份 Mamba 实现：ggml_ssm_conv + ggml_ssm_scan 内联在模型文件里", "是"), ("plm.cpp", "PLM 的 MLA 图，走 build_attn_inp_kv", "否"), ("qwen35.cpp", "gated delta net 层 + 注意力层混合", "是（混合）"), ("qwen35moe.cpp", "同上 + MoE", "是（混合）"), ("qwen3next.cpp", "gated delta net 层 + 注意力层 + MoE", "是（混合）"), ("rwkv6-base.cpp", "llm_build_rwkv6_base：channel mix / time mix，wkv6 或 gated_linear_attn", "是（基类）"), ("rwkv6.cpp", "RWKV-6 的图：token-shift + time mix + channel mix", "是"), ("rwkv6qwen2.cpp", "RWKV-6 的 time mix + Qwen2 式 build_ffn（FFN_SILU / FFN_PAR）", "是（混合）"), ("rwkv7-base.cpp", "llm_build_rwkv7_base：ggml_rwkv_wkv7 + 状态回写", "是（基类）"), ("rwkv7.cpp", "RWKV-7 的图：token-shift + build_rwkv7_time_mix", "是")].map(r => [r[0], r[1], r[2]]),
+      [["mamba2.cpp","Mamba-2 的超参与权重加载；图直接复用 llama_model_mamba::graph","是"],["mamba-base.cpp","llm_build_mamba_base：build_mamba_layer / build_mamba2_layer，ggml_ssm_scan 的唯一出处","是（基类）"],["mamba.cpp","Mamba-1/2 的图：逐层 build_mamba_layer 或 build_mamba2_layer + 残差","是"],["minicpm3.cpp","MiniCPM3 的 MLA 图，走 build_attn_inp_kv","否"],["nemotron-h.cpp","混合：Mamba2 层 + 注意力层 + MoE","是（混合）"],["plamo2.cpp","自带一份 Mamba 实现：ggml_ssm_conv + ggml_ssm_scan 内联在模型文件里","是"],["plm.cpp","PLM 的 MLA 图，走 build_attn_inp_kv","否"],["qwen35.cpp","gated delta net 层 + 注意力层混合","是（混合）"],["qwen35moe.cpp","同上 + MoE","是（混合）"],["qwen3next.cpp","gated delta net 层 + 注意力层 + MoE","是（混合）"],["rwkv6-base.cpp","llm_build_rwkv6_base：channel mix / time mix，wkv6 或 gated_linear_attn","是（基类）"],["rwkv6.cpp","RWKV-6 的图：token-shift + time mix + channel mix","是"],["rwkv6qwen2.cpp","RWKV-6 的 time mix + Qwen2 式 build_ffn（FFN_SILU / FFN_PAR）","是（混合）"],["rwkv7-base.cpp","llm_build_rwkv7_base：ggml_rwkv_wkv7 + 状态回写","是（基类）"],["rwkv7.cpp","RWKV-7 的图：token-shift + build_rwkv7_time_mix","是"]],
       { monoCols: [0] });
     t.el.style.fontSize = '9px';
     t.el.style.lineHeight = '1.15';
@@ -770,8 +770,8 @@ llama_model_mamba::graph::graph(const llama_model & model, const llm_graph_param
 
     const msg = wrap.querySelector('#msg');
     const texts = [
-      '后 15 个里，<span class="k">12 个名副其实，3 个不是</span>。加上上一幕：'
-        + '<span class="v">22 是 / 8 否</span>。',
+      '后 15 个里，<span class="k">13 个名副其实，2 个不是</span>。'
+        + '加上上一幕：<span class="v">22 是 / 8 否</span>。',
       '8 个"否"的公共点：它们都在声明 <span class="v">LLM_TENSOR_ATTN_KV_A_MQA</span> / '
         + '<span class="v">LLM_TENSOR_ATTN_KV_B</span> 这类 MLA 张量，名字里带 wkv。',
       '判据不是名字，而是三件事：<span class="k">有没有 build_rs / build_inp_mem_hybrid、'

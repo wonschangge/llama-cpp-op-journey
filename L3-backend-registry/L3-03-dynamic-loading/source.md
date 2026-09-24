@@ -48,7 +48,7 @@ const char * dl_error() {
 
 ## 二、同一抽象的另一端：Windows
 
-Windows 分支用 `LoadLibraryW` / `GetProcAddress`，并在两处用 `SetErrorMode` 压掉系统错误弹窗 （注释写明理由：suppress error dialogs for missing DLLs）。
+Windows 分支用 `LoadLibraryW` / `GetProcAddress`，并在两处用 `SetErrorMode` 压掉系统错误弹窗（注释写明理由：suppress error dialogs for missing DLLs）。
 
 对照上一节可以看到一处**能力不对等**：POSIX 的 `dl_error()` 会返回 `dlerror()` 的文本，而 Windows 分支的 `dl_error()` 直接 `return "";`。所以 Windows 上加载失败的日志里，错误描述永远是空的 —— 这是实现现状，不是笔误。
 

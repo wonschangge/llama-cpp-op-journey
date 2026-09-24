@@ -12,6 +12,7 @@ glm-dsa / hy-v4 / minicpm3 / plm / dflash）只是因为 MLA 的低秩 KV 压缩
 source.md 第一节逐文件给出真实主题。
 """
 
+import json
 import os
 import sys
 
@@ -19,6 +20,18 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(os.path.dirname(_HERE))
 sys.path.insert(0, os.path.join(_ROOT, 'tools'))
 from lessonkit import Lesson           # noqa: E402
+
+
+def JSROWS(rows):
+    """把 [[a,b,c], ...] 写成 JS 的数组字面量。
+
+    ★ 不要用 repr()：Python 的元组 ('a','b','c') 在 JS 里是【逗号运算符】，
+      整个表达式只取最后一个操作数 —— 每行会塌缩成一个字符串，
+      后面的 .map(r => [r[0],r[1],r[2]]) 就变成"取字符串的第 0/1/2 个字符"。
+      渲染门禁查不出这种错（无 JS 报错、无布局溢出），只能靠逐字对照 DOM。"""
+    return '[' + ','.join(
+        '[' + ','.join(json.dumps(str(c), ensure_ascii=False) for c in r) + ']'
+        for r in rows) + ']'
 
 # ---------------------------------------------------------------- 覆盖域内（src/）
 # 本课负责的 30 个文件 —— 全部在 src/models/ 下，全部计入覆盖率。
@@ -577,7 +590,7 @@ root.appendChild(wrap);
 
 const t = U.table(
   ['文件', '真实主题（读代码得出）', 'SSM/线性注意力？'],
-  ''' + repr(FILES_A).replace("'", '"') + '''.map(r => [r[0], r[1], r[2]]),
+  ''' + JSROWS(FILES_A) + ''',
   { monoCols: [0] });
 t.el.style.fontSize = '9px';
 t.el.style.lineHeight = '1.15';
@@ -586,7 +599,7 @@ const rows = t.body.querySelectorAll('tr');
 
 const msg = wrap.querySelector('#msg');
 const texts = [
-  '这 15 个里，<span class="k">8 个名副其实，7 个不是</span>。',
+  '这 15 个里，<span class="k">9 个名副其实，6 个不是</span>。',
   '<span class="v">delta-net-base.cpp</span> 是基类不是模型：它同时服务 kimi-linear / kimi-k3 / bailingmoe3 / qwen3next / qwen35。',
   '<span class="v">bailingmoe3 / kimi-k3 / kimi-linear</span> 是"KDA + MLA"的混合体：'
     + '<span class="k">同一份模型里既有 recurrent 层也有 KV cache 层</span>，由 is_recr(il) 分开。'
@@ -617,6 +630,13 @@ FILES_B = [
     ('rwkv7.cpp', 'RWKV-7 的图：token-shift + build_rwkv7_time_mix', '是'),
 ]
 
+# 计数在构建期由 FILES_A / FILES_B 算出，不手打 —— 手打会漂移
+# （本课第一版就把 9/6 与 13/2 误写成 8/7 与 12/3，断言在这里兜住）
+YES_A = sum(1 for r in FILES_A if r[2].startswith('是'))
+YES_B = sum(1 for r in FILES_B if r[2].startswith('是'))
+NO_A, NO_B = len(FILES_A) - YES_A, len(FILES_B) - YES_B
+assert (YES_A + YES_B, NO_A + NO_B) == (22, 8), (YES_A, YES_B, NO_A, NO_B)
+
 L.scene(
     kicker='L2-11 · 清点（下）',
     title='★ 余下 15 个，以及<span class="hl-e">8 个名实不符</span>的全部理由',
@@ -636,7 +656,7 @@ root.appendChild(wrap);
 
 const t = U.table(
   ['文件', '真实主题（读代码得出）', 'SSM/线性注意力？'],
-  ''' + repr(FILES_B).replace("'", '"') + '''.map(r => [r[0], r[1], r[2]]),
+  ''' + JSROWS(FILES_B) + ''',
   { monoCols: [0] });
 t.el.style.fontSize = '9px';
 t.el.style.lineHeight = '1.15';
@@ -645,8 +665,8 @@ const rows = t.body.querySelectorAll('tr');
 
 const msg = wrap.querySelector('#msg');
 const texts = [
-  '后 15 个里，<span class="k">12 个名副其实，3 个不是</span>。加上上一幕：'
-    + '<span class="v">22 是 / 8 否</span>。',
+  '后 15 个里，<span class="k">13 个名副其实，2 个不是</span>。'
+    + '加上上一幕：<span class="v">22 是 / 8 否</span>。',
   '8 个"否"的公共点：它们都在声明 <span class="v">LLM_TENSOR_ATTN_KV_A_MQA</span> / '
     + '<span class="v">LLM_TENSOR_ATTN_KV_B</span> 这类 MLA 张量，名字里带 wkv。',
   '判据不是名字，而是三件事：<span class="k">有没有 build_rs / build_inp_mem_hybrid、'

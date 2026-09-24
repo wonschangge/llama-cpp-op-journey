@@ -586,6 +586,7 @@ const SCENES = [
       <div class="cm" style="margin:2px 0 0">② 专家并行（k 条支路，各乘自己的权重）—— 本幕</div>
       <div class="flow" id="r2" style="gap:5px"></div>
       <div class="flow" id="r3" style="gap:5px"></div>
+      <div id="shp"></div>
       <div class="formula" id="msg"></div>`;
     root.appendChild(wrap);
 
@@ -610,6 +611,18 @@ const SCENES = [
       ['b', 'e', 'e', 'e']);
     [r1, r2, r3].forEach(g => g.forEach(c => c.style.opacity = '.28'));
 
+    const s = U.table(
+      ['张量', '算子', '形状'],
+      [['cur', 'ggml_reshape_3d(cur, n_embd, 1, n_tokens)', '[n_embd, 1, n_tokens]'],
+       ['up / gate', 'ggml_mul_mat_id(*_exps, cur, selected_experts)', '[n_ff, k, n_tokens]'],
+       ['act', 'ggml_swiglu_split(gate, up)', '[n_ff, k, n_tokens]'],
+       ['experts', 'ggml_mul_mat_id(down_exps, act, selected_experts)', '[n_embd, k, n_tokens]'],
+       ['moe_out', 'ggml_view_2d x k + ggml_add x (k-1)', '[n_embd, n_tokens]']],
+      { monoCols: [0, 1, 2] });
+    wrap.querySelector('#shp').appendChild(s.el);
+    const srows = s.body.querySelectorAll('tr');
+    srows.forEach(r => { r.style.opacity = '.30'; });
+
     const msg = wrap.querySelector('#msg');
     const texts = [
       '路由子图：打分 -> 概率 -> top-k 索引 -> 用索引收集权重。<br>' +
@@ -628,9 +641,20 @@ const SCENES = [
     tl.at(700, () => { msg.innerHTML = texts[0]; });
     tl.at(3400, () => { r1.forEach(c => c.style.opacity = '1'); msg.innerHTML = texts[1]; });
     tl.at(7400, () => { r2.forEach(c => c.style.opacity = '1'); msg.innerHTML = texts[2]; });
-    tl.at(11400, () => { msg.innerHTML = texts[3]; });
-    tl.at(15400, () => { r3.slice(0, 2).forEach(c => c.style.opacity = '1'); msg.innerHTML = texts[4]; });
-    tl.at(19600, () => { r3.forEach(c => c.style.opacity = '1'); msg.innerHTML = texts[5]; });
+    tl.at(11400, () => {
+      srows.forEach((r, k) => { r.style.opacity = (k === 0 || k === 1) ? '1' : '.30'; });
+      msg.innerHTML = texts[3];
+    });
+    tl.at(15400, () => {
+      r3.slice(0, 2).forEach(c => c.style.opacity = '1');
+      srows.forEach((r, k) => { r.style.opacity = (k <= 3) ? '1' : '.30'; });
+      msg.innerHTML = texts[4];
+    });
+    tl.at(19600, () => {
+      r3.forEach(c => c.style.opacity = '1');
+      srows.forEach(r => { r.style.opacity = '1'; });
+      msg.innerHTML = texts[5];
+    });
   }
 },
 

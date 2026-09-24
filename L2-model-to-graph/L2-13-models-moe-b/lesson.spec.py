@@ -181,16 +181,18 @@ const texts = [
   '<span class="v">norm_w</span>：把 top-k 权重除以它们的和，除以零被 clamp 成 F16 最小值（2141）。',
   '<span class="v">w_scale</span>：<span class="k">只在它不等于 0.0f 且不等于 1.0f 时才生效</span>（2149）。',
   '<span class="v">probs_in</span> / <span class="v">selected_experts_in</span>：两条外部接管通道，可以分别绕开 gate_inp 与 top-k。',
+  '<span class="v">probs_in</span> 非空时 gate_inp 完全不被使用（2024-2032）。',
+  '<span class="v">selected_experts_in</span> 非空时 top-k 整段跳过（2107-2111）。',
   '结论：<span class="k">MoE 的可调旋钮不在"算子"，在"路由策略"</span> —— 这 8 个参数就是全部。'
 ];
 tl.at(600, () => { msg.innerHTML = texts[0]; });
 rows.forEach((r, i) => tl.at(2400 + i * 2400, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
-  msg.innerHTML = texts[Math.min(i + 1, 8)];
+  msg.innerHTML = texts[Math.min(i + 1, 9)];
 }));
 tl.at(22800, () => {
   rows.forEach(x => { x.className = ''; });
-  msg.innerHTML = texts[8];
+  msg.innerHTML = texts[10];
 });
 '''
 )
@@ -326,14 +328,16 @@ const texts = [
   '<span class="v">n_expert</span> / <span class="v">n_expert_used</span> 21 处一字不差 —— 它们是 <span class="v">llm_graph_context</span> 的成员，<br>来自 hparams；<span class="k">模型文件在这两个参数上没有自由度</span>。',
   '<span class="v">gating_op</span> 是分歧最大的一个：12 处写死 SOFTMAX，5 处转成 <span class="v">hparams.expert_gating_func</span>。',
   '<span class="v">norm_w</span> 是三态：写死 true、写死 false、或者读 <span class="v">hparams.expert_weights_norm</span>。',
-  '<span class="v">probs_in</span> 只有 smallthinker 与 nemotron-h-moe 用到 —— 这两处把 top-k 的输入搬到了函数外。'
+  '<span class="v">w_scale</span> 几乎全是 <span class="v">hparams.expert_weights_scale</span>，只有 maple 写死 1.0f。',
+  '<span class="v">probs_in</span> 只有 smallthinker 与 nemotron-h-moe 用到 —— 这两处把 top-k 的输入搬到了函数外。',
+  '这 6 行就是 24 个文件在调用点上的<b>全部自由度</b>。'
 ];
 tl.at(600, () => { msg.innerHTML = texts[0]; });
 rows.forEach((r, i) => tl.at(3000 + i * 3000, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
-  msg.innerHTML = texts[Math.min(i + 1, 4)];
+  msg.innerHTML = texts[Math.min(i + 1, 7)];
 }));
-tl.at(18300, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[1]; });
+tl.at(18300, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[7]; });
 '''
 )
 
@@ -500,17 +504,21 @@ const rows = t.body.querySelectorAll('tr');
 const texts = [
   '九行覆盖全部 24 个文件；同一文件可以出现在多行（这些开关彼此独立）。',
   '20 个文件真的调了 <span class="v">build_moe_ffn</span>，4 个没有。',
-  '共享专家 <span class="k">9 / 24</span>，其中只有 qwen2moe 给它配了独立门控。',
+  '没有 MoE 调用的 4 个文件，MoE 张量都建了 —— 图上却没有对应支路。',
+  '借图 3 个：MoE 行为由被借的那张图决定（第 7 幕）。',
+  '共享专家 <span class="k">9 / 24</span>，其中只有 qwen2moe 给它配了独立门控（第 4 幕）。',
   '<span class="v">exp_probs_b</span> 这一行的来历写在源码注释里：<span class="v">llama-graph.cpp:2062</span> 注明 "introduced in DeepSeek V3"。',
-  '分组路由这一行是 <span class="k">0 / 24</span>：它由 GGUF 元数据决定，代码里看不见。',
-  '最后一行也是本课的结论：<span class="v">路由策略的开关，一半在参数表，一半在 hparams</span>。'
+  '4 个文件的 gating 函数不在调用点写死，而是读 <span class="v">hparams.expert_gating_func</span>。',
+  '<span class="v">probs_in</span> 只有 2 处（第 6 幕）；<span class="v">selected_experts_in</span> 0 处。',
+  '分组路由这一行是 <span class="k">0 / 24</span>：它由 GGUF 元数据决定，代码里看不见（第 3 幕）。',
+  '一句话：<span class="v">路由策略的开关，一半在参数表，一半在 hparams</span>。'
 ];
 tl.at(600, () => { msg.innerHTML = texts[0]; });
 rows.forEach((r, i) => tl.at(2600 + i * 2700, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
-  msg.innerHTML = texts[Math.min(i + 1, 5)];
+  msg.innerHTML = texts[Math.min(i + 1, 9)];
 }));
-tl.at(24000, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[5]; });
+tl.at(24000, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[9]; });
 '''
 )
 
@@ -560,14 +568,15 @@ const texts = [
   '八个参数：两个定规模，四个定概率与权重，两个是外部接管通道。',
   '<span class="v">n_expert_used</span> 是唯一直接决定"几个专家"的参数。',
   '分组路由与共享专家都<b>不在这张参数表里</b> —— 一个在 hparams，一个是图上的第二条支路。',
+  '共享专家：调用点外的第二条支路，9 / 24 个文件有，接法三种。',
   '下一课 <span class="k">L2-14</span>：没有专家的 Transformer，图画起来是什么样。'
 ];
 tl.at(600, () => { msg.innerHTML = texts[0]; });
 rows.forEach((r, i) => tl.at(2400 + i * 3600, () => {
   rows.forEach((x, k) => { x.className = (k === i) ? 'on' : ''; });
-  msg.innerHTML = texts[Math.min(i + 1, 4)];
+  msg.innerHTML = texts[Math.min(i + 1, 5)];
 }));
-tl.at(18600, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[4]; });
+tl.at(18600, () => { rows.forEach(x => { x.className = ''; }); msg.innerHTML = texts[5]; });
 '''
 )
 
